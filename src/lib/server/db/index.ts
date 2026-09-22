@@ -1,11 +1,12 @@
 import { DatabaseSync, type StatementSync } from 'node:sqlite';
 import { DATA_DIR, DB_PATH, ensureDirs } from '../paths';
-import { applyPendingRestore, importOnFirstBoot } from '../restore';
+import { applyPendingRestore, importOnFirstBoot, migrateLegacyDatabase } from '../restore';
 import { SCHEMA_SQL } from './schema';
 
 function open() {
 	ensureDirs();
 	// Restores are swapped in here, before any handle to the old database exists.
+	migrateLegacyDatabase(DATA_DIR);
 	importOnFirstBoot(DATA_DIR);
 	applyPendingRestore(DATA_DIR);
 	ensureDirs();
@@ -38,8 +39,8 @@ function addMissingColumns(database: DatabaseSync) {
 }
 
 // Vite reloads server modules in dev; keep one handle per process so WAL locks stay sane.
-const globalRef = globalThis as unknown as { __pcbhubDb?: DatabaseSync };
-export const db = (globalRef.__pcbhubDb ??= open());
+const globalRef = globalThis as unknown as { __kupfergitDb?: DatabaseSync };
+export const db = (globalRef.__kupfergitDb ??= open());
 
 type Row = Record<string, unknown>;
 

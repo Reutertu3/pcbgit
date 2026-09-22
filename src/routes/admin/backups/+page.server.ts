@@ -6,7 +6,7 @@ import { DATA_DIR } from '$lib/server/paths';
 import { SnapshotError, cancelPendingRestore, pendingRestore, stageSnapshot } from '$lib/server/restore';
 
 /** Under Docker the restart policy brings the server back; elsewhere an admin restarts it. */
-const AUTO_RESTART = process.env.PCBHUB_RESTART_ON_RESTORE === 'true';
+const AUTO_RESTART = process.env.KUPFERGIT_RESTART_ON_RESTORE === 'true';
 
 function message(error: unknown) {
 	return error instanceof SnapshotError ? error.message : `Unexpected error: ${(error as Error).message}`;

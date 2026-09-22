@@ -1,4 +1,4 @@
--- PCBHub schema. Applied idempotently at every boot by db/index.ts.
+-- Kupfergit schema. Applied idempotently at every boot by db/index.ts.
 
 PRAGMA journal_mode = WAL;
 PRAGMA foreign_keys = ON;

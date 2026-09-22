@@ -12,11 +12,14 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 
-export const SNAPSHOT_FORMAT = 'pcbhub-snapshot';
+export const SNAPSHOT_FORMAT = 'kupfergit-snapshot';
+/** Snapshots made before the project was renamed; still restorable. */
+const LEGACY_FORMAT = 'pcbhub-snapshot';
+const LEGACY_DB = 'pcbhub.db';
 export const SNAPSHOT_VERSION = 1;
 
 export interface SnapshotManifest {
-	format: typeof SNAPSHOT_FORMAT;
+	format: typeof SNAPSHOT_FORMAT | typeof LEGACY_FORMAT;
 	version: number;
 	created_at: number;
 	includes_artifacts: boolean;
@@ -57,7 +60,7 @@ export function checkArchive(file: string) {
 		if (clean.startsWith('/') || clean.split('/').includes('..')) {
 			throw new SnapshotError(`Unsafe path in archive: ${name}`);
 		}
-		if (!/^(manifest\.json|pcbhub\.db|repos(\/.*)?|artifacts(\/.*)?)$/.test(clean)) {
+		if (!/^(manifest\.json|kupfergit\.db|pcbhub\.db|repos(\/.*)?|artifacts(\/.*)?)$/.test(clean)) {
 			throw new SnapshotError(`Unexpected file in archive: ${name}`);
 		}
 	}
@@ -66,8 +69,8 @@ export function checkArchive(file: string) {
 	}
 
 	const present = new Set(names.map((name) => name.replace(/^\.\//, '')));
-	if (!present.has('manifest.json') || !present.has('pcbhub.db')) {
-		throw new SnapshotError('Archive is missing manifest.json or pcbhub.db — not a PCBHub snapshot.');
+	if (!present.has('manifest.json') || !(present.has('kupfergit.db') || present.has(LEGACY_DB))) {
+		throw new SnapshotError('Archive is missing manifest.json or kupfergit.db — not a Kupfergit snapshot.');
 	}
 }
 
@@ -84,7 +87,9 @@ export function readManifest(file: string): SnapshotManifest {
 	} catch {
 		throw new SnapshotError('manifest.json is not valid JSON.');
 	}
-	if (manifest.format !== SNAPSHOT_FORMAT) throw new SnapshotError('Not a PCBHub snapshot.');
+	if (manifest.format !== SNAPSHOT_FORMAT && manifest.format !== LEGACY_FORMAT) {
+		throw new SnapshotError('Not a Kupfergit snapshot.');
+	}
 	if (manifest.version > SNAPSHOT_VERSION) {
 		throw new SnapshotError(`Snapshot format v${manifest.version} is newer than this server understands.`);
 	}
@@ -98,7 +103,7 @@ function checkDatabase(dbPath: string) {
 		const result = database.prepare('PRAGMA integrity_check').get() as { integrity_check: string };
 		if (result.integrity_check !== 'ok') throw new SnapshotError(`Database integrity check failed: ${result.integrity_check}`);
 		const users = database.prepare("SELECT COUNT(*) AS n FROM sqlite_master WHERE type = 'table' AND name IN ('users','projects','commits')").get() as { n: number };
-		if (users.n !== 3) throw new SnapshotError('Database does not contain PCBHub tables.');
+		if (users.n !== 3) throw new SnapshotError('Database does not contain Kupfergit tables.');
 	} catch (error) {
 		if (error instanceof SnapshotError) throw error;
 		throw new SnapshotError(`Database in snapshot cannot be opened: ${(error as Error).message}`);
@@ -117,7 +122,9 @@ export function stageSnapshot(file: string, dataDir: string) {
 	fs.mkdirSync(staging, { recursive: true });
 	try {
 		execFileSync('tar', ['-xzf', file, '-C', staging, '--no-same-owner'], { maxBuffer: 16 * 1024 * 1024 });
-		checkDatabase(path.join(staging, 'pcbhub.db'));
+		const legacy = path.join(staging, LEGACY_DB);
+		if (fs.existsSync(legacy)) fs.renameSync(legacy, path.join(staging, 'kupfergit.db'));
+		checkDatabase(path.join(staging, 'kupfergit.db'));
 	} catch (error) {
 		fs.rmSync(staging, { recursive: true, force: true });
 		if (error instanceof SnapshotError) throw error;
@@ -140,7 +147,7 @@ export function cancelPendingRestore(dataDir: string) {
 	fs.rmSync(stagingDir(dataDir), { recursive: true, force: true });
 }
 
-const SWAPPED = ['pcbhub.db', 'pcbhub.db-wal', 'pcbhub.db-shm', 'repos', 'artifacts'];
+const SWAPPED = ['kupfergit.db', 'kupfergit.db-wal', 'kupfergit.db-shm', 'repos', 'artifacts'];
 
 /**
  * Swaps a staged snapshot into place. The previous data is moved (not copied,
@@ -173,7 +180,7 @@ export function applyPendingRestore(dataDir: string) {
 				movedOut.push(name);
 			}
 		}
-		for (const name of ['pcbhub.db', 'repos', 'artifacts']) {
+		for (const name of ['kupfergit.db', 'repos', 'artifacts']) {
 			const staged = path.join(staging, name);
 			if (fs.existsSync(staged)) {
 				fs.renameSync(staged, path.join(dataDir, name));
@@ -198,15 +205,26 @@ export function applyPendingRestore(dataDir: string) {
 	return manifest;
 }
 
+/** Instances created before the rename keep their data under the old file name. */
+export function migrateLegacyDatabase(dataDir: string) {
+	const current = path.join(dataDir, 'kupfergit.db');
+	const legacy = path.join(dataDir, LEGACY_DB);
+	if (fs.existsSync(current) || !fs.existsSync(legacy)) return;
+	for (const suffix of ['', '-wal', '-shm']) {
+		if (fs.existsSync(legacy + suffix)) fs.renameSync(legacy + suffix, current + suffix);
+	}
+	console.log('[kupfergit] renamed pcbhub.db to kupfergit.db');
+}
+
 /**
- * Fresh deploys: PCBHUB_IMPORT_SNAPSHOT=/path/to/snapshot.tar.gz imports on
+ * Fresh deploys: KUPFERGIT_IMPORT_SNAPSHOT=/path/to/snapshot.tar.gz imports on
  * the first boot of an empty instance. It never overwrites an existing one.
  */
 export function importOnFirstBoot(dataDir: string) {
-	const file = process.env.PCBHUB_IMPORT_SNAPSHOT;
-	if (!file || fs.existsSync(path.join(dataDir, 'pcbhub.db'))) return;
+	const file = process.env.KUPFERGIT_IMPORT_SNAPSHOT;
+	if (!file || fs.existsSync(path.join(dataDir, 'kupfergit.db'))) return;
 	if (!fs.existsSync(file)) {
-		console.error(`[restore] PCBHUB_IMPORT_SNAPSHOT points at a missing file: ${file}`);
+		console.error(`[restore] KUPFERGIT_IMPORT_SNAPSHOT points at a missing file: ${file}`);
 		return;
 	}
 	try {

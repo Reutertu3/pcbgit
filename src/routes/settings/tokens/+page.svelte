@@ -53,8 +53,8 @@
 					{copied ? 'Copied' : 'Copy'}
 				</button>
 			</div>
-			<pre class="mono mt-3 overflow-x-auto rounded border bg-[var(--surface-0)] px-2.5 py-2 text-[0.6875rem] leading-relaxed text-[var(--text-secondary)]">git remote add pcbhub {data.gitBase}/&lt;board&gt;.git
-git push pcbhub main</pre>
+			<pre class="mono mt-3 overflow-x-auto rounded border bg-[var(--surface-0)] px-2.5 py-2 text-[0.6875rem] leading-relaxed text-[var(--text-secondary)]">git remote add kupfergit {data.gitBase}/&lt;board&gt;.git
+git push kupfergit main</pre>
 		</div>
 	{/if}
 

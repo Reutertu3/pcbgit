@@ -16,7 +16,7 @@
 		open = false;
 		document.documentElement.dataset.theme = id;
 		try {
-			localStorage.setItem('pcbhub-theme', id);
+			localStorage.setItem('kupfergit-theme', id);
 		} catch {
 			// Private browsing: the choice just will not persist.
 		}

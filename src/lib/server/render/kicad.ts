@@ -3,7 +3,7 @@ import { promisify } from 'node:util';
 
 const exec = promisify(execFile);
 
-export const KICAD_CLI = process.env.PCBHUB_KICAD_CLI ?? 'kicad-cli';
+export const KICAD_CLI = process.env.KUPFERGIT_KICAD_CLI ?? 'kicad-cli';
 
 export interface RunResult {
 	ok: boolean;
@@ -20,7 +20,7 @@ export interface RunResult {
 function kicadEnv() {
 	return {
 		...process.env,
-		HOME: process.env.PCBHUB_KICAD_HOME ?? process.env.HOME ?? '/tmp',
+		HOME: process.env.KUPFERGIT_KICAD_HOME ?? process.env.HOME ?? '/tmp',
 		QT_QPA_PLATFORM: 'offscreen',
 		XDG_RUNTIME_DIR: process.env.XDG_RUNTIME_DIR ?? '/tmp'
 	};

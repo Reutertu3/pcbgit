@@ -51,8 +51,8 @@ export async function runGitBackend(request: BackendRequest): Promise<Response> 
 		// Required for protocol v2, which modern clients negotiate by default.
 		GIT_PROTOCOL: request.headers.get('git-protocol') ?? '',
 		HTTP_USER_AGENT: request.headers.get('user-agent') ?? 'git',
-		GIT_COMMITTER_NAME: request.remoteUser || 'pcbhub',
-		GIT_COMMITTER_EMAIL: `${request.remoteUser || 'pcbhub'}@pcbhub.local`
+		GIT_COMMITTER_NAME: request.remoteUser || 'kupfergit',
+		GIT_COMMITTER_EMAIL: `${request.remoteUser || 'kupfergit'}@kupfergit.local`
 	};
 
 	const contentLength = request.headers.get('content-length');
@@ -183,7 +183,7 @@ export function authRequired(message = 'Authentication required') {
 	return new Response(message, {
 		status: 401,
 		headers: {
-			'WWW-Authenticate': 'Basic realm="PCBHub", charset="UTF-8"',
+			'WWW-Authenticate': 'Basic realm="Kupfergit", charset="UTF-8"',
 			'Content-Type': 'text/plain'
 		}
 	});

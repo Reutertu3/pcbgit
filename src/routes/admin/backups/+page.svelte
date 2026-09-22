@@ -20,7 +20,7 @@
 	<p class="text-xs leading-relaxed text-[var(--text-muted)]">
 		A snapshot is one <span class="mono">.tar.gz</span> holding the database, every git repository and
 		optionally the rendered output. Restore it here, or deploy a new server straight from it with
-		<span class="mono">PCBHUB_IMPORT_SNAPSHOT</span>.
+		<span class="mono">KUPFERGIT_IMPORT_SNAPSHOT</span>.
 	</p>
 </div>
 
