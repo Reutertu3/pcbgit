@@ -50,6 +50,8 @@
 	let loaded = $state(false);
 	let backend = $state('');
 	let drawCalls = $state(0);
+	/** Frames drawn in the last second; null while the view is still (nothing is rendered then). */
+	let fps = $state<number | null>(null);
 	let mask = $state<MaskId>('green');
 	let silk = $state<SilkId>('white');
 	let finish = $state<FinishId>('hasl');
@@ -335,7 +337,11 @@
 				return;
 			}
 			backend = (renderer.backend as { isWebGPUBackend?: boolean }).isWebGPUBackend ? 'WebGPU' : 'WebGL 2';
-			renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+			// HiDPI screens need 4x the pixels, which halves the frame rate on integrated GPUs.
+			// Motion renders at 1x; the view sharpens to full resolution once it settles.
+			const stillRatio = Math.min(devicePixelRatio, 2);
+			const motionRatio = Math.min(stillRatio, 1);
+			renderer.setPixelRatio(stillRatio);
 			renderer.setSize(host.clientWidth, host.clientHeight);
 			renderer.setClearColor(0x000000, 0);
 			renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -393,6 +399,7 @@
 
 			/* ---- render on demand: nothing runs while the view is still ---- */
 			let pending = 0;
+			let interacting = false;
 			let trailing = 0;
 			const requestRender = () => {
 				// The WebGL fallback of WebGPURenderer (three r174) presents a frame one
@@ -406,17 +413,30 @@
 				if (exporting) return;
 				const animating = stepAnimation(now);
 				// With damping, update() keeps emitting 'change' until the motion settles.
-				controls.update();
+				const moving = controls.update() || animating || interacting;
+				const ratio = moving ? motionRatio : stillRatio;
+				const sharpened = !moving && renderer.getPixelRatio() !== ratio;
+				if (renderer.getPixelRatio() !== ratio) renderer.setPixelRatio(ratio);
+				fitClipPlanes();
 				renderer.render(scene, camera);
+				frameTimes.push(now);
 				syncCube();
 				syncRulerLabels();
-				if (animating) requestRender();
+				if (animating || sharpened) requestRender();
 				else if (!pending && trailing > 0) {
 					trailing--;
 					pending = requestAnimationFrame(frame);
 				}
 			}
 			controls.addEventListener('change', requestRender);
+
+			/* ---- live frame rate: counts frames actually drawn, so a still view reads idle ---- */
+			const frameTimes: number[] = [];
+			const fpsTimer = setInterval(() => {
+				const cutoff = performance.now() - 1000;
+				while (frameTimes.length && frameTimes[0] < cutoff) frameTimes.shift();
+				fps = frameTimes.length > 1 ? frameTimes.length : null;
+			}, 250);
 
 			/** Rotates the CSS cube with the camera (CSS3DRenderer's camera matrix, rotation only). */
 			function syncCube() {
@@ -444,7 +464,12 @@
 			let userMoved = false;
 			controls.addEventListener('start', () => {
 				userMoved = true;
+				interacting = true;
 				animation = null;
+			});
+			controls.addEventListener('end', () => {
+				interacting = false;
+				requestRender();
 			});
 
 			const bounds = new THREE.Box3();
@@ -666,6 +691,22 @@
 			const boardBounds = new THREE.Box3();
 			const MM = 0.001;
 
+			let fitRadius = 1;
+			/**
+			 * Clip planes hugging the model from the current camera position. Copper, pads
+			 * and mask are 5-15 µm apart; with a fixed near plane the depth buffer resolves
+			 * only ~20 µm at normal viewing distance, so those layers z-fought (flickered).
+			 */
+			function fitClipPlanes() {
+				const distance = camera.position.distanceTo(centre);
+				const near = Math.max(distance - fitRadius, fitRadius / 200);
+				const far = distance + fitRadius * 1.5;
+				if (near === camera.near && far === camera.far) return;
+				camera.near = near;
+				camera.far = far;
+				camera.updateProjectionMatrix();
+			}
+
 			/** Recomputes the framing set: model, plus the ruler and comparison when shown. */
 			function refreshFit() {
 				const roots = [modelRoot, ruler, comparison].filter((o): o is import('three/webgpu').Object3D => !!o && o.visible);
@@ -676,9 +717,7 @@
 				// KiCad exports in metres: a typical board is ~0.1 units across, so the
 				// radius must not be clamped to a "sensible" minimum like 1.
 				const radius = Math.max(bounds.getSize(new THREE.Vector3()).length() / 2, 1e-4);
-				camera.near = radius / 500;
-				camera.far = radius * 60;
-				camera.updateProjectionMatrix();
+				fitRadius = radius;
 				controls.minDistance = radius * 0.05;
 				controls.maxDistance = radius * 14;
 			}
@@ -1053,6 +1092,7 @@
 
 			cleanup = () => {
 				cancelAnimationFrame(pending);
+				clearInterval(fpsTimer);
 				observer.disconnect();
 				controls.dispose();
 				envTarget.dispose();
@@ -1082,13 +1122,14 @@
 	style:background="var(--viewer-bg)"
 	data-backend={backend}
 	data-draw-calls={drawCalls || undefined}
+	data-fps={fps ?? 'idle'}
 >
 	<div bind:this={host} class="h-full w-full"></div>
 
 	{#if loaded}
 		<div class="absolute left-2 top-2 flex flex-col items-start gap-2">
 			{#if recolorable}
-				<div class="flex flex-col gap-1.5 rounded-md border bg-[var(--surface-1)]/92 px-2 py-1.5 backdrop-blur">
+				<div class="flex flex-col gap-1.5 rounded-md border bg-[var(--surface-1)]/92 px-2 py-1.5">
 					<div class="flex items-center gap-1.5" role="radiogroup" aria-label="Soldermask colour">
 						<span class="w-10 text-[0.625rem] uppercase tracking-wide text-[var(--text-muted)]">Mask</span>
 						{#each MASKS as option}
@@ -1139,7 +1180,7 @@
 				</div>
 			{/if}
 
-			<div class="flex flex-col gap-1.5 rounded-md border bg-[var(--surface-1)]/92 px-2 py-1.5 backdrop-blur">
+			<div class="flex flex-col gap-1.5 rounded-md border bg-[var(--surface-1)]/92 px-2 py-1.5">
 				<div class="flex items-center gap-1.5">
 					<span class="w-10 text-[0.625rem] uppercase tracking-wide text-[var(--text-muted)]">Show</span>
 					{#if counts.smd}
@@ -1267,11 +1308,11 @@
 	<!-- View cube: rotates with the camera; faces, edges and corners are clickable. -->
 	<div class="absolute right-1 top-1 flex items-start" class:invisible={!loaded}>
 		<div class="mt-2 flex flex-col gap-1">
-			<button class="viewer-btn rounded-md border bg-[var(--surface-1)]/92 backdrop-blur" onclick={() => viewFrom(HOME)} title="Home view" aria-label="Home view">
+			<button class="viewer-btn rounded-md border bg-[var(--surface-1)]/92" onclick={() => viewFrom(HOME)} title="Home view" aria-label="Home view">
 				<Icon name="home" size={14} />
 			</button>
 			<button
-				class="viewer-btn rounded-md border bg-[var(--surface-1)]/92 backdrop-blur"
+				class="viewer-btn rounded-md border bg-[var(--surface-1)]/92"
 				class:!text-[var(--accent)]={exportOpen}
 				onclick={() => (exportOpen = !exportOpen)}
 				title="Export image"
@@ -1312,7 +1353,7 @@
 
 	{#if loaded && backend}
 		<span class="mono pointer-events-none absolute bottom-2 left-2 rounded bg-black/45 px-1.5 py-0.5 text-[0.625rem] text-white/70">
-			{backend} · {drawCalls} draw call{drawCalls === 1 ? '' : 's'}
+			{backend} · {fps === null ? 'idle' : `${fps} fps`}
 		</span>
 	{/if}
 
@@ -1454,7 +1495,6 @@
 		border-radius: 0.5rem;
 		border: 1px solid var(--border-strong);
 		background: color-mix(in srgb, var(--surface-1) 96%, transparent);
-		backdrop-filter: blur(8px);
 		box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
 	}
 	.export-label {
