@@ -15,6 +15,13 @@ STATUS="$CONTROL_DIR/update-status.json"
 LOG="$CONTROL_DIR/update.log"
 REQUEST="$CONTROL_DIR/update-request"
 
+# A scheme or slash in the domain makes ORIGIN wrong, and every form post fails
+# the CSRF check. Catch it here rather than as "login does nothing".
+if [[ "$COMPOSE_FILES" == *prod* ]] && ! grep -Eq '^PCBGIT_DOMAIN=[A-Za-z0-9.-]+$' "$REPO_DIR/.env"; then
+	echo "PCBGIT_DOMAIN in .env must be the bare domain, e.g. pcb.example.com (no https://, no slash)." >&2
+	exit 1
+fi
+
 mkdir -p "$CONTROL_DIR"
 exec 9>"$CONTROL_DIR/.lock"
 if ! flock -n 9; then

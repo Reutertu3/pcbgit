@@ -13,8 +13,19 @@ CONTROL_DIR=/var/lib/pcbgit-control
 [[ -f "$REPO_DIR/.env" ]] || { echo "Missing $REPO_DIR/.env - copy .env.example and edit it." >&2; exit 1; }
 grep -q '^PCBGIT_DOMAIN=.\+' "$REPO_DIR/.env" && ! grep -q '^PCBGIT_DOMAIN=pcb.example.com$' "$REPO_DIR/.env" \
 	|| { echo "Set PCBGIT_DOMAIN in .env to your real domain." >&2; exit 1; }
+grep -Eq '^PCBGIT_DOMAIN=[A-Za-z0-9.-]+$' "$REPO_DIR/.env" \
+	|| { echo "PCBGIT_DOMAIN must be the bare domain, e.g. PCBGIT_DOMAIN=pcb.example.com (no https://, no slash)." >&2; exit 1; }
 ! grep -q '^PCBGIT_ADMIN_PASSWORD=change-me-now$' "$REPO_DIR/.env" \
 	|| { echo "Change PCBGIT_ADMIN_PASSWORD in .env before going public." >&2; exit 1; }
+
+# Make plain `docker compose ...` on this server always include the production
+# file. Without it, a bare `docker compose up -d` recreates pcbgit with the local
+# settings (ORIGIN=localhost) behind the still-running Caddy, and every login and
+# form post is rejected while pages keep loading.
+if ! grep -q '^COMPOSE_FILE=' "$REPO_DIR/.env"; then
+	printf '\n# Added by deploy/install.sh: plain `docker compose` uses the production setup.\nCOMPOSE_FILE=docker-compose.yml:deploy/docker-compose.prod.yml\n' >>"$REPO_DIR/.env"
+	echo "Added COMPOSE_FILE to .env"
+fi
 
 # The container runs as uid 10001 and only needs to drop a request file here.
 mkdir -p "$CONTROL_DIR"

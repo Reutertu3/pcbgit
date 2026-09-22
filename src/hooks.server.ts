@@ -7,6 +7,15 @@ import { bootstrap } from '$lib/server/bootstrap';
 export const SESSION_COOKIE = 'pcbgit_session';
 
 ensureDirs();
+
+// SvelteKit rejects every form post whose Origin differs from ORIGIN, so a
+// malformed value breaks login and registration while pages still load.
+if (process.env.ORIGIN && !/^https?:\/\/[^/]+$/.test(process.env.ORIGIN)) {
+	console.error(
+		`[pcbgit] ORIGIN is "${process.env.ORIGIN}", which is not a plain origin like https://pcb.example.com. ` +
+			'Form posts (login, registration, admin) will be rejected. Check PCBGIT_DOMAIN in .env.'
+	);
+}
 bootstrap();
 purgeExpiredSessions();
 recoverStuckJobs();

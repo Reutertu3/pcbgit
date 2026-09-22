@@ -99,6 +99,12 @@ sudo deploy/install.sh     # control folder + systemd units; checks .env
 sudo deploy/update.sh      # first build and start (takes a while)
 ```
 
+`install.sh` also adds `COMPOSE_FILE=…` to `.env`, so plain `docker compose ps`,
+`logs` or `up -d` on the server always use the production setup. (Without it, a
+bare `docker compose up -d` restarts pcbgit with local settings behind Caddy:
+pages load, but login and every form fail with "Cross-site POST form
+submissions are forbidden".)
+
 Open `https://<your domain>`, sign in as the admin from `.env`, and in
 **Admin → Instance** consider switching off open registration.
 
