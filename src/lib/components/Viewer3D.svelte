@@ -1028,9 +1028,20 @@
 					// KiCad names the board's own meshes "<board>_PCB", "<board>_soldermask",
 					// "<board>_silkscreen" and "<board>_pad". Component models can reuse those
 					// suffixes (an ESP32 module ships "…_via" meshes), so the board's name is
-					// taken from its body mesh and matched exactly.
+					// taken from its body mesh and matched exactly. A daughterboard model even
+					// has its own "…_PCB", but it sits under its footprint's node: the real
+					// board is the shallowest "_PCB" mesh in the scene.
 					const meshNames: string[] = (gltf.parser.json.meshes ?? []).map((m: { name?: string }) => m.name ?? '');
-					const body = meshNames.find((name) => name.endsWith('_PCB'));
+					let body: string | undefined;
+					let bodyDepth = Infinity;
+					gltf.scene.traverse((object) => {
+						const index = gltf.parser.associations.get(object)?.meshes;
+						const name = index === undefined ? '' : meshNames[index];
+						if (!name.endsWith('_PCB')) return;
+						let depth = 0;
+						for (let node = object.parent; node; node = node.parent) depth++;
+						if (depth < bodyDepth) [body, bodyDepth] = [name, depth];
+					});
 					const board = body ? body.slice(0, -'_PCB'.length) : null;
 					const roles: Record<string, Role> = board
 						? { [`${board}_soldermask`]: 'mask', [`${board}_silkscreen`]: 'silk', [`${board}_pad`]: 'pad', [`${board}_PCB`]: 'body' }
