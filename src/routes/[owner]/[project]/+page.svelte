@@ -166,7 +166,7 @@
 												Reply
 											</button>
 										{/if}
-										{#if data.user && (data.user.id === data.project.owner_id || data.user.role === 'admin' || data.user.id === item.user_id)}
+										{#if data.user && (data.user.role === 'admin' || data.user.id === item.user_id)}
 											<form
 												method="POST"
 												action="?/deleteComment"

@@ -105,8 +105,7 @@ export function addComment(projectId: string, userId: string, body: string, pare
 export function removeComment(
 	projectId: string,
 	commentId: string,
-	actor: { id: string; role: string },
-	projectOwnerId: string
+	actor: { id: string; role: string }
 ) {
 	const comment = get<{ id: string; user_id: string; parent_id: string | null; deleted_at: number | null }>(
 		'SELECT id, user_id, parent_id, deleted_at FROM comments WHERE id = ? AND project_id = ?',
@@ -115,7 +114,7 @@ export function removeComment(
 	);
 	if (!comment || comment.deleted_at !== null) return false;
 
-	const allowed = actor.role === 'admin' || actor.id === projectOwnerId || actor.id === comment.user_id;
+	const allowed = actor.role === 'admin' || actor.id === comment.user_id;
 	if (!allowed) throw new CommentError('You can only delete your own comments.');
 
 	tx(() => {

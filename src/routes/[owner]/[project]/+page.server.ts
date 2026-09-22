@@ -89,7 +89,7 @@ export const actions: Actions = {
 
 		const id = String((await request.formData()).get('id') ?? '');
 		try {
-			removeComment(project.id, id, locals.user, project.owner_id);
+			removeComment(project.id, id, locals.user);
 			return { success: true };
 		} catch (thrown) {
 			if (thrown instanceof CommentError) return fail(403, { error: thrown.message, parentId: '' });
