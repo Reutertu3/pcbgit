@@ -16,6 +16,19 @@ export const load: LayoutServerLoad = async ({ locals, url }) => {
 			tagline: getSetting('site_tagline', 'Self-hosted home for hardware design'),
 			registrationOpen: getSetting('registration_open', 'true') === 'true'
 		},
-		pathname: url.pathname
+		pathname: url.pathname,
+		source: sourceLink()
 	};
 };
+
+/**
+ * AGPL-3.0 section 13: users of a network service get a link to its source.
+ * Forks running modified code set PCBGIT_SOURCE_URL to their own repository.
+ * On GitHub, link the exact commit this image was built from.
+ */
+function sourceLink() {
+	const repo = (process.env.PCBGIT_SOURCE_URL || 'https://github.com/Reutertu3/pcbgit').replace(/\/+$/, '');
+	const version = process.env.PCBGIT_VERSION ?? 'dev';
+	const exact = /^[0-9a-f]{7,40}$/.test(version) && repo.includes('github.com');
+	return exact ? `${repo}/tree/${version}` : repo;
+}

@@ -20,6 +20,9 @@ services:
       PCBGIT_ADMIN_EMAIL: ${PCBGIT_ADMIN_EMAIL:-admin@localhost}
       # Only read on the first start of an empty instance; see README.
       PCBGIT_IMPORT_SNAPSHOT: ${PCBGIT_IMPORT_SNAPSHOT:-}
+      # AGPL-3.0: the footer links users to the source of the running code.
+      # Forks running modified code must point this at their own repository.
+      PCBGIT_SOURCE_URL: ${PCBGIT_SOURCE_URL:-https://github.com/Reutertu3/pcbgit}
     volumes:
       - pcbgit-data:/data
 

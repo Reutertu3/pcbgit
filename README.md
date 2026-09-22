@@ -1,199 +1,275 @@
 # pcbgit
 
-A self-hosted, GitHub-style repository for KiCad hardware projects. Push a
-board with `git` (or upload a ZIP) and every commit is rendered automatically:
+Self-hosted git hosting for KiCad projects. Push a board and every commit is
+rendered: schematics, board layers, an assembled 3D model, the BOM and DRC/ERC
+results, all viewable in the browser.
 
-- **Schematic**: every sheet, with pan and zoom
-- **PCB 2D**: stacked, toggleable layers, front/back flip and DRC markers on the board
-- **PCB 3D**: the assembled board with components (GLB, three.js)
-- **BOM**: grouped line items, CSV export and a diff between any two versions
-- **DRC / ERC**: KiCad's own checks, grouped by severity
-- **Version history**: per-commit renders, render logs and source ZIPs
-- **Admin panel**: users, boards, tags, render queue and instance settings
+**Contents**
 
-Storage is SQLite (`node:sqlite`, no native modules) plus bare git repositories
-on disk. Rendering uses `kicad-cli`, which the Docker image provides.
+- [Features](#features)
+- [Quick start](#quick-start)
+- [Deploying to a server](#deploying-to-a-server)
+- [Updating](#updating)
+- [Using pcbgit](#using-pcbgit)
+- [Configuration](#configuration)
+- [Troubleshooting](#troubleshooting)
+- [Development](#development)
+- [License](#license)
 
-## Run with Docker
+## Features
+
+**Viewers**
+
+- **Schematic**: every sheet, pan and zoom, light or dark, export as PNG/JPEG up to 600 dpi
+- **PCB 2D**: stacked layers with per-layer toggles, front/back flip, DRC markers
+- **PCB 3D**: assembled board with components, view cube, soldermask/silkscreen colours,
+  HASL/ENIG finish, SMD/THT toggles, ruler, scale objects, image export
+- **BOM**: grouped line items, CSV export, diff between any two versions
+- **Checks**: KiCad DRC and ERC, grouped by severity
+- **History**: renders and logs per commit, source ZIP downloads
+
+**Hosting**
+
+- Push and clone over HTTPS with personal access tokens, or upload a ZIP
+- Public and private boards, stars, comments, colour-coded tags
+- Admin panel: users, boards, tags, render queue, backups, updates
+- Snapshots for backup and moving to a new server
+- One-click updates from GitHub with changelog
+
+**Stack**
+
+SvelteKit, SQLite (`node:sqlite`), bare git repositories on disk. Rendering uses
+`kicad-cli` from KiCad 10, which the Docker image includes.
+
+## Quick start
+
+Requires Docker with the Compose plugin.
 
 ```sh
-cp .env.example .env        # set PCBGIT_ADMIN_PASSWORD and PCBGIT_ORIGIN
+git clone https://github.com/Reutertu3/pcbgit.git
+cd pcbgit
+cp .env.example .env      # set PCBGIT_ADMIN_PASSWORD
 docker compose up -d --build
 ```
 
-Open `http://localhost:3000` and sign in as the admin from `.env`.
-Everything mutable (the database, repositories and rendered artifacts) lives in the
-`pcbgit-data` volume at `/data`.
+Open <http://localhost:3000> and sign in as `admin`. The first build takes a few
+minutes: it downloads KiCad and its 3D model library.
 
-`PCBGIT_ORIGIN` must be the URL people actually use, because form posts from any
-other origin are rejected. Put a TLS-terminating reverse proxy in front for
-anything beyond a LAN.
+All data (database, repositories, renders) is stored in the `pcbgit-data` volume.
 
-The image is `ubuntu:24.04` with KiCad 10 installed from the official
-`ppa:kicad/kicad-10.0-releases`. The component 3D model library is several GB;
-for a smaller image build with `--build-arg INSTALL_3D_MODELS=false`, and the
-3D view then shows bare boards.
+## Deploying to a server
 
-## Backups and fast deployment
+Tested on Debian 13. Caddy runs in front of pcbgit and handles HTTPS with a
+Let's Encrypt certificate. pcbgit itself is not exposed.
 
-**Admin → Backups** creates a snapshot: one `.tar.gz` with the database, every
-git repository and, optionally, the rendered output. Snapshots can be downloaded,
-uploaded (checked before anything changes) and restored. A restore moves the
-current data aside into `backups/pre-restore-<time>/` instead of deleting it, and
-under Docker the server restarts to apply it.
+**Requirements:** 2 GB RAM, 8 GB free disk, a domain name. Run the commands below
+as root.
 
-To stand up a new server from a snapshot, mount the file and point
-`PCBGIT_IMPORT_SNAPSHOT` at it. It is imported on first boot of an empty
-volume and ignored once the instance has data:
+### 1. Install Docker
+
+Use Docker's repository. Debian's `docker.io` package is too old.
 
 ```sh
-docker run -d -p 3000:3000 -v pcbgit-data:/data \
-  -v ./pcbgit-snapshot.tar.gz:/import/snap.tar.gz:ro \
-  -e PCBGIT_IMPORT_SNAPSHOT=/import/snap.tar.gz \
-  -e ORIGIN=https://pcb.example.com pcbgit:latest
-```
-
-The imported instance keeps the snapshot's accounts, so sign in with the admin
-password from the old server. Snapshots larger than the upload limit can be
-copied into `/data/backups/` directly, and they then appear in the list.
-
-## Deploy to a public server
-
-Tested layout: a Debian VPS, Docker, and Caddy in front for HTTPS. pcbgit itself
-is never exposed directly; Caddy gets the Let's Encrypt certificate and proxies.
-The build brings its own KiCad, so plan for about 2 GB of RAM and 8 GB of free disk.
-
-**1. Prepare the server** (as root, once)
-
-```sh
-# Docker from Docker's own repository (Debian's is too old for the compose file)
-apt-get install -y ca-certificates curl git
+apt update && apt install -y ca-certificates curl git ufw
 install -m 0755 -d /etc/apt/keyrings
 curl -fsSL https://download.docker.com/linux/debian/gpg -o /etc/apt/keyrings/docker.asc
 echo "deb [signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/debian $(. /etc/os-release && echo $VERSION_CODENAME) stable" \
   > /etc/apt/sources.list.d/docker.list
-apt-get update && apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+apt update && apt install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
 ```
 
-Point your domain's DNS A (and AAAA) record at the server, and allow ports 22, 80
-and 443 (for example `ufw allow OpenSSH && ufw allow 80,443/tcp && ufw allow 443/udp && ufw enable`).
+### 2. DNS and firewall
 
-**2. Get the code and configure it**
+Point the domain's A record (and AAAA, if you use IPv6) at the server. It must
+resolve before the first start, or Caddy cannot get a certificate.
 
 ```sh
-git clone https://github.com/<you>/pcbgit.git /opt/pcbgit
+ufw allow OpenSSH && ufw allow 80,443/tcp && ufw allow 443/udp && ufw enable
+```
+
+### 3. Get the code and configure it
+
+```sh
+git clone https://github.com/Reutertu3/pcbgit.git /opt/pcbgit
 cd /opt/pcbgit
 cp .env.example .env
-nano .env        # PCBGIT_DOMAIN and a long random PCBGIT_ADMIN_PASSWORD
+nano .env
 ```
 
-For a private repository, add a read-only [deploy key](https://docs.github.com/en/authentication/connecting-to-github-with-ssh/managing-deploy-keys)
-and clone with the `git@github.com:` URL instead.
+Set in `.env`:
 
-**3. Install the update watcher and start**
+| Variable | Value |
+|---|---|
+| `PCBGIT_DOMAIN` | The bare domain, e.g. `pcb.example.com`. No `https://`, no slash. |
+| `PCBGIT_ADMIN_PASSWORD` | A long random password, e.g. from `openssl rand -base64 24` |
 
-(Moving an existing instance? Do the snapshot step below between these two commands.)
+For a private repository, add a read-only
+[deploy key](https://docs.github.com/en/authentication/connecting-to-github-with-ssh/managing-deploy-keys)
+and clone with the `git@github.com:` URL.
+
+### 4. Install and start
 
 ```sh
-sudo deploy/install.sh     # control folder + systemd units; checks .env
-sudo deploy/update.sh      # first build and start (takes a while)
+deploy/install.sh    # systemd units for updates; checks .env
+deploy/update.sh     # first build and start
 ```
 
-`install.sh` also adds `COMPOSE_FILE=…` to `.env`, so plain `docker compose ps`,
-`logs` or `up -d` on the server always use the production setup. (Without it, a
-bare `docker compose up -d` restarts pcbgit with local settings behind Caddy:
-pages load, but login and every form fail with "Cross-site POST form
-submissions are forbidden".)
+Open `https://<your domain>` and sign in as `admin`. Consider switching off open
+registration under **Admin → Instance**.
 
-Open `https://<your domain>`, sign in as the admin from `.env`, and in
-**Admin → Instance** consider switching off open registration.
+`install.sh` adds `COMPOSE_FILE` to `.env`, so plain `docker compose` commands
+on the server always use the production setup.
 
-**Moving an existing instance over:** create a snapshot in Admin → Backups, copy
-it to the server as `/var/lib/pcbgit-control/import.tar.gz` (after `install.sh`,
-before the first `update.sh`), and add to `.env`:
+### Moving an existing instance
 
-```sh
-PCBGIT_IMPORT_SNAPSHOT=/control/import.tar.gz
-```
+1. On the old instance, create a snapshot under **Admin → Backups** and download it.
+2. On the new server, run `install.sh` (step 4), but not `update.sh` yet.
+3. Copy the snapshot to `/var/lib/pcbgit-control/import.tar.gz`.
+4. Add `PCBGIT_IMPORT_SNAPSHOT=/control/import.tar.gz` to `.env`.
+5. Run `update.sh`. The snapshot is imported on first start.
+6. Sign in with the admin account from the old instance, then delete the file and the `.env` line.
 
-It is imported on the first start only; delete the file and the line afterwards.
-The imported instance keeps its accounts, so sign in with your existing admin.
+## Updating
 
-### Updating
+pcbgit checks GitHub for new commits every hour. When updates are available,
+**Admin → Overview** shows a banner and **Admin → Instance** lists the new
+commits as a changelog.
 
-Push to GitHub, then either press **Update from GitHub** in Admin → Instance or
-run `sudo deploy/update.sh` over SSH. Both pull (fast-forward only), rebuild and
-restart; the site is down for a few seconds. The panel shows the running commit,
-the result and the log. If the server copy has local commits the update stops
-instead of merging, and the log says so.
+To update, either:
 
-The container cannot run anything on the host: the button only drops a request
-file into `/var/lib/pcbgit-control`, which the `pcbgit-update.path` systemd unit
-watches. `systemctl status pcbgit-update.service` shows the last run.
+- press **Update from GitHub** under **Admin → Instance**, or
+- run `/opt/pcbgit/deploy/update.sh` on the server.
 
-## Pushing a board
+Both pull from GitHub, rebuild and restart. The site is down for a few seconds.
+**Check now** runs the GitHub check immediately.
 
-1. Create a board at **New board**. It starts as an empty repository.
+Details:
+
+- Only fast-forward pulls are done. If the server copy has its own commits, the
+  update stops and the panel says so.
+- The container cannot run commands on the host. The button writes a request file
+  to `/var/lib/pcbgit-control`; a systemd unit on the host picks it up.
+- Each update re-syncs the systemd units. After updating an existing server to this
+  version for the first time, run `deploy/install.sh --units-only` once.
+- `systemctl status pcbgit-update.service` shows the last run on the server.
+
+## Using pcbgit
+
+### Push a board
+
+1. Create a board with **New board**.
 2. Create a token under **Settings → Access tokens**.
-3. Push:
+3. Push your KiCad project:
 
-```sh
-git remote add pcbgit http://localhost:3000/git/<you>/<board>.git
-git push pcbgit main      # username: <you>, password: the token
-```
+   ```sh
+   git remote add pcbgit https://<your domain>/git/<user>/<board>.git
+   git push pcbgit main
+   ```
 
-Public boards can be cloned anonymously. Private boards need a token, and
-pushing always needs one. pcbgit looks for the shallowest `.kicad_pro` and
-renders its matching `.kicad_sch` and `.kicad_pcb`.
+   Use your username and the token as the password.
+
+pcbgit renders the shallowest `.kicad_pro` in the repository together with its
+`.kicad_sch` and `.kicad_pcb`. Public boards can be cloned without a token.
+
+### Backups
+
+Under **Admin → Backups** you can create, download, upload and restore snapshots.
+A snapshot is one `.tar.gz` with the database, all repositories and, optionally,
+the rendered output.
+
+- **Restore** moves the current data to `backups/pre-restore-<time>/` instead of
+  deleting it, then restarts pcbgit.
+- **Large snapshots** that exceed the upload limit can be copied in directly:
+  `docker compose cp snapshot.tar.gz pcbgit:/data/backups/`
 
 ## Configuration
 
+Set these in `.env`.
+
 | Variable | Default | Purpose |
 |---|---|---|
-| `PCBGIT_DATA_DIR` | `./data` (`/data` in Docker) | Database, repositories, artifacts |
-| `PCBGIT_ADMIN_USER` / `_PASSWORD` / `_EMAIL` | `admin` / `changeme` | Created at boot whenever no active admin exists |
-| `PCBGIT_KICAD_CLI` | `kicad-cli` | Path to the KiCad CLI |
-| `ORIGIN` | — | Public URL (CSRF and clone URLs) |
-| `BODY_SIZE_LIMIT` | `210M` in Docker | Maximum upload and push size |
-| `PCBGIT_IMPORT_SNAPSHOT` | — | Snapshot to import on first boot of an empty instance |
-| `PCBGIT_RESTART_ON_RESTORE` | `true` in Docker | Exit after staging a restore so the restart policy applies it |
-| `PCBGIT_DOMAIN` | — | Public domain, used by Caddy and for `ORIGIN` in the production compose file |
-| `PCBGIT_CONTROL_DIR` | `/control` in production | Folder shared with the host update watcher; unset disables in-app updates |
+| `PCBGIT_DOMAIN` | — | Public domain (production). Used by Caddy and to set `ORIGIN`. |
+| `PCBGIT_ORIGIN` | `http://localhost:3000` | URL of a local instance. Form posts from other origins are rejected. |
+| `PCBGIT_ADMIN_USER` | `admin` | Admin account created when no active admin exists |
+| `PCBGIT_ADMIN_PASSWORD` | — | Password for that account. Required. |
+| `PCBGIT_ADMIN_EMAIL` | `admin@localhost` | Email for that account |
+| `PCBGIT_IMPORT_SNAPSHOT` | — | Snapshot to import on the first start of an empty instance |
+| `COMPOSE_FILE` | — | Set by `install.sh` so `docker compose` uses the production setup |
+| `PCBGIT_SOURCE_URL` | `https://github.com/Reutertu3/pcbgit` | Repository linked as "Source" in the footer. Forks must set their own. |
 
-Without `kicad-cli`, versions are still tracked, and board statistics and a BOM are
-parsed directly from the KiCad files. Schematic, layer, 3D and DRC output needs
-KiCad.
+Set in the image or compose files; rarely changed:
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `PCBGIT_DATA_DIR` | `/data` | Database, repositories and renders |
+| `PCBGIT_CONTROL_DIR` | `/control` (production) | Folder shared with the host for updates. Unset disables in-app updates. |
+| `PCBGIT_KICAD_CLI` | `kicad-cli` | Path to the KiCad CLI |
+| `BODY_SIZE_LIMIT` | `210M` | Maximum upload and push size |
+| `PCBGIT_RESTART_ON_RESTORE` | `true` | Restart after staging a restore |
+
+Build option: `--build-arg INSTALL_3D_MODELS=false` skips the KiCad 3D model
+library (several GB). The 3D view then shows boards without components.
+
+## Troubleshooting
+
+| Symptom | Cause and fix |
+|---|---|
+| Pages load, but login and forms fail with "Cross-site POST form submissions are forbidden" | `ORIGIN` does not match the site URL. Check that `PCBGIT_DOMAIN` is the bare domain and `.env` contains `COMPOSE_FILE`, then run `docker compose up -d`. `docker compose exec pcbgit printenv ORIGIN` must show `https://<your domain>`. |
+| 502 from Caddy | pcbgit is starting or has stopped. Check `docker compose logs pcbgit`. |
+| No certificate / HTTPS fails | DNS does not point at the server yet, or ports 80/443 are blocked. Check `docker compose logs caddy`. |
+| A version shows "Render failed" | Open the board's **History** tab and view the render log. |
+| Update fails | The log is shown under **Admin → Instance**. A diverged server copy is the usual cause: `git reset --hard origin/<branch>` in `/opt/pcbgit`. |
 
 ## Development
 
+Requires Node 24+ and git. Rendering needs `kicad-cli`; without it, pcbgit still
+tracks versions and builds the BOM, but produces no schematic, board, 3D or DRC
+output.
+
 ```sh
 npm install
-npm run dev               # http://localhost:5173
-npm test                  # parser + end-to-end pipeline tests
-npm run check             # svelte-check / TypeScript
-npm run seed              # optional demo boards (synthetic KiCad fixtures)
+npm run dev      # http://localhost:5173
+npm test         # unit and end-to-end tests
+npm run check    # type check
+npm run seed     # demo boards
 ```
 
-Requires Node 24+ (for built-in `node:sqlite` and type stripping) and git.
 After editing `src/lib/server/db/schema.sql`, run `npm run schema`. Columns added
-to existing tables also need an entry in `ADDED_COLUMNS` in `db/index.ts`.
+to existing tables also need an entry in `ADDED_COLUMNS` in
+`src/lib/server/db/index.ts`.
 
-## Layout
+### Project layout
 
 ```
 src/lib/server/
-  db/          SQLite schema and query helpers
-  auth.ts      scrypt passwords, sessions, access tokens
-  git.ts       bare repos, commits from uploads, tree reads
-  githttp.ts   git-http-backend CGI bridge (clone/push)
-  projects.ts  boards, tags, stars, commit indexing
-  render/      job queue, kicad-cli wrapper, KiCad/BOM/DRC parsers
+  db/              SQLite schema and queries
+  auth.ts          passwords, sessions, access tokens
+  git.ts           bare repositories, commits from uploads
+  githttp.ts       git smart-HTTP (clone and push)
+  projects.ts      boards, tags, stars, commit indexing
+  render/          render queue, kicad-cli wrapper, KiCad/BOM/DRC parsers
+  backups.ts       snapshots
+  restore.ts       snapshot validation and restore
+  updater.ts       update requests and status
 src/routes/
-  [owner]/[project]/   overview, schematic, pcb, 3d, bom, drc, files, history, settings
-  git/                 smart-HTTP git endpoint
+  [owner]/[project]/   board pages: overview, schematic, pcb, 3d, bom, drc, files, history
+  git/                 git endpoint
   admin/               admin panel
+deploy/
+  docker-compose.prod.yml, Caddyfile   production setup
+  install.sh, update.sh                server setup and updates
 ```
 
-The render worker runs in-process and handles one job at a time. Jobs
+The render worker runs inside the app and processes one job at a time. Jobs
 interrupted by a restart are marked failed at boot and can be retried from
-the admin queue.
+**Admin → Render queue**.
+
+## License
+
+pcbgit is © 2026 Michael Reuter and licensed under the
+[GNU Affero General Public License v3.0 or later](LICENSE).
+
+You can use, modify and host pcbgit, including commercially. If you run a
+modified version for others over a network, you must offer them its source code.
+The author attribution in the page footer must be kept. See [NOTICE.md](NOTICE.md)
+for the exact terms.

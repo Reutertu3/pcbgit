@@ -1,6 +1,13 @@
 {
   "name": "pcbgit",
   "version": "1.0.0",
+  "description": "Self-hosted git hosting for KiCad projects",
+  "license": "AGPL-3.0-or-later",
+  "author": "Michael Reuter (https://pcbgit.com)",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Reutertu3/pcbgit.git"
+  },
   "private": true,
   "type": "module",
   "scripts": {
