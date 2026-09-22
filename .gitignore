@@ -1,0 +1,10 @@
+node_modules
+/build
+/.svelte-kit
+/data
+*.db
+*.db-shm
+*.db-wal
+.env
+.DS_Store
+graphify-out

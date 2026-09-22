@@ -1,0 +1,199 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+
+import { collapseRefs, groupBom, parseBomCsv, parseCsv, bomToCsv } from '../src/lib/server/render/bom.ts';
+import { parseSexpr, children, prop, descendants } from '../src/lib/server/render/sexpr.ts';
+import { parseDrcReport, parseErcReport, countBySeverity } from '../src/lib/server/render/reports.ts';
+import { renderMarkdown } from '../src/lib/server/markdown.ts';
+import { parseViewBox, unionViewBox } from '../src/lib/viewbox.ts';
+import { exportableLayers, layerIdFromFilename, layerStyle } from '../src/lib/layers.ts';
+
+test('s-expression parser handles nesting, quotes and escapes', () => {
+	const tree = parseSexpr('(kicad_pcb (version 20241229) (title_block (title "Sensor \\"Hub\\"")) (net 1 "GND"))');
+	const root = tree[0] as never[];
+	assert.equal(root[0], 'kicad_pcb');
+	assert.equal(prop(root, 'version'), '20241229');
+	const block = children(root, 'title_block')[0];
+	assert.equal(prop(block, 'title'), 'Sensor "Hub"');
+	assert.equal(children(root, 'net').length, 1);
+});
+
+test('s-expression parser survives unbalanced input without throwing', () => {
+	assert.doesNotThrow(() => parseSexpr('(a (b (c'));
+	assert.doesNotThrow(() => parseSexpr('))) (a)'));
+});
+
+test('descendants finds nested nodes at any depth', () => {
+	const tree = parseSexpr('(root (a (pts (xy 1 2) (xy 3 4))) (b (pts (xy 5 6))))');
+	assert.equal(descendants(tree[0] as never[], 'xy').length, 3);
+});
+
+test('collapseRefs compresses runs and keeps singletons', () => {
+	assert.equal(collapseRefs(['R1', 'R2', 'R3', 'R7']), 'R1-R3, R7');
+	assert.equal(collapseRefs(['C2', 'C1']), 'C1, C2');
+	assert.equal(collapseRefs(['U1']), 'U1');
+	// Two in a row read better listed than as a range.
+	assert.equal(collapseRefs(['R1', 'R2']), 'R1, R2');
+	assert.equal(collapseRefs(['R10', 'R9', 'R11']), 'R9-R11');
+});
+
+test('groupBom merges identical parts and excludes flagged symbols', () => {
+	const symbol = (over: Record<string, unknown>) => ({
+		reference: 'R1',
+		value: '10k',
+		footprint: 'Resistor_SMD:R_0603_1608Metric',
+		datasheet: '',
+		description: '',
+		mpn: '',
+		dnp: false,
+		excludeFromBom: false,
+		sheet: 'root',
+		...over
+	});
+
+	const lines = groupBom([
+		symbol({ reference: 'R1' }),
+		symbol({ reference: 'R2' }),
+		symbol({ reference: 'R3', value: '1k' }),
+		symbol({ reference: '#PWR01', excludeFromBom: true })
+	] as never);
+
+	assert.equal(lines.length, 2);
+	const tenK = lines.find((line) => line.value === '10k')!;
+	assert.equal(tenK.quantity, 2);
+	assert.equal(tenK.refs, 'R1, R2');
+	// The library prefix is stripped for display.
+	assert.equal(tenK.footprint, 'R_0603_1608Metric');
+});
+
+test('CSV reader handles quotes, embedded commas and newlines', () => {
+	const rows = parseCsv('a,b\n"x,1","line\nbreak"\n"say ""hi""",z');
+	assert.deepEqual(rows[0], ['a', 'b']);
+	assert.deepEqual(rows[1], ['x,1', 'line\nbreak']);
+	assert.deepEqual(rows[2], ['say "hi"', 'z']);
+});
+
+test('parseBomCsv maps kicad-cli column names', () => {
+	const lines = parseBomCsv('Reference,Value,Footprint,Qty,DNP,Datasheet,Description,MPN\n"R1-R3",10k,R_0603,3,,,"Chip resistor",RC0603FR-0710KL\n');
+	assert.equal(lines.length, 1);
+	assert.equal(lines[0].quantity, 3);
+	assert.equal(lines[0].mpn, 'RC0603FR-0710KL');
+	assert.equal(lines[0].dnp, false);
+});
+
+test('parseBomCsv infers quantity from the reference list when Qty is absent', () => {
+	const lines = parseBomCsv('Reference,Value\n"C1,C2,C3",100n\n');
+	assert.equal(lines[0].quantity, 3);
+});
+
+test('bomToCsv round-trips through parseBomCsv', () => {
+	const original = [
+		{ refs: 'R1, R2', value: '10k', footprint: 'R_0603', quantity: 2, datasheet: '', description: 'Resistor, 1%', mpn: 'X1', dnp: false }
+	];
+	const parsed = parseBomCsv(bomToCsv(original));
+	assert.equal(parsed[0].refs, 'R1, R2');
+	assert.equal(parsed[0].quantity, 2);
+	assert.equal(parsed[0].description, 'Resistor, 1%');
+});
+
+test('DRC report reader extracts positions and severities', () => {
+	const report = JSON.stringify({
+		coordinate_units: 'mm',
+		violations: [
+			{
+				type: 'clearance',
+				description: 'Clearance violation (0.15mm < 0.2mm)',
+				severity: 'error',
+				items: [
+					{ description: 'Track [GND] on F.Cu', pos: { x: 12.5, y: 30.25 } },
+					{ description: 'Pad 1 of R1' }
+				]
+			}
+		],
+		unconnected_items: [
+			{ type: 'unconnected_items', description: 'Missing connection', severity: 'warning', items: [{ description: 'Pad 2', pos: { x: 1, y: 2 } }] }
+		],
+		schematic_parity: []
+	});
+
+	const violations = parseDrcReport(report);
+	assert.equal(violations.length, 2);
+	assert.equal(violations[0].severity, 'error');
+	assert.equal(violations[0].xMm, 12.5);
+	assert.equal(violations[0].layer, 'F.Cu');
+	assert.match(violations[0].detail, /Pad 1 of R1/);
+	assert.equal(violations[1].source, 'unconnected');
+	assert.deepEqual(countBySeverity(violations), { errors: 1, warnings: 1 });
+});
+
+test('ERC report reader reads per-sheet violations', () => {
+	const violations = parseErcReport(
+		JSON.stringify({ sheets: [{ violations: [{ type: 'pin_not_connected', description: 'Pin not connected', severity: 'warning', items: [] }] }] })
+	);
+	assert.equal(violations.length, 1);
+	assert.equal(violations[0].source, 'erc');
+});
+
+test('report readers return empty on malformed input rather than throwing', () => {
+	assert.deepEqual(parseDrcReport('not json'), []);
+	assert.deepEqual(parseErcReport(''), []);
+});
+
+test('markdown escapes HTML before rendering', () => {
+	const html = renderMarkdown('# Hi <script>alert(1)</script>\n\n**bold**');
+	assert.ok(!html.includes('<script>'));
+	assert.ok(html.includes('&lt;script&gt;'));
+	assert.ok(html.includes('<strong>bold</strong>'));
+});
+
+test('markdown renders blockquotes even though input is escaped first', () => {
+	const html = renderMarkdown('> A note worth reading.\n\nPlain text.');
+	assert.ok(html.includes('<blockquote>A note worth reading.</blockquote>'));
+	assert.ok(html.includes('<p>Plain text.</p>'));
+});
+
+test('markdown renders lists, tables and fenced code', () => {
+	const html = renderMarkdown('- one\n- two\n\n| A | B |\n|---|---|\n| 1 | 2 |\n\n```\nx > y\n```');
+	assert.ok(html.includes('<ul>\n<li>one</li>'));
+	assert.ok(html.includes('<th>A</th>'));
+	assert.ok(html.includes('<td>1</td>'));
+	// Code fences keep their content escaped and untouched by inline rules.
+	assert.ok(html.includes('x &gt; y'));
+});
+
+test('markdown rejects dangerous link schemes', () => {
+	const html = renderMarkdown('[click](javascript:alert(1)) and [ok](https://example.com)');
+	assert.ok(!html.includes('javascript:'));
+	assert.ok(html.includes('href="https://example.com"'));
+});
+
+test('viewBox parsing falls back on malformed values', () => {
+	assert.deepEqual(parseViewBox('0 0 100 50'), { minX: 0, minY: 0, width: 100, height: 50 });
+	assert.deepEqual(parseViewBox('garbage'), { width: 1000, height: 750 });
+	assert.deepEqual(parseViewBox(null), { width: 1000, height: 750 });
+});
+
+test('unionViewBox spans every layer', () => {
+	const union = unionViewBox(['0 0 100 100', '50 50 100 100', null]);
+	assert.deepEqual(union, { minX: 0, minY: 0, width: 150, height: 150 });
+});
+
+test('layer styles cover inner copper and unknown layers', () => {
+	assert.equal(layerStyle('F.Cu').group, 'copper');
+	assert.equal(layerStyle('In2.Cu').label, 'Inner copper 2');
+	assert.equal(layerStyle('In2.Cu').group, 'copper');
+	assert.equal(layerStyle('Totally.Made.Up').label, 'Totally.Made.Up');
+});
+
+test('exportableLayers keeps known layers in stacking order', () => {
+	const layers = exportableLayers(['B.Cu', 'Edge.Cuts', 'F.Cu', 'In1.Cu', 'Nonsense.Layer', 'F.SilkS']);
+	assert.deepEqual(layers, ['F.Cu', 'In1.Cu', 'B.Cu', 'F.SilkS', 'Edge.Cuts']);
+});
+
+test('layer filenames map back to layer ids', () => {
+	const names = ['F.Cu', 'Edge.Cuts', 'In1.Cu'];
+	assert.equal(layerIdFromFilename('board-F_Cu.svg', names), 'F.Cu');
+	assert.equal(layerIdFromFilename('F_Cu.svg', names), 'F.Cu');
+	assert.equal(layerIdFromFilename('board-Edge_Cuts.svg', names), 'Edge.Cuts');
+	assert.equal(layerIdFromFilename('board-Unknown.svg', names), null);
+});

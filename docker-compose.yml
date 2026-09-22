@@ -1,0 +1,18 @@
+services:
+  pcbhub:
+    build: .
+    image: pcbhub:latest
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      # Must match the URL users type, or form submissions fail the CSRF check.
+      ORIGIN: ${PCBHUB_ORIGIN:-http://localhost:3000}
+      PCBHUB_ADMIN_USER: ${PCBHUB_ADMIN_USER:-admin}
+      PCBHUB_ADMIN_PASSWORD: ${PCBHUB_ADMIN_PASSWORD:?set PCBHUB_ADMIN_PASSWORD in .env}
+      PCBHUB_ADMIN_EMAIL: ${PCBHUB_ADMIN_EMAIL:-admin@localhost}
+    volumes:
+      - pcbhub-data:/data
+
+volumes:
+  pcbhub-data:

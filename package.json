@@ -1,0 +1,34 @@
+{
+  "name": "pcbhub",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite dev",
+    "build": "vite build",
+    "preview": "vite preview",
+    "start": "node build/index.js",
+    "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
+    "test": "node --test --experimental-strip-types --import ./tests/resolve-hook.mjs tests/*.test.ts",
+    "seed": "node --experimental-strip-types --import ./tests/resolve-hook.mjs scripts/seed.ts",
+    "schema": "node scripts/gen-schema.js"
+  },
+  "devDependencies": {
+    "@sveltejs/adapter-node": "^5.2.12",
+    "@sveltejs/kit": "^2.20.0",
+    "@sveltejs/vite-plugin-svelte": "^5.0.3",
+    "@tailwindcss/vite": "^4.0.9",
+    "@types/adm-zip": "^0.5.8",
+    "@types/node": "^22.13.9",
+    "@types/three": "^0.186.0",
+    "svelte": "^5.22.0",
+    "svelte-check": "^4.1.4",
+    "tailwindcss": "^4.0.9",
+    "typescript": "^5.8.2",
+    "vite": "^6.2.0"
+  },
+  "dependencies": {
+    "adm-zip": "^0.5.16",
+    "three": "^0.174.0"
+  }
+}
