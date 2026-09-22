@@ -1,0 +1,5 @@
+# Caddy obtains and renews the Let's Encrypt certificate for the domain itself.
+{$PCBGIT_DOMAIN} {
+	encode zstd gzip
+	reverse_proxy pcbgit:3000
+}

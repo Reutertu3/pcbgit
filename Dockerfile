@@ -41,6 +41,10 @@ COPY --from=build --chown=pcbgit /app/src/lib ./src/lib
 
 RUN mkdir -p /data && chown pcbgit /data
 
+# Declared this late so a new commit only rebuilds the last layers.
+ARG PCBGIT_VERSION=dev
+ENV PCBGIT_VERSION=${PCBGIT_VERSION}
+
 ENV NODE_ENV=production \
     PORT=3000 \
     HOST=0.0.0.0 \

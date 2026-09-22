@@ -1,13 +1,17 @@
 import type { Actions, PageServerLoad } from './$types';
 import { audit, getSetting, setSetting } from '$lib/server/db';
+import { fail } from '@sveltejs/kit';
 import { resetKicadVersionCache } from '$lib/server/render/kicad';
+import { requestUpdate, runningVersion, updateState } from '$lib/server/updater';
 
 export const load: PageServerLoad = async () => ({
 	settings: {
 		siteName: getSetting('site_name', 'pcbgit'),
 		siteTagline: getSetting('site_tagline', 'Self-hosted home for hardware design'),
 		registrationOpen: getSetting('registration_open', 'true') === 'true'
-	}
+	},
+	version: runningVersion(),
+	update: updateState()
 });
 
 export const actions: Actions = {
@@ -18,6 +22,18 @@ export const actions: Actions = {
 		setSetting('registration_open', form.get('registration_open') ? 'true' : 'false');
 		audit(locals.user!.id, 'admin.settings_save');
 		return { success: true, message: 'Instance settings saved.' };
+	},
+
+	update: async ({ request, locals }) => {
+		const force = (await request.formData()).get('force') === 'on';
+		const state = updateState();
+		if (!state) return fail(400, { error: 'Updates are not configured on this server.' });
+		if (state.requested || state.status?.state === 'running') {
+			return fail(409, { error: 'An update is already requested or running.' });
+		}
+		requestUpdate(locals.user!.username, force);
+		audit(locals.user!.id, 'admin.update_request', force ? 'forced rebuild' : 'pull');
+		return { success: true, message: 'Update requested. The server pulls from GitHub and restarts if there is anything new.' };
 	},
 
 	recheckKicad: async () => {

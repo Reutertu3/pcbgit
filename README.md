@@ -57,6 +57,74 @@ The imported instance keeps the snapshot's accounts, so sign in with the admin
 password from the old server. Snapshots larger than the upload limit can be
 copied into `/data/backups/` directly, and they then appear in the list.
 
+## Deploy to a public server
+
+Tested layout: a Debian VPS, Docker, and Caddy in front for HTTPS. pcbgit itself
+is never exposed directly; Caddy gets the Let's Encrypt certificate and proxies.
+The build brings its own KiCad, so plan for about 2 GB of RAM and 8 GB of free disk.
+
+**1. Prepare the server** (as root, once)
+
+```sh
+# Docker from Docker's own repository (Debian's is too old for the compose file)
+apt-get install -y ca-certificates curl git
+install -m 0755 -d /etc/apt/keyrings
+curl -fsSL https://download.docker.com/linux/debian/gpg -o /etc/apt/keyrings/docker.asc
+echo "deb [signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/debian $(. /etc/os-release && echo $VERSION_CODENAME) stable" \
+  > /etc/apt/sources.list.d/docker.list
+apt-get update && apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+```
+
+Point your domain's DNS A (and AAAA) record at the server, and allow ports 22, 80
+and 443 (for example `ufw allow OpenSSH && ufw allow 80,443/tcp && ufw allow 443/udp && ufw enable`).
+
+**2. Get the code and configure it**
+
+```sh
+git clone https://github.com/<you>/pcbgit.git /opt/pcbgit
+cd /opt/pcbgit
+cp .env.example .env
+nano .env        # PCBGIT_DOMAIN and a long random PCBGIT_ADMIN_PASSWORD
+```
+
+For a private repository, add a read-only [deploy key](https://docs.github.com/en/authentication/connecting-to-github-with-ssh/managing-deploy-keys)
+and clone with the `git@github.com:` URL instead.
+
+**3. Install the update watcher and start**
+
+(Moving an existing instance? Do the snapshot step below between these two commands.)
+
+```sh
+sudo deploy/install.sh     # control folder + systemd units; checks .env
+sudo deploy/update.sh      # first build and start (takes a while)
+```
+
+Open `https://<your domain>`, sign in as the admin from `.env`, and in
+**Admin → Instance** consider switching off open registration.
+
+**Moving an existing instance over:** create a snapshot in Admin → Backups, copy
+it to the server as `/var/lib/pcbgit-control/import.tar.gz` (after `install.sh`,
+before the first `update.sh`), and add to `.env`:
+
+```sh
+PCBGIT_IMPORT_SNAPSHOT=/control/import.tar.gz
+```
+
+It is imported on the first start only; delete the file and the line afterwards.
+The imported instance keeps its accounts, so sign in with your existing admin.
+
+### Updating
+
+Push to GitHub, then either press **Update from GitHub** in Admin → Instance or
+run `sudo deploy/update.sh` over SSH. Both pull (fast-forward only), rebuild and
+restart; the site is down for a few seconds. The panel shows the running commit,
+the result and the log. If the server copy has local commits the update stops
+instead of merging, and the log says so.
+
+The container cannot run anything on the host: the button only drops a request
+file into `/var/lib/pcbgit-control`, which the `pcbgit-update.path` systemd unit
+watches. `systemctl status pcbgit-update.service` shows the last run.
+
 ## Pushing a board
 
 1. Create a board at **New board**. It starts as an empty repository.
@@ -83,6 +151,8 @@ renders its matching `.kicad_sch` and `.kicad_pcb`.
 | `BODY_SIZE_LIMIT` | `210M` in Docker | Maximum upload and push size |
 | `PCBGIT_IMPORT_SNAPSHOT` | — | Snapshot to import on first boot of an empty instance |
 | `PCBGIT_RESTART_ON_RESTORE` | `true` in Docker | Exit after staging a restore so the restart policy applies it |
+| `PCBGIT_DOMAIN` | — | Public domain, used by Caddy and for `ORIGIN` in the production compose file |
+| `PCBGIT_CONTROL_DIR` | `/control` in production | Folder shared with the host update watcher; unset disables in-app updates |
 
 Without `kicad-cli`, versions are still tracked, and board statistics and a BOM are
 parsed directly from the KiCad files. Schematic, layer, 3D and DRC output needs
