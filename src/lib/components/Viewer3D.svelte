@@ -17,15 +17,19 @@
 
 	type Vec3 = [number, number, number];
 
-	/** Soldermask finishes offered by JLCPCB, as sRGB approximations of the real boards. */
+	/**
+	 * Soldermask finishes offered by JLCPCB, as sRGB approximations of the real boards.
+	 * Coloured masks let copper show through faintly; black and white are near opaque,
+	 * or the light core and gold copper underneath tint them brown and grey.
+	 */
 	const MASKS = [
-		{ id: 'green', label: 'Green', color: '#125c33' },
-		{ id: 'blue', label: 'Blue', color: '#123f8c' },
-		{ id: 'yellow', label: 'Yellow', color: '#c9a414' },
-		{ id: 'purple', label: 'Purple', color: '#4a1f70' },
-		{ id: 'red', label: 'Red', color: '#a31a1a' },
-		{ id: 'white', label: 'White', color: '#eeeeea' },
-		{ id: 'black', label: 'Black', color: '#141414' }
+		{ id: 'green', label: 'Green', color: '#125c33', opacity: 0.94 },
+		{ id: 'blue', label: 'Blue', color: '#123f8c', opacity: 0.94 },
+		{ id: 'yellow', label: 'Yellow', color: '#c9a414', opacity: 0.94 },
+		{ id: 'purple', label: 'Purple', color: '#4a1f70', opacity: 0.94 },
+		{ id: 'red', label: 'Red', color: '#a31a1a', opacity: 0.94 },
+		{ id: 'white', label: 'White', color: '#eeeeea', opacity: 0.99 },
+		{ id: 'black', label: 'Black', color: '#141414', opacity: 0.995 }
 	] as const;
 	const SILKS = [
 		{ id: 'white', label: 'White', color: '#f4f4f0' },
@@ -597,11 +601,14 @@
 			const materials = new Set<import('three/webgpu').Material>();
 
 			applyColors = () => {
-				const maskColor = MASKS.find((m) => m.id === mask)!.color;
+				const maskDef = MASKS.find((m) => m.id === mask)!;
 				const silkColor = SILKS.find((m) => m.id === silk)!.color;
 				const finishDef = FINISHES.find((m) => m.id === finish)!;
 				// Colour and roughness are uniforms: no shader recompile, so this is instant.
-				for (const material of roleMaterials.mask) material.color.set(maskColor);
+				for (const material of roleMaterials.mask) {
+					material.color.set(maskDef.color);
+					material.opacity = maskDef.opacity;
+				}
 				for (const material of roleMaterials.silk) material.color.set(silkColor);
 				for (const material of roleMaterials.pad) {
 					material.color.set(finishDef.color);
@@ -638,8 +645,6 @@
 						let clone = roleClones.get(material.uuid);
 						if (!clone) {
 							clone = material.clone();
-							// Real mask hides the substrate; KiCad's 0.83 lets too much through.
-							if (role === 'mask') clone.opacity = Math.max(clone.opacity, 0.94);
 							// Silkscreen ink is opaque; KiCad's 0.9 greys black print on a white mask.
 							// It stays in the transparent pass so it can be ordered after the mask.
 							if (role === 'silk') clone.opacity = 1;
