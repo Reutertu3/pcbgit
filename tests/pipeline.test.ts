@@ -19,7 +19,7 @@ process.env.PCBHUB_ADMIN_PASSWORD = 'test-password-not-used';
 
 const { all, count, get } = await import('../src/lib/server/db/index.ts');
 const { createUser } = await import('../src/lib/server/auth.ts');
-const { createProject, syncCommits, getProject, setProjectTags, toggleStar, browseProjects } =
+const { createProject, syncCommits, getProject, setProjectTags, toggleStar, browseProjects, ensureTag } =
 	await import('../src/lib/server/projects.ts');
 const { commitFiles } = await import('../src/lib/server/git.ts');
 const { repoPath } = await import('../src/lib/server/paths.ts');
@@ -59,6 +59,11 @@ let projectId: string;
 let userId: string;
 
 before(async () => {
+	// Tags are admin-managed: they must exist before a board can use them.
+	ensureTag('ATmega', 'component', '#6ba4e8');
+	ensureTag('2-layer', 'process');
+	ensureTag('Breakout', 'domain');
+
 	const user = createUser({ username: 'tester', email: 'tester@example.com', password: 'password123' });
 	userId = user.id;
 
@@ -218,6 +223,21 @@ test('private boards are hidden from anonymous browsing but visible to their own
 	const other = createUser({ username: 'stranger', email: 'stranger@example.com', password: 'password123' });
 	const asStranger = browseProjects({ viewer: other });
 	assert.ok(!asStranger.projects.some((p) => p.id === secret.id), 'hidden from other users');
+});
+
+test('boards can only use existing tags; unknown tags are never created', () => {
+	const before = count('SELECT COUNT(*) FROM tags');
+	setProjectTags(projectId, ['atmega', 'Made-Up-Tag', '2-layer']);
+
+	assert.equal(count('SELECT COUNT(*) FROM tags'), before, 'no tag was created');
+	const attached = all<{ slug: string; color: string }>(
+		'SELECT t.slug, t.color FROM project_tags pt JOIN tags t ON t.id = pt.tag_id WHERE pt.project_id = ? ORDER BY t.slug',
+		projectId
+	);
+	assert.deepEqual(attached.map((tag) => tag.slug), ['2-layer', 'atmega']);
+	assert.equal(attached.find((tag) => tag.slug === 'atmega')?.color, '#6ba4e8');
+	// A tag created without a colour gets its category default, a real hex value.
+	assert.match(attached.find((tag) => tag.slug === '2-layer')!.color, /^#[0-9a-f]{6}$/);
 });
 
 test('tags and stars attach to a project and drive filtering', () => {

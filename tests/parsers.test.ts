@@ -197,3 +197,12 @@ test('layer filenames map back to layer ids', () => {
 	assert.equal(layerIdFromFilename('board-Edge_Cuts.svg', names), 'Edge.Cuts');
 	assert.equal(layerIdFromFilename('board-Unknown.svg', names), null);
 });
+
+test('KiCad plot filenames use user-facing names; they map back to canonical ids', () => {
+	const names = ['F.SilkS', 'F.CrtYd', 'Cmts.User'];
+	assert.equal(layerIdFromFilename('board-F_Silkscreen.svg', names), 'F.SilkS');
+	assert.equal(layerIdFromFilename('board-F_Courtyard.svg', names), 'F.CrtYd');
+	assert.equal(layerIdFromFilename('board-User_Comments.svg', names), 'Cmts.User');
+	assert.equal(layerStyle('Cmts.User').label, 'Comments');
+	assert.ok(exportableLayers(names).includes('Cmts.User'));
+});

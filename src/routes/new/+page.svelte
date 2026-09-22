@@ -2,6 +2,7 @@
 	import { enhance } from '$app/forms';
 	import Icon from '$lib/components/Icon.svelte';
 	import FormError from '$lib/components/FormError.svelte';
+	import TagPicker from '$lib/components/TagPicker.svelte';
 	import { formatBytes } from '$lib/format';
 
 	let { data, form } = $props();
@@ -118,19 +119,8 @@
 			</div>
 
 			<div class="mb-4">
-				<label class="label" for="tags">Tags</label>
-				<input
-					class="input"
-					id="tags"
-					name="tags"
-					list="tag-suggestions"
-					value={form?.tags ?? ''}
-					placeholder="ESP32, USB-C, 4-layer"
-				/>
-				<datalist id="tag-suggestions">
-					{#each data.allTags as tag}<option value={tag}></option>{/each}
-				</datalist>
-				<p class="hint">Comma separated. New tags are created as you use them.</p>
+				<span class="label">Tags</span>
+				<TagPicker tags={data.allTags} selected={form?.tags ?? []} />
 			</div>
 
 			<div>

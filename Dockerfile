@@ -8,20 +8,27 @@ RUN npm ci
 COPY . .
 RUN npm run build && npm prune --omit=dev
 
-# ---- runtime: KiCad image supplies kicad-cli; we add Node and git -----------
-# The "-full" variant ships the 3D models the assembled render needs.
-# Override with --build-arg KICAD_IMAGE=kicad/kicad:9.0 for a smaller image
-# (the 3D view then shows bare boards without components).
-ARG KICAD_IMAGE=kicad/kicad:9.0-full
-FROM ${KICAD_IMAGE}
+# ---- runtime: Ubuntu + KiCad 10 from the official KiCad PPA -----------------
+FROM ubuntu:24.04
 
-USER root
+# The 3D model library is several GB. Without it the 3D view shows the bare
+# board with no components: --build-arg INSTALL_3D_MODELS=false
+ARG INSTALL_3D_MODELS=true
+ENV DEBIAN_FRONTEND=noninteractive
+
 RUN apt-get update \
- && apt-get install -y --no-install-recommends git ca-certificates tini \
+ && apt-get install -y --no-install-recommends software-properties-common gpg-agent ca-certificates \
+ && add-apt-repository -y ppa:kicad/kicad-10.0-releases \
+ && apt-get update \
+ && apt-get install -y --no-install-recommends kicad git tini \
+ && if [ "$INSTALL_3D_MODELS" = "true" ]; then apt-get install -y --no-install-recommends kicad-packages3d; fi \
+ && apt-get purge -y software-properties-common gpg-agent \
+ && apt-get autoremove -y \
  && rm -rf /var/lib/apt/lists/* \
- && useradd --create-home --uid 10001 pcbhub
+ && useradd --create-home --uid 10001 pcbhub \
+ && kicad-cli --version
 
-# Both stages are Debian Bookworm, so the Node binary runs as-is.
+# Build stage is Debian Bookworm (glibc 2.36); Ubuntu 24.04 ships 2.39, so the binary runs as-is.
 COPY --from=build /usr/local/bin/node /usr/local/bin/node
 
 WORKDIR /app

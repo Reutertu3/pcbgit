@@ -29,6 +29,18 @@ const BASE: LayerStyle[] = [
 	{ id: 'User.Comments', label: 'Comments', group: 'fabrication', side: 'both', color: '#78c878', defaultOn: false, order: 80 }
 ];
 
+/** Board files use canonical names; KiCad's plot output uses the user-facing ones. */
+const ALIASES: Record<string, string> = {
+	'F.SilkS': 'F.Silkscreen',
+	'B.SilkS': 'B.Silkscreen',
+	'F.CrtYd': 'F.Courtyard',
+	'B.CrtYd': 'B.Courtyard',
+	'F.Adhes': 'F.Adhesive',
+	'B.Adhes': 'B.Adhesive',
+	'Cmts.User': 'User.Comments',
+	'Dwgs.User': 'User.Drawings'
+};
+
 const INNER_COLORS = ['#c2c200', '#3fc43f', '#c47fc4', '#3fc4c4', '#c4823f', '#7f7fc4'];
 
 const byId = new Map(BASE.map((layer) => [layer.id, layer]));
@@ -37,6 +49,8 @@ const byId = new Map(BASE.map((layer) => [layer.id, layer]));
 export function layerStyle(id: string): LayerStyle {
 	const known = byId.get(id);
 	if (known) return known;
+	const aliased = byId.get(ALIASES[id]);
+	if (aliased) return { ...aliased, id };
 
 	const inner = /^In(\d+)\.Cu$/.exec(id);
 	if (inner) {
@@ -57,7 +71,7 @@ export function layerStyle(id: string): LayerStyle {
 
 /** Layers worth exporting, in the order they should stack in the viewer. */
 export function exportableLayers(boardLayerNames: string[]) {
-	const wanted = new Set([...BASE.map((l) => l.id), 'User.Drawings']);
+	const wanted = new Set([...BASE.map((l) => l.id), 'User.Drawings', 'Cmts.User']);
 	return boardLayerNames
 		.filter((name) => wanted.has(name) || /^In\d+\.Cu$/.test(name))
 		.sort((a, b) => layerStyle(a).order - layerStyle(b).order);
@@ -75,8 +89,10 @@ export function previewLayers(boardLayerNames: string[], side: 'front' | 'back')
 export function layerIdFromFilename(filename: string, boardLayerNames: string[]) {
 	const stem = filename.replace(/\.svg$/i, '');
 	for (const name of boardLayerNames) {
-		const slug = name.replace(/\./g, '_');
-		if (stem === slug || stem.endsWith(`-${slug}`) || stem.endsWith(`_${slug}`)) return name;
+		for (const candidate of [name, ALIASES[name]].filter(Boolean)) {
+			const slug = candidate.replace(/\./g, '_');
+			if (stem === slug || stem.endsWith(`-${slug}`) || stem.endsWith(`_${slug}`)) return name;
+		}
 	}
 	return null;
 }

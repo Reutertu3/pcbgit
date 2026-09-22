@@ -3,6 +3,7 @@
 	import Icon from '$lib/components/Icon.svelte';
 	import FormError from '$lib/components/FormError.svelte';
 	import CloneBox from '$lib/components/CloneBox.svelte';
+	import TagPicker from '$lib/components/TagPicker.svelte';
 	import { formatBytes } from '$lib/format';
 
 	let { data, form } = $props();
@@ -11,7 +12,6 @@
 	let confirmText = $state('');
 	let uploading = $state(false);
 
-	const currentTags = $derived(data.project.tags.map((tag) => tag.name).join(', '));
 </script>
 
 <svelte:head><title>Settings · {data.project.name} · {data.site.name}</title></svelte:head>
@@ -66,11 +66,8 @@
 			</div>
 
 			<div class="mb-4">
-				<label class="label" for="tags">Tags</label>
-				<input class="input" id="tags" name="tags" list="tag-suggestions" value={currentTags} />
-				<datalist id="tag-suggestions">
-					{#each data.allTags as tag}<option value={tag}></option>{/each}
-				</datalist>
+				<span class="label">Tags</span>
+				<TagPicker tags={data.allTags} selected={data.project.tags.map((tag) => tag.slug)} />
 			</div>
 
 			<button class="btn btn-primary" type="submit">Save changes</button>

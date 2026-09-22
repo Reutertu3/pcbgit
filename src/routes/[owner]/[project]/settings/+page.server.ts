@@ -35,7 +35,7 @@ export const load: PageServerLoad = async ({ params, locals, parent, url }) => {
 	const project = requireEditable(params.owner, params.project, locals.user);
 	return {
 		licenses: LICENSES,
-		allTags: listTags().map((tag) => tag.name),
+		allTags: listTags(),
 		cloneUrl: `${url.origin}/git/${project.owner_username}/${project.slug}.git`
 	};
 };
@@ -57,13 +57,8 @@ export const actions: Actions = {
 			default_branch: String(form.get('default_branch') ?? 'main').trim() || 'main'
 		});
 
-		setProjectTags(
-			project.id,
-			String(form.get('tags') ?? '')
-				.split(',')
-				.map((tag) => tag.trim())
-				.filter(Boolean)
-		);
+		// Only pre-defined tags can be chosen; unknown values are dropped.
+		setProjectTags(project.id, form.getAll('tags').map(String));
 
 		audit(locals.user!.id, 'project.update', `${project.owner_username}/${project.slug}`);
 		return { success: true, message: 'Settings saved.' };

@@ -1,5 +1,6 @@
 <script lang="ts">
 	import Icon from '$lib/components/Icon.svelte';
+	import TagChip from '$lib/components/TagChip.svelte';
 
 	let { data } = $props();
 
@@ -11,10 +12,6 @@
 		general: 'Other'
 	};
 
-	/** Scale the chip with usage so the popular tags read first. */
-	const max = $derived(
-		Math.max(1, ...data.groups.flatMap((group) => group.tags.map((tag) => tag.project_count)))
-	);
 </script>
 
 <svelte:head><title>Tags · {data.site.name}</title></svelte:head>
@@ -22,7 +19,7 @@
 <div class="mx-auto max-w-4xl px-4 py-6">
 	<h1 class="text-xl font-semibold tracking-tight">Tags</h1>
 	<p class="mt-1 text-sm text-[var(--text-secondary)]">
-		Tags are created as designers use them. Click one to filter the board list.
+		Tags are curated by the administrators. Click one to filter the board list.
 	</p>
 
 	{#each data.groups as group}
@@ -34,15 +31,12 @@
 			</h2>
 			<div class="flex flex-wrap gap-2">
 				{#each group.tags as tag}
-					<a
-						href="/?tag={tag.slug}"
-						class="chip !py-1.5 transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)]"
+					<span
 						class:opacity-55={tag.project_count === 0}
-						style:font-size="{0.6875 + (tag.project_count / max) * 0.19}rem"
+						title={tag.description || undefined}
 					>
-						{tag.name}
-						<span class="text-[var(--text-muted)]">{tag.project_count}</span>
-					</a>
+						<TagChip {tag} href="/?tag={tag.slug}" count={tag.project_count} />
+					</span>
 				{/each}
 			</div>
 		</section>

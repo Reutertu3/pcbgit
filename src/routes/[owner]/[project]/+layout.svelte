@@ -4,6 +4,7 @@
 	import Avatar from '$lib/components/Avatar.svelte';
 	import StatusDot from '$lib/components/StatusDot.svelte';
 	import VersionPicker from '$lib/components/VersionPicker.svelte';
+	import TagChip from '$lib/components/TagChip.svelte';
 	import { formatCount } from '$lib/format';
 	import type { IconName } from '$lib/icons';
 
@@ -96,7 +97,7 @@
 				{#if data.project.tags.length}
 					<div class="mt-2 flex flex-wrap gap-1">
 						{#each data.project.tags as tag}
-							<a href="/?tag={tag.slug}" class="chip hover:border-[var(--border-strong)]">{tag.name}</a>
+							<TagChip {tag} href="/?tag={tag.slug}" />
 						{/each}
 					</div>
 				{/if}

@@ -1,6 +1,6 @@
 import { count, getSetting, now, run, setSetting } from './db';
 import { createUser, getUserByUsername } from './auth';
-import { ensureTag } from './projects';
+import { CATEGORY_COLORS, ensureTag } from './projects';
 
 /**
  * Runs on every boot.
@@ -12,7 +12,15 @@ import { ensureTag } from './projects';
  */
 export function bootstrap() {
 	seedDefaults();
+	backfillTagColors();
 	ensureAdmin();
+}
+
+/** Tags created before colours existed hold a placeholder name; give them a real colour. */
+function backfillTagColors() {
+	for (const [category, color] of Object.entries(CATEGORY_COLORS)) {
+		run("UPDATE tags SET color = ? WHERE category = ? AND color NOT LIKE '#%'", color, category);
+	}
 }
 
 function seedDefaults() {

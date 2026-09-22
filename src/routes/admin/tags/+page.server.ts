@@ -1,11 +1,15 @@
 import { fail } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { audit, count, get, newId, now, run } from '$lib/server/db';
-import { listTags, slugify } from '$lib/server/projects';
+import { CATEGORY_COLORS, isTagColor, listTags, slugify } from '$lib/server/projects';
 
 const CATEGORIES = ['general', 'component', 'interface', 'domain', 'process'];
 
-export const load: PageServerLoad = async () => ({ tags: listTags(), categories: CATEGORIES });
+export const load: PageServerLoad = async () => ({
+	tags: listTags(),
+	categories: CATEGORIES,
+	categoryColors: CATEGORY_COLORS
+});
 
 export const actions: Actions = {
 	create: async ({ request, locals }) => {
@@ -13,7 +17,9 @@ export const actions: Actions = {
 		const name = String(form.get('name') ?? '').trim();
 		const category = CATEGORIES.includes(String(form.get('category'))) ? String(form.get('category')) : 'general';
 		const description = String(form.get('description') ?? '').trim().slice(0, 200);
+		const color = String(form.get('color') ?? '');
 		const slug = slugify(name);
+		if (!isTagColor(color)) return fail(400, { error: 'Pick a colour for the tag.' });
 
 		if (!slug) return fail(400, { error: 'Give the tag a name.' });
 		if (get('SELECT 1 AS x FROM tags WHERE slug = ?', slug)) {
@@ -21,11 +27,12 @@ export const actions: Actions = {
 		}
 
 		run(
-			'INSERT INTO tags (id, slug, name, category, description, created_at) VALUES (?,?,?,?,?,?)',
+			'INSERT INTO tags (id, slug, name, category, color, description, created_at) VALUES (?,?,?,?,?,?,?)',
 			newId(),
 			slug,
 			name.slice(0, 40),
 			category,
+			color,
 			description,
 			now()
 		);
@@ -38,12 +45,15 @@ export const actions: Actions = {
 		const id = String(form.get('id') ?? '');
 		const name = String(form.get('name') ?? '').trim();
 		const category = CATEGORIES.includes(String(form.get('category'))) ? String(form.get('category')) : 'general';
+		const color = String(form.get('color') ?? '');
 		if (!name) return fail(400, { error: 'Tag name cannot be empty.' });
+		if (!isTagColor(color)) return fail(400, { error: 'Pick a colour for the tag.' });
 
 		run(
-			'UPDATE tags SET name = ?, category = ?, description = ? WHERE id = ?',
+			'UPDATE tags SET name = ?, category = ?, color = ?, description = ? WHERE id = ?',
 			name.slice(0, 40),
 			category,
+			color,
 			String(form.get('description') ?? '').trim().slice(0, 200),
 			id
 		);

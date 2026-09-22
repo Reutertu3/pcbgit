@@ -70,7 +70,7 @@ export function resetKicadVersionCache() {
 /* -------------------------------------------------------------- exports */
 
 export function schSvgArgs(schPath: string, outDir: string) {
-	return ['sch', 'export', 'svg', '--output', outDir, '--no-background-color', schPath];
+	return ['sch', 'export', 'svg', '--output', outDir, schPath];
 }
 
 export function schBomArgs(schPath: string, outFile: string) {
@@ -82,7 +82,6 @@ export function schBomArgs(schPath: string, outFile: string) {
 		'--group-by', 'Value,Footprint',
 		'--sort-field', 'Reference',
 		'--sort-asc',
-		'--include-excluded-from-bom',
 		'--ref-range-delimiter', '-',
 		schPath
 	];

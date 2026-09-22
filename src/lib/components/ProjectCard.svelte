@@ -2,6 +2,7 @@
 	import Icon from '$lib/components/Icon.svelte';
 	import Avatar from '$lib/components/Avatar.svelte';
 	import StatusDot from '$lib/components/StatusDot.svelte';
+	import TagChip from '$lib/components/TagChip.svelte';
 	import { formatCount, formatDimensions, relativeTime } from '$lib/format';
 	import type { ProjectSummary } from '$lib/types';
 
@@ -101,7 +102,7 @@
 		{#if project.tags.length}
 			<div class="flex flex-wrap gap-1">
 				{#each project.tags.slice(0, 4) as tag}
-					<a href="/?tag={tag.slug}" class="chip hover:border-[var(--border-strong)]">{tag.name}</a>
+					<TagChip {tag} href="/?tag={tag.slug}" />
 				{/each}
 				{#if project.tags.length > 4}
 					<span class="chip">+{project.tags.length - 4}</span>

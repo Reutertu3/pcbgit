@@ -360,7 +360,21 @@ export function popularTags(limit = 40) {
 		.slice(0, limit);
 }
 
-export function ensureTag(name: string, category = 'general', color = 'slate') {
+/** Colour a tag gets when none is chosen; also used to backfill old rows. */
+export const CATEGORY_COLORS: Record<string, string> = {
+	component: '#6ba4e8',
+	interface: '#9cb080',
+	domain: '#e2b862',
+	process: '#c4829a',
+	general: '#8a9a8b'
+};
+
+export function isTagColor(value: string) {
+	return /^#[0-9a-f]{6}$/i.test(value);
+}
+
+/** Creates a tag if it does not exist. Admin and bootstrap only; users never create tags. */
+export function ensureTag(name: string, category = 'general', color?: string) {
 	const slug = slugify(name);
 	if (!slug) return null;
 	const existing = get<{ id: string }>('SELECT id FROM tags WHERE slug = ?', slug);
@@ -372,23 +386,31 @@ export function ensureTag(name: string, category = 'general', color = 'slate') {
 		slug,
 		name.trim().slice(0, 40),
 		category,
-		color,
+		color && isTagColor(color) ? color : (CATEGORY_COLORS[category] ?? CATEGORY_COLORS.general),
 		now()
 	);
 	return id;
 }
 
+/**
+ * Replaces a board's tags. Only existing tags are accepted (matched by slug or
+ * name); anything else is ignored, so a crafted request cannot create tags.
+ */
 export function setProjectTags(projectId: string, tagSlugsOrNames: string[]) {
 	tx(() => {
 		run('DELETE FROM project_tags WHERE project_id = ?', projectId);
 		const seen = new Set<string>();
 		for (const raw of tagSlugsOrNames.slice(0, 20)) {
-			const name = raw.trim();
-			if (!name) continue;
-			const tagId = ensureTag(name);
-			if (!tagId || seen.has(tagId)) continue;
-			seen.add(tagId);
-			run('INSERT INTO project_tags (project_id, tag_id) VALUES (?, ?)', projectId, tagId);
+			const value = raw.trim();
+			if (!value) continue;
+			const tag = get<{ id: string }>(
+				'SELECT id FROM tags WHERE slug = ? OR name = ? COLLATE NOCASE',
+				slugify(value),
+				value
+			);
+			if (!tag || seen.has(tag.id)) continue;
+			seen.add(tag.id);
+			run('INSERT INTO project_tags (project_id, tag_id) VALUES (?, ?)', projectId, tag.id);
 		}
 	});
 }

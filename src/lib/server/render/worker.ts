@@ -6,7 +6,7 @@ import { exportableLayers, layerIdFromFilename, layerStyle, previewLayers } from
 import { all, get, newId, now, run, tx } from '../db';
 import { exportTree } from '../git';
 import { TMP_DIR, repoPath } from '../paths';
-import { clearArtifacts, storeArtifact, svgGeometry } from './artifacts';
+import { clearArtifacts, listArtifacts, storeArtifact, svgGeometry } from './artifacts';
 import { analyzeBoard, type BoardStats } from './board';
 import { bomToCsv, groupBom, parseBomCsv, type BomLine } from './bom';
 import {
@@ -43,6 +43,10 @@ interface ProjectRow {
 	id: string;
 	slug: string;
 	owner_username: string;
+}
+
+function hasArtifact(commitId: string, kind: Parameters<typeof listArtifacts>[1]) {
+	return listArtifacts(commitId, kind).length > 0;
 }
 
 /* ------------------------------------------------------------ job queue */
@@ -182,6 +186,19 @@ async function renderCommit(job: JobRow, log: string[]) {
 		}
 
 		persistResults(commit.id, board, bom, violations, files.rootSch ? path.basename(files.rootSch, '.kicad_sch') : project.slug);
+
+		// Partial output is kept above, but a file KiCad could not open must not
+		// read as a successful render.
+		if (version) {
+			const missing = [
+				files.pcb && !hasArtifact(commit.id, 'pcb_layer_svg') && 'board',
+				files.rootSch && !hasArtifact(commit.id, 'schematic_svg') && 'schematic'
+			].filter(Boolean);
+			if (missing.length) {
+				const reason = log.find((line) => /Failed to load/.test(line)) ?? 'see log';
+				throw new Error(`KiCad could not render the ${missing.join(' or ')}: ${reason.replace(/^[^:]+: failed \(\d+\) /, '')}`);
+			}
+		}
 	} finally {
 		await fsp.rm(checkout, { recursive: true, force: true });
 		await fsp.rm(outDir, { recursive: true, force: true });

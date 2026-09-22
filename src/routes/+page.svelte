@@ -3,6 +3,7 @@
 	import { page } from '$app/state';
 	import Icon from '$lib/components/Icon.svelte';
 	import ProjectCardView from '$lib/components/ProjectCard.svelte';
+	import TagChip from '$lib/components/TagChip.svelte';
 	import { formatCount } from '$lib/format';
 
 	let { data } = $props();
@@ -98,17 +99,13 @@
 						<div class="flex flex-wrap gap-1.5">
 							{#each data.tags as tag}
 								{@const active = data.filters.tags.includes(tag.slug)}
-								<a
+								<TagChip
+									{tag}
 									href={toggleMulti('tag', tag.slug)}
-									class="chip hover:border-[var(--border-strong)]"
-									class:!border-[var(--accent)]={active}
-									class:!text-[var(--accent)]={active}
-									class:!bg-[var(--accent-soft)]={active}
+									{active}
+									count={tag.project_count}
 									title="{tag.project_count} board{tag.project_count === 1 ? '' : 's'}"
-								>
-									{tag.name}
-									<span class="text-[var(--text-muted)]">{tag.project_count}</span>
-								</a>
+								/>
 							{/each}
 						</div>
 						<a href="/tags" class="hint inline-block hover:text-[var(--accent)]">All tags →</a>

@@ -26,23 +26,96 @@
 	--color-solder-600: #159470;
 }
 
+/*
+ * Themes. Every colour in the app comes from these tokens, so a theme is just
+ * a block of variables. :root is the default (Forest); the rest are selected
+ * with <html data-theme="…">. The list shown in the picker is in src/lib/themes.ts.
+ *
+ * --viewer-bg stays dark in every theme: board layers are composited with
+ * screen blending, which needs a dark backdrop to read correctly.
+ */
 :root {
-	--surface-0: #0b0d10;
-	--surface-1: #12151a;
-	--surface-2: #181c23;
-	--surface-3: #1f242d;
-	--border-subtle: #262c36;
-	--border-strong: #343c48;
-	--text-primary: #e8ebef;
-	--text-secondary: #a0a8b4;
-	--text-muted: #6b7381;
-	--accent: #d9873f;
-	--accent-soft: rgba(217, 135, 63, 0.14);
-	--ok: #4dd6a8;
-	--warn: #e8b64c;
-	--err: #ef6f6f;
-	--info: #6ba4e8;
-	--viewer-bg: #05070a;
+	--surface-0: #1f292d;
+	--surface-1: #273338;
+	--surface-2: #2e3c41;
+	--surface-3: #37474d;
+	--border-subtle: #354449;
+	--border-strong: #4a5d62;
+	--text-primary: #e4ebe0;
+	--text-secondary: #b3c1ad;
+	--text-muted: #879884;
+	--accent: #9cb080;
+	--accent-hover: #618764;
+	--on-accent: #1a2427;
+	--accent-soft: #2b5748;
+	--ok: #8cc49a;
+	--warn: #e2b862;
+	--err: #e57f72;
+	--info: #82b4c8;
+	--viewer-bg: #182124;
+	color-scheme: dark;
+}
+
+:root[data-theme='gruvbox-dark'] {
+	--surface-0: #1d2021;
+	--surface-1: #282828;
+	--surface-2: #32302f;
+	--surface-3: #3c3836;
+	--border-subtle: #3c3836;
+	--border-strong: #504945;
+	--text-primary: #ebdbb2;
+	--text-secondary: #d5c4a1;
+	--text-muted: #928374;
+	--accent: #fe8019;
+	--on-accent: #1d2021;
+	--accent-soft: rgba(254, 128, 25, 0.16);
+	--ok: #b8bb26;
+	--warn: #fabd2f;
+	--err: #fb4934;
+	--info: #83a598;
+	--viewer-bg: #141617;
+	color-scheme: dark;
+}
+
+:root[data-theme='gruvbox-light'] {
+	--surface-0: #f2e5bc;
+	--surface-1: #fbf1c7;
+	--surface-2: #ebdbb2;
+	--surface-3: #d5c4a1;
+	--border-subtle: #d5c4a1;
+	--border-strong: #bdae93;
+	--text-primary: #3c3836;
+	--text-secondary: #504945;
+	--text-muted: #7c6f64;
+	--accent: #af3a03;
+	--on-accent: #fbf1c7;
+	--accent-soft: rgba(175, 58, 3, 0.12);
+	--ok: #79740e;
+	--warn: #b57614;
+	--err: #9d0006;
+	--info: #076678;
+	--viewer-bg: #282828;
+	color-scheme: light;
+}
+
+:root[data-theme='nord'] {
+	--surface-0: #2b303b;
+	--surface-1: #2e3440;
+	--surface-2: #3b4252;
+	--surface-3: #434c5e;
+	--border-subtle: #3b4252;
+	--border-strong: #4c566a;
+	--text-primary: #eceff4;
+	--text-secondary: #d8dee9;
+	--text-muted: #8a95a8;
+	--accent: #88c0d0;
+	--on-accent: #2e3440;
+	--accent-soft: rgba(136, 192, 208, 0.16);
+	--ok: #a3be8c;
+	--warn: #ebcb8b;
+	--err: #bf616a;
+	--info: #81a1c1;
+	--viewer-bg: #20242c;
 	color-scheme: dark;
 }
 
@@ -56,14 +129,36 @@
 	--text-primary: #14171c;
 	--text-secondary: #545b67;
 	--text-muted: #858c98;
-	--accent: #a9511f;
-	--accent-soft: rgba(169, 81, 31, 0.1);
-	--ok: #159470;
+	--accent: #2b5748;
+	--on-accent: #ffffff;
+	--accent-soft: rgba(43, 87, 72, 0.1);
+	--ok: #1f7a55;
 	--warn: #a97b12;
 	--err: #c94040;
 	--info: #2d6fc4;
 	--viewer-bg: #1a1d22;
 	color-scheme: light;
+}
+
+:root[data-theme='midnight'] {
+	--surface-0: #0b0d10;
+	--surface-1: #12151a;
+	--surface-2: #181c23;
+	--surface-3: #1f242d;
+	--border-subtle: #262c36;
+	--border-strong: #343c48;
+	--text-primary: #e8ebef;
+	--text-secondary: #a0a8b4;
+	--text-muted: #6b7381;
+	--accent: #d9873f;
+	--on-accent: #ffffff;
+	--accent-soft: rgba(217, 135, 63, 0.14);
+	--ok: #4dd6a8;
+	--warn: #e8b64c;
+	--err: #ef6f6f;
+	--info: #6ba4e8;
+	--viewer-bg: #05070a;
+	color-scheme: dark;
 }
 
 @layer base {
@@ -156,12 +251,11 @@
 	.btn-primary {
 		background: var(--accent);
 		border-color: var(--accent);
-		color: #fff;
+		color: var(--on-accent);
 	}
 	.btn-primary:hover:not(:disabled) {
-		filter: brightness(1.1);
-		background: var(--accent);
-		border-color: var(--accent);
+		background: var(--accent-hover, color-mix(in srgb, var(--accent) 85%, white));
+		border-color: var(--accent-hover, color-mix(in srgb, var(--accent) 85%, white));
 	}
 
 	.btn-ghost {

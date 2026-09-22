@@ -60,7 +60,7 @@ CREATE TABLE IF NOT EXISTS tags (
   name        TEXT NOT NULL,
   category    TEXT NOT NULL DEFAULT 'general'
                 CHECK (category IN ('general','component','interface','domain','process')),
-  color       TEXT NOT NULL DEFAULT 'slate',
+  color       TEXT NOT NULL DEFAULT '#8a9a8b',
   description TEXT NOT NULL DEFAULT '',
   created_at  INTEGER NOT NULL
 );

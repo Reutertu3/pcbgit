@@ -3,7 +3,7 @@
 	import { page } from '$app/state';
 	import Icon from '$lib/components/Icon.svelte';
 	import Avatar from '$lib/components/Avatar.svelte';
-	import ThemeToggle from '$lib/components/ThemeToggle.svelte';
+	import ThemePicker from '$lib/components/ThemePicker.svelte';
 
 	let { data, children } = $props();
 
@@ -33,7 +33,10 @@
 <svelte:window onclick={() => (menuOpen = false)} />
 
 <div class="flex min-h-screen flex-col">
-	<header class="sticky top-0 z-40 border-b bg-s1/85 backdrop-blur-md">
+	<header
+		class="sticky top-0 z-40 border-b backdrop-blur-md"
+		style="background: color-mix(in srgb, var(--surface-1) 88%, transparent)"
+	>
 		<div class="mx-auto flex h-14 max-w-[1400px] items-center gap-3 px-4">
 			<a href="/" class="flex shrink-0 items-center gap-2 font-semibold tracking-tight">
 				<svg viewBox="0 0 32 32" class="h-7 w-7" aria-hidden="true">
@@ -89,7 +92,7 @@
 				</div>
 			</form>
 
-			<ThemeToggle />
+			<ThemePicker />
 
 			{#if data.user}
 				<a href="/new" class="btn btn-primary btn-sm">

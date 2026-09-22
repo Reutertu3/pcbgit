@@ -29,9 +29,10 @@ Everything mutable (the database, repositories and rendered artifacts) lives in 
 other origin are rejected. Put a TLS-terminating reverse proxy in front for
 anything beyond a LAN.
 
-The image is based on `kicad/kicad:9.0-full`, which includes the 3D models.
-If that tag is not available, or you want a smaller image, build with
-`--build-arg KICAD_IMAGE=kicad/kicad:9.0`. The 3D view then shows bare boards.
+The image is `ubuntu:24.04` with KiCad 10 installed from the official
+`ppa:kicad/kicad-10.0-releases`. The component 3D model library is several GB;
+for a smaller image build with `--build-arg INSTALL_3D_MODELS=false`, and the
+3D view then shows bare boards.
 
 ## Pushing a board
 

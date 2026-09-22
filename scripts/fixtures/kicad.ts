@@ -207,7 +207,7 @@ export function renderPcb(spec: BoardSpec) {
     (at ${ox + spec.widthMm / 2} ${y2 - 2} 0)
     (layer "F.SilkS")
     (uuid "${uuid()}")
-    (effects (font (size 1.2 1.2) (thickness 0.2)) (justify center))
+    (effects (font (size 1.2 1.2) (thickness 0.2)))
   )`;
 
 	return `(kicad_pcb
@@ -271,6 +271,63 @@ ${tracks.join('\n')}
 )
 `;
 }
+
+const FONT = '(effects (font (size 1.27 1.27)))';
+const HIDDEN = '(effects (font (size 1.27 1.27)) (hide yes))';
+
+function pin(number: string, x: number, y: number, angle: number, type = 'passive') {
+	return `(pin ${type} line (at ${x} ${y} ${angle}) (length 1.27) (name "~" ${FONT}) (number "${number}" ${FONT}))`;
+}
+
+function libSymbol(id: string, prefix: string, body: string, pins: string[], power = false) {
+	const name = id.split(':')[1];
+	return `    (symbol "${id}"
+      ${power ? '(power)' : ''}
+      (pin_names (offset 0))
+      (exclude_from_sim no)
+      (in_bom ${power ? 'no' : 'yes'})
+      (on_board ${power ? 'no' : 'yes'})
+      (property "Reference" "${prefix}" (at 2.54 0 0) ${power ? HIDDEN : FONT})
+      (property "Value" "${name}" (at 2.54 -2.54 0) ${FONT})
+      (property "Footprint" "" (at 0 0 0) ${HIDDEN})
+      (property "Datasheet" "~" (at 0 0 0) ${HIDDEN})
+      (property "Description" "" (at 0 0 0) ${HIDDEN})
+      (symbol "${name}_0_1" ${body})
+      (symbol "${name}_1_1" ${pins.join(' ')})
+    )`;
+}
+
+const STROKE = '(stroke (width 0.254) (type default)) (fill (type none))';
+
+/** Definitions for every lib_id the fixtures place, keyed by lib_id. */
+const LIB_SYMBOLS: Record<string, string> = {
+	'Device:R': libSymbol('Device:R', 'R', `(rectangle (start -1.016 -2.54) (end 1.016 2.54) ${STROKE})`, [pin('1', 0, 3.81, 270), pin('2', 0, -3.81, 90)]),
+	'Device:C': libSymbol(
+		'Device:C',
+		'C',
+		`(polyline (pts (xy -2.032 -0.762) (xy 2.032 -0.762)) ${STROKE}) (polyline (pts (xy -2.032 0.762) (xy 2.032 0.762)) ${STROKE})`,
+		[pin('1', 0, 3.81, 270), pin('2', 0, -3.81, 90)]
+	),
+	'Device:LED': libSymbol(
+		'Device:LED',
+		'D',
+		`(polyline (pts (xy -1.27 -1.27) (xy -1.27 1.27) (xy 1.27 0) (xy -1.27 -1.27)) ${STROKE}) (polyline (pts (xy 1.27 -1.27) (xy 1.27 1.27)) ${STROKE})`,
+		[pin('1', 3.81, 0, 180), pin('2', -3.81, 0, 0)]
+	),
+	'Device:U': libSymbol(
+		'Device:U',
+		'U',
+		`(rectangle (start -5.08 -5.08) (end 5.08 5.08) ${STROKE})`,
+		[pin('1', -7.62, 2.54, 0), pin('2', -7.62, -2.54, 0), pin('3', 7.62, 2.54, 180), pin('4', 7.62, -2.54, 180)]
+	),
+	'power:GND': libSymbol(
+		'power:GND',
+		'#PWR',
+		`(polyline (pts (xy 0 0) (xy 0 -1.27) (xy 1.27 -1.27) (xy 0 -2.54) (xy -1.27 -1.27) (xy 0 -1.27)) ${STROKE})`,
+		[pin('1', 0, 0, 270, 'power_in')],
+		true
+	)
+};
 
 export function renderSchematic(spec: BoardSpec) {
 	resetUuids();
@@ -356,7 +413,9 @@ export function renderSchematic(spec: BoardSpec) {
     (title "${escape(spec.title)}")
     (company "PCBHub demo")
   )
-  (lib_symbols)
+  (lib_symbols
+${Object.values(LIB_SYMBOLS).join('\n')}
+  )
 ${symbols}
 ${power}
   (sheet_instances

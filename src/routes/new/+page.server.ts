@@ -14,7 +14,7 @@ import {
 
 export const load: PageServerLoad = async ({ locals, url }) => {
 	if (!locals.user) redirect(303, `/login?next=${encodeURIComponent(url.pathname)}`);
-	return { licenses: LICENSES, allTags: listTags().map((tag) => tag.name) };
+	return { licenses: LICENSES, allTags: listTags() };
 };
 
 export const actions: Actions = {
@@ -27,7 +27,7 @@ export const actions: Actions = {
 			visibility: 'public',
 			license: '',
 			source_url: '',
-			tags: ''
+			tags: [] as string[]
 		};
 
 		const user = locals.user;
@@ -39,12 +39,10 @@ export const actions: Actions = {
 		const visibility = form.get('visibility') === 'private' ? 'private' : 'public';
 		const license = String(form.get('license') ?? '');
 		const sourceUrl = String(form.get('source_url') ?? '').trim().slice(0, 300);
-		const tags = String(form.get('tags') ?? '')
-			.split(',')
-			.map((tag) => tag.trim())
-			.filter(Boolean);
+		// Checkbox slugs; setProjectTags ignores anything that is not an existing tag.
+		const tags = form.getAll('tags').map(String);
 
-		const values = { name, slug, description, visibility, license, source_url: sourceUrl, tags: tags.join(', ') };
+		const values = { name, slug, description, visibility, license, source_url: sourceUrl, tags };
 
 		if (name.length < 2) return fail(400, { error: 'Give the board a name.', ...values });
 		const slugError = validateSlug(slug);

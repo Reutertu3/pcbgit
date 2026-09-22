@@ -13,6 +13,7 @@ import { commitFiles, deleteRepo } from '../src/lib/server/git.ts';
 import { repoPath } from '../src/lib/server/paths.ts';
 import { createProject, getProject, syncCommits } from '../src/lib/server/projects.ts';
 import { projectFiles, type BoardSpec } from './fixtures/kicad.ts';
+import { bootstrap } from '../src/lib/server/bootstrap.ts';
 
 const DEMO_USERS = [
 	{ username: 'avaline', displayName: 'Ava Lindqvist', bio: 'Mixed-signal and low-power design. Mostly sensors.' },
@@ -208,6 +209,9 @@ running off a single CR2032.
 ];
 
 async function seed({ reset }: { reset: boolean }) {
+	// Starter tags (and an admin) must exist: boards can only use existing tags.
+	bootstrap();
+
 	if (reset) {
 		for (const demo of DEMO_USERS) {
 			const user = getUserByUsername(demo.username);
