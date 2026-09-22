@@ -7,6 +7,7 @@
 	import StatGrid from '$lib/components/StatGrid.svelte';
 	import { formatBytes, formatDate, formatDimensions, relativeTime, shortSha } from '$lib/format';
 	import type { CommentView } from '$lib/types';
+	import { t, tParts } from '$lib/i18n/t';
 
 	let { data, form } = $props();
 
@@ -35,17 +36,17 @@
 
 	const preview = $derived(side === 'front' ? data.previews.front : data.previews.back);
 	const stats = $derived([
-		{ label: 'Board size', value: formatDimensions(data.commit?.board_width ?? null, data.commit?.board_height ?? null) },
-		{ label: 'Copper layers', value: data.commit?.layer_count ?? null },
-		{ label: 'Nets', value: data.commit?.net_count ?? null },
-		{ label: 'Parts', value: data.commit?.part_count ?? null },
+		{ label: t('overview.boardSize'), value: formatDimensions(data.commit?.board_width ?? null, data.commit?.board_height ?? null) },
+		{ label: t('overview.copperLayers'), value: data.commit?.layer_count ?? null },
+		{ label: t('overview.nets'), value: data.commit?.net_count ?? null },
+		{ label: t('overview.parts'), value: data.commit?.part_count ?? null },
 		{
-			label: 'DRC errors',
+			label: t('overview.drcErrors'),
 			value: data.commit ? data.commit.drc_errors : null,
 			tone: (data.commit?.drc_errors ? 'err' : 'ok') as 'err' | 'ok'
 		},
 		{
-			label: 'ERC errors',
+			label: t('overview.ercErrors'),
 			value: data.commit ? data.commit.erc_errors : null,
 			tone: (data.commit?.erc_errors ? 'err' : 'ok') as 'err' | 'ok'
 		}
@@ -62,11 +63,11 @@
 		<!-- Empty repository: the only thing worth showing is how to fill it. -->
 		<div class="surface traces mx-auto max-w-2xl p-8 text-center">
 			<Icon name="git" size={28} class="mx-auto text-[var(--text-muted)]" />
-			<h2 class="mt-3 text-base font-semibold">This board has no versions yet</h2>
+			<h2 class="mt-3 text-base font-semibold">{t('overview.noVersionsTitle')}</h2>
 			<p class="mx-auto mt-1 max-w-md text-sm leading-relaxed text-[var(--text-secondary)]">
-				Push a KiCad project to the repository below, or
-				<a href="{base}/settings" class="text-[var(--accent)] hover:underline">upload a ZIP</a>.
-				Schematics, board layers, the 3D model, BOM and DRC are rendered on every push.
+				{#each tParts('overview.noVersions') as part}
+					{#if typeof part === 'string'}{part}{:else}<a href="{base}/settings" class="text-[var(--accent)] hover:underline">{t('overview.uploadZip')}</a>{/if}
+				{/each}
 			</p>
 			<div class="mt-5 text-left"><CloneBox url={data.cloneUrl} username={data.user?.username} /></div>
 		</div>
@@ -76,22 +77,22 @@
 				<!-- Board preview -->
 				<div class="surface overflow-hidden">
 					<div class="flex items-center justify-between border-b px-3 py-2">
-						<h2 class="text-sm font-semibold">Board preview</h2>
+						<h2 class="text-sm font-semibold">{t('overview.preview')}</h2>
 						<div class="flex items-center gap-1">
 							{#if data.previews.back}
 								{#each ['front', 'back'] as option}
 									<button
-										class="rounded px-2 py-1 text-xs capitalize transition-colors"
+										class="rounded px-2 py-1 text-xs transition-colors"
 										class:bg-s3={side === option}
 										class:text-[var(--text-muted)]={side !== option}
 										onclick={() => (side = option as 'front' | 'back')}
 									>
-										{option}
+										{t(option === 'front' ? 'common.front' : 'common.back')}
 									</button>
 								{/each}
 							{/if}
 							<a href="{base}/pcb{query}" class="btn btn-ghost btn-sm">
-								Open viewer <Icon name="chevronRight" size={12} />
+								{t('overview.openViewer')} <Icon name="chevronRight" size={12} />
 							</a>
 						</div>
 					</div>
@@ -99,22 +100,22 @@
 						{#if preview}
 							<img
 								src={preview}
-								alt="{side} side of {data.project.name}"
+								alt={t(side === 'front' ? 'overview.frontAlt' : 'overview.backAlt', { name: data.project.name })}
 								class="max-h-[26rem] w-auto max-w-full"
 							/>
 						{:else if data.commit.render_status === 'failed'}
 							<div class="flex flex-col items-center gap-2 py-10 text-center">
 								<Icon name="alert" size={24} style="color: var(--err)" />
-								<p class="text-sm" style:color="var(--err)">This version failed to render.</p>
-								<a href="{base}/history" class="btn btn-sm">See the render log</a>
+								<p class="text-sm" style:color="var(--err)">{t('overview.failed')}</p>
+								<a href="{base}/history" class="btn btn-sm">{t('overview.seeLog')}</a>
 							</div>
 						{:else if data.commit.render_status !== 'success'}
 							<div class="flex flex-col items-center gap-2 py-10 text-center">
 								<StatusDot status={data.commit.render_status} label />
-								<p class="text-xs text-[var(--text-muted)]">Previews appear when the render finishes.</p>
+								<p class="text-xs text-[var(--text-muted)]">{t('overview.previewsPending')}</p>
 							</div>
 						{:else}
-							<p class="py-10 text-sm text-[var(--text-muted)]">No board file in this version.</p>
+							<p class="py-10 text-sm text-[var(--text-muted)]">{t('overview.noBoard')}</p>
 						{/if}
 					</div>
 				</div>
@@ -134,7 +135,7 @@
 				<!-- Discussion: top-level comments with one level of replies. -->
 				<section class="surface mt-4 p-5">
 					<h2 class="mb-3 flex items-center gap-2 text-sm font-semibold">
-						<Icon name="message" size={14} /> Discussion
+						<Icon name="message" size={14} /> {t('comments.title')}
 						{#if data.commentCount}<span class="chip">{data.commentCount}</span>{/if}
 					</h2>
 
@@ -144,7 +145,7 @@
 								<div class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-s3">
 									<Icon name="trash" size={11} class="text-[var(--text-muted)]" />
 								</div>
-								<p class="py-1 text-sm italic text-[var(--text-muted)]">This comment was deleted.</p>
+								<p class="py-1 text-sm italic text-[var(--text-muted)]">{t('comments.deleted')}</p>
 							{:else}
 								<Avatar name={item.display_name || item.username} size={isReply ? 24 : 28} />
 								<div class="min-w-0 flex-1">
@@ -163,7 +164,7 @@
 									<div class="mt-1 flex items-center gap-3 text-[0.6875rem]">
 										{#if data.user}
 											<button class="text-[var(--text-muted)] hover:text-[var(--accent)]" onclick={() => startReply(threadId, isReply ? item.username : null)}>
-												Reply
+												{t('comments.reply')}
 											</button>
 										{/if}
 										{#if data.user && (data.user.role === 'admin' || data.user.id === item.user_id)}
@@ -171,11 +172,11 @@
 												method="POST"
 												action="?/deleteComment"
 												use:enhance={({ cancel }) => {
-													if (!confirm('Delete this comment?')) cancel();
+													if (!confirm(t('comments.confirmDelete'))) cancel();
 												}}
 											>
 												<input type="hidden" name="id" value={item.id} />
-												<button class="text-[var(--text-muted)] hover:text-[var(--err)]">Delete</button>
+												<button class="text-[var(--text-muted)] hover:text-[var(--err)]">{t('common.delete')}</button>
 											</form>
 										{/if}
 									</div>
@@ -185,7 +186,7 @@
 					{/snippet}
 
 					{#if data.threads.length === 0}
-						<p class="text-sm text-[var(--text-muted)]">No comments yet.</p>
+						<p class="text-sm text-[var(--text-muted)]">{t('comments.none')}</p>
 					{:else}
 						<ul class="flex flex-col gap-4">
 							{#each data.threads as thread (thread.id)}
@@ -220,13 +221,13 @@
 															class="textarea !min-h-16 text-sm"
 															name="body"
 															bind:value={replyText}
-															placeholder="Write a reply…"
+															placeholder={t('comments.replyPlaceholder')}
 															maxlength="4000"
 															autofocus
 														></textarea>
 														<div class="mt-2 flex gap-2">
-															<button class="btn btn-primary btn-sm" type="submit">Reply</button>
-															<button class="btn btn-ghost btn-sm" type="button" onclick={() => (replyingTo = null)}>Cancel</button>
+															<button class="btn btn-primary btn-sm" type="submit">{t('comments.reply')}</button>
+															<button class="btn btn-ghost btn-sm" type="button" onclick={() => (replyingTo = null)}>{t('common.cancel')}</button>
 														</div>
 													</form>
 												</li>
@@ -244,14 +245,16 @@
 							<textarea
 								class="textarea !min-h-20"
 								name="body"
-								placeholder="Ask about a design choice, or leave a review note…"
+								placeholder={t('comments.placeholder')}
 								maxlength="4000"
 							></textarea>
-							<button class="btn btn-primary btn-sm mt-2" type="submit">Post comment</button>
+							<button class="btn btn-primary btn-sm mt-2" type="submit">{t('comments.post')}</button>
 						</form>
 					{:else}
 						<p class="mt-4 border-t pt-4 text-sm text-[var(--text-muted)]">
-							<a href="/login" class="text-[var(--accent)] hover:underline">Sign in</a> to join the discussion.
+							{#each tParts('comments.signIn') as part}
+								{#if typeof part === 'string'}{part}{:else}<a href="/login" class="text-[var(--accent)] hover:underline">{t('nav.signIn')}</a>{/if}
+							{/each}
 						</p>
 					{/if}
 				</section>
@@ -263,27 +266,27 @@
 
 				<div class="surface p-4">
 					<h3 class="mb-2.5 text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">
-						This version
+						{t('overview.thisVersion')}
 					</h3>
 					<dl class="flex flex-col gap-2 text-xs">
 						<div class="flex justify-between gap-2">
-							<dt class="text-[var(--text-muted)]">Commit</dt>
+							<dt class="text-[var(--text-muted)]">{t('overview.commit')}</dt>
 							<dd class="mono">{shortSha(data.commit.sha)}</dd>
 						</div>
 						<div class="flex justify-between gap-2">
-							<dt class="text-[var(--text-muted)]">Author</dt>
+							<dt class="text-[var(--text-muted)]">{t('overview.author')}</dt>
 							<dd class="truncate">{data.commit.author_name || '—'}</dd>
 						</div>
 						<div class="flex justify-between gap-2">
-							<dt class="text-[var(--text-muted)]">Committed</dt>
+							<dt class="text-[var(--text-muted)]">{t('overview.committed')}</dt>
 							<dd>{formatDate(data.commit.committed_at)}</dd>
 						</div>
 						<div class="flex justify-between gap-2">
-							<dt class="text-[var(--text-muted)]">Files</dt>
+							<dt class="text-[var(--text-muted)]">{t('tabs.files')}</dt>
 							<dd>{data.fileCount}</dd>
 						</div>
 						<div class="flex justify-between gap-2">
-							<dt class="text-[var(--text-muted)]">Artifacts</dt>
+							<dt class="text-[var(--text-muted)]">{t('overview.artifacts')}</dt>
 							<dd>{formatBytes(data.artifactBytes)}</dd>
 						</div>
 					</dl>
@@ -296,40 +299,40 @@
 
 				<div class="surface p-4">
 					<h3 class="mb-2.5 text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">
-						Downloads
+						{t('overview.downloads')}
 					</h3>
 					<div class="flex flex-col gap-1.5">
 						{#if data.tabs.bom}
 							<a href="{base}/bom/download{query}" class="btn btn-sm justify-start">
-								<Icon name="download" size={13} /> Bill of materials (CSV)
+								<Icon name="download" size={13} /> {t('overview.dlBom')}
 							</a>
 						{/if}
 						{#if data.hasFab}
 							<a href="/artifacts/{data.commit.id}/fabrication.zip" class="btn btn-sm justify-start">
-								<Icon name="download" size={13} /> Gerbers + drill (ZIP)
+								<Icon name="download" size={13} /> {t('overview.dlFab')}
 							</a>
 						{/if}
 						{#if data.tabs.three}
 							<a href="/artifacts/{data.commit.id}/board.glb" class="btn btn-sm justify-start">
-								<Icon name="download" size={13} /> 3D model (GLB)
+								<Icon name="download" size={13} /> {t('overview.dlGlb')}
 							</a>
 						{/if}
 						<a href="{base}/archive/{data.commit.sha}.zip" class="btn btn-sm justify-start">
-							<Icon name="download" size={13} /> Source files (ZIP)
+							<Icon name="download" size={13} /> {t('overview.dlSource')}
 						</a>
 					</div>
 				</div>
 
 				{#if data.project.source_url}
 					<a href={data.project.source_url} class="btn btn-sm justify-start" rel="nofollow noopener" target="_blank">
-						<Icon name="external" size={13} /> Upstream repository
+						<Icon name="external" size={13} /> {t('overview.upstream')}
 					</a>
 				{/if}
 
 				<div class="surface p-4">
 					<h3 class="mb-2.5 flex items-center justify-between text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">
-						Recent versions
-						<a href="{base}/history" class="font-normal normal-case hover:text-[var(--accent)]">All</a>
+						{t('overview.recent')}
+						<a href="{base}/history" class="font-normal normal-case hover:text-[var(--accent)]">{t('common.all')}</a>
 					</h3>
 					<ul class="flex flex-col gap-2">
 						{#each data.recentCommits as commit}
@@ -337,7 +340,7 @@
 								<a href="{base}?v={commit.sha}" class="flex items-start gap-2 rounded px-1 py-0.5 hover:bg-s2">
 									<StatusDot status={commit.render_status} />
 									<span class="min-w-0 flex-1">
-										<span class="block truncate text-xs">{commit.message || '(no message)'}</span>
+										<span class="block truncate text-xs">{commit.message || t('versions.noMessage')}</span>
 										<span class="mono block text-[0.6875rem] text-[var(--text-muted)]">
 											{shortSha(commit.sha)} · {relativeTime(commit.committed_at)}
 										</span>

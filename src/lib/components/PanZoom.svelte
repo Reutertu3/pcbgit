@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { untrack, type Snippet } from 'svelte';
 	import Icon from './Icon.svelte';
+	import { t } from '$lib/i18n/t';
 
 	interface Props {
 		/** Intrinsic size of the content, in any consistent unit. */
@@ -154,13 +155,13 @@
 	<div class="pointer-events-none absolute right-2 top-2 z-20 flex items-start gap-2">
 		{#if toolbar}<div class="pointer-events-auto">{@render toolbar()}</div>{/if}
 		<div class="pointer-events-auto flex overflow-hidden rounded-md border bg-[var(--surface-1)]/92 backdrop-blur">
-			<button class="viewer-btn" onclick={() => zoomAt(1.3)} title="Zoom in (+)" aria-label="Zoom in">
+			<button class="viewer-btn" onclick={() => zoomAt(1.3)} title="{t('viewer.zoomIn')} (+)" aria-label={t('viewer.zoomIn')}>
 				<Icon name="plus" size={13} />
 			</button>
-			<button class="viewer-btn border-l" onclick={() => zoomAt(0.77)} title="Zoom out (−)" aria-label="Zoom out">
+			<button class="viewer-btn border-l" onclick={() => zoomAt(0.77)} title="{t('viewer.zoomOut')} (−)" aria-label={t('viewer.zoomOut')}>
 				<Icon name="minus" size={13} />
 			</button>
-			<button class="viewer-btn border-l" onclick={() => fit()} title="Fit to view (F)" aria-label="Fit to view">
+			<button class="viewer-btn border-l" onclick={() => fit()} title="{t('viewer.fit')} (F)" aria-label={t('viewer.fit')}>
 				<Icon name="fit" size={13} />
 			</button>
 		</div>
@@ -189,7 +190,7 @@
 		ondblclick={() => fit()}
 		onkeydown={onKeyDown}
 		role="application"
-		aria-label="Pan and zoom viewer. Arrow keys pan, plus and minus zoom, F fits."
+		aria-label={t('viewer.panZoomLabel')}
 		tabindex="0"
 	>
 		<div

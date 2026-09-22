@@ -4,6 +4,7 @@
 	import Avatar from '$lib/components/Avatar.svelte';
 	import FormError from '$lib/components/FormError.svelte';
 	import { formatDate, relativeTime } from '$lib/format';
+	import { t, tParts } from '$lib/i18n/t';
 
 	let { data, form } = $props();
 
@@ -12,16 +13,16 @@
 	let confirmDelete = $state<string | null>(null);
 </script>
 
-<svelte:head><title>Users · Admin · {data.site.name}</title></svelte:head>
+<svelte:head><title>{t('admin.nav.users')} · {t('admin.title')} · {data.site.name}</title></svelte:head>
 
 <div class="mb-4 flex flex-wrap items-center justify-between gap-2">
-	<h2 class="text-lg font-semibold tracking-tight">Users</h2>
+	<h2 class="text-lg font-semibold tracking-tight">{t('admin.nav.users')}</h2>
 	<div class="flex gap-2">
 		<form method="GET" class="flex gap-2">
-			<input class="input !w-48 !py-1.5 text-[0.8125rem]" type="search" name="q" value={data.search} placeholder="Search users…" />
+			<input class="input !w-48 !py-1.5 text-[0.8125rem]" type="search" name="q" value={data.search} placeholder={t('users.search')} />
 		</form>
 		<button class="btn btn-primary btn-sm" onclick={() => (showCreate = !showCreate)}>
-			<Icon name="plus" size={13} /> Add user
+			<Icon name="plus" size={13} /> {t('users.add')}
 		</button>
 	</div>
 </div>
@@ -31,35 +32,35 @@
 
 {#if showCreate}
 	<section class="surface mb-4 p-4">
-		<h3 class="mb-3 text-sm font-semibold">Create a user</h3>
+		<h3 class="mb-3 text-sm font-semibold">{t('users.createTitle')}</h3>
 		<form method="POST" action="?/create" use:enhance={() => async ({ update }) => {
 			await update();
 			showCreate = false;
 		}}>
 			<div class="grid gap-3 sm:grid-cols-2">
 				<div>
-					<label class="label" for="new-username">Username</label>
+					<label class="label" for="new-username">{t('auth.username')}</label>
 					<input class="input mono" id="new-username" name="username" required />
 				</div>
 				<div>
-					<label class="label" for="new-email">Email</label>
+					<label class="label" for="new-email">{t('auth.email')}</label>
 					<input class="input" id="new-email" name="email" type="email" required />
 				</div>
 				<div>
-					<label class="label" for="new-password">Password</label>
+					<label class="label" for="new-password">{t('auth.password')}</label>
 					<input class="input" id="new-password" name="password" type="password" minlength="8" required />
 				</div>
 				<div>
-					<label class="label" for="new-role">Role</label>
+					<label class="label" for="new-role">{t('users.role')}</label>
 					<select class="select" id="new-role" name="role">
-						<option value="user">User</option>
-						<option value="admin">Administrator</option>
+						<option value="user">{t('users.roleUser')}</option>
+						<option value="admin">{t('users.roleAdmin')}</option>
 					</select>
 				</div>
 			</div>
 			<div class="mt-3 flex gap-2">
-				<button class="btn btn-primary btn-sm" type="submit">Create user</button>
-				<button class="btn btn-ghost btn-sm" type="button" onclick={() => (showCreate = false)}>Cancel</button>
+				<button class="btn btn-primary btn-sm" type="submit">{t('users.create')}</button>
+				<button class="btn btn-ghost btn-sm" type="button" onclick={() => (showCreate = false)}>{t('common.cancel')}</button>
 			</div>
 		</form>
 	</section>
@@ -69,11 +70,11 @@
 	<table class="w-full text-left text-[0.8125rem]">
 		<thead class="bg-s2 text-xs">
 			<tr>
-				<th class="px-3 py-2 font-semibold">User</th>
-				<th class="px-3 py-2 font-semibold">Role</th>
-				<th class="px-3 py-2 font-semibold">Boards</th>
-				<th class="px-3 py-2 font-semibold">Joined</th>
-				<th class="px-3 py-2 font-semibold">Last sign-in</th>
+				<th class="px-3 py-2 font-semibold">{t('users.roleUser')}</th>
+				<th class="px-3 py-2 font-semibold">{t('users.role')}</th>
+				<th class="px-3 py-2 font-semibold">{t('admin.nav.boards')}</th>
+				<th class="px-3 py-2 font-semibold">{t('users.joined')}</th>
+				<th class="px-3 py-2 font-semibold">{t('users.lastSignIn')}</th>
 				<th class="px-3 py-2"></th>
 			</tr>
 		</thead>
@@ -102,35 +103,35 @@
 								value={user.role}
 								onchange={(event) => event.currentTarget.form?.requestSubmit()}
 							>
-								<option value="user">User</option>
-								<option value="admin">Admin</option>
+								<option value="user">{t('users.roleUser')}</option>
+								<option value="admin">{t('profile.admin')}</option>
 							</select>
 						</form>
 					</td>
 					<td class="px-3 py-2 tabular-nums">{user.project_count}</td>
 					<td class="px-3 py-2 text-xs text-[var(--text-muted)]">{formatDate(user.created_at)}</td>
 					<td class="px-3 py-2 text-xs text-[var(--text-muted)]">
-						{user.last_session ? relativeTime(user.last_session) : 'never'}
+						{user.last_session ? relativeTime(user.last_session) : t('time.never')}
 					</td>
 					<td class="px-3 py-2">
 						<div class="flex justify-end gap-1">
 							<form method="POST" action="?/toggleActive" use:enhance>
 								<input type="hidden" name="id" value={user.id} />
-								<button class="btn btn-sm" type="submit" title={user.is_active ? 'Disable account' : 'Enable account'}>
+								<button class="btn btn-sm" type="submit" title={user.is_active ? t('users.disable') : t('users.enable')}>
 									<Icon name={user.is_active ? 'lock' : 'check'} size={12} />
 								</button>
 							</form>
 							<button
 								class="btn btn-sm"
 								onclick={() => (resetting = resetting === user.id ? null : user.id)}
-								title="Reset password"
+								title={t('users.resetPassword')}
 							>
 								<Icon name="refresh" size={12} />
 							</button>
 							<button
 								class="btn btn-danger btn-sm"
 								onclick={() => (confirmDelete = confirmDelete === user.id ? null : user.id)}
-								title="Delete user"
+								title={t('users.delete')}
 							>
 								<Icon name="trash" size={12} />
 							</button>
@@ -147,13 +148,13 @@
 							}} class="flex flex-wrap items-end gap-2">
 								<input type="hidden" name="id" value={user.id} />
 								<div class="min-w-48 flex-1">
-									<label class="label" for="pw-{user.id}">New password for @{user.username}</label>
+									<label class="label" for="pw-{user.id}">{t('users.newPasswordFor', { user: user.username })}</label>
 									<input class="input !py-1.5" id="pw-{user.id}" name="password" type="password" minlength="8" required />
 								</div>
-								<button class="btn btn-sm" type="submit">Set password</button>
-								<button class="btn btn-ghost btn-sm" type="button" onclick={() => (resetting = null)}>Cancel</button>
+								<button class="btn btn-sm" type="submit">{t('users.setPassword')}</button>
+								<button class="btn btn-ghost btn-sm" type="button" onclick={() => (resetting = null)}>{t('common.cancel')}</button>
 							</form>
-							<p class="hint">This also signs the user out everywhere.</p>
+							<p class="hint">{t('users.signsOut')}</p>
 						</td>
 					</tr>
 				{/if}
@@ -167,12 +168,10 @@
 							}} class="flex flex-wrap items-center gap-2">
 								<input type="hidden" name="id" value={user.id} />
 								<span class="flex-1 text-xs">
-									Delete <strong>@{user.username}</strong> and all
-									{user.project_count} of their board{user.project_count === 1 ? '' : 's'}, including the
-									repositories and rendered output. This cannot be undone.
+									{#each tParts('users.deleteConfirm', { count: user.project_count }) as part}{#if typeof part === 'string'}{part}{:else}<strong>@{user.username}</strong>{/if}{/each}
 								</span>
-								<button class="btn btn-danger btn-sm" type="submit">Delete permanently</button>
-								<button class="btn btn-ghost btn-sm" type="button" onclick={() => (confirmDelete = null)}>Cancel</button>
+								<button class="btn btn-danger btn-sm" type="submit">{t('users.deletePermanently')}</button>
+								<button class="btn btn-ghost btn-sm" type="button" onclick={() => (confirmDelete = null)}>{t('common.cancel')}</button>
 							</form>
 						</td>
 					</tr>
@@ -181,6 +180,6 @@
 		</tbody>
 	</table>
 	{#if !data.users.length}
-		<p class="px-4 py-10 text-center text-sm text-[var(--text-muted)]">No users match that search.</p>
+		<p class="px-4 py-10 text-center text-sm text-[var(--text-muted)]">{t('users.noMatch')}</p>
 	{/if}
 </div>

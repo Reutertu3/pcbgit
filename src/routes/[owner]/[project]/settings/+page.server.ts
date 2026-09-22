@@ -1,4 +1,5 @@
 import { error, fail, redirect } from '@sveltejs/kit';
+import { translate } from '$lib/i18n';
 import type { Actions, PageServerLoad } from './$types';
 import { audit } from '$lib/server/db';
 import { commitFiles } from '$lib/server/git';
@@ -22,8 +23,8 @@ import {
 
 function requireEditable(owner: string, slug: string, user: App.Locals['user']) {
 	const project = getProject(owner, slug);
-	if (!project) error(404, 'Board not found');
-	if (!canEdit(project, user)) error(403, 'You do not have access to these settings');
+	if (!project) error(404, 'error.boardNotFound');
+	if (!canEdit(project, user)) error(403, 'error.noSettingsAccess');
 	return project;
 }
 
@@ -45,7 +46,7 @@ export const actions: Actions = {
 		const form = await request.formData();
 
 		const name = String(form.get('name') ?? '').trim();
-		if (name.length < 2) return fail(400, { error: 'Give the board a name.' });
+		if (name.length < 2) return fail(400, { error: translate(locals.locale, 'boardForm.error.name') });
 
 		updateProject(project.id, {
 			name,
@@ -60,7 +61,7 @@ export const actions: Actions = {
 		setProjectTags(project.id, form.getAll('tags').map(String));
 
 		audit(locals.user!.id, 'project.update', `${project.owner_username}/${project.slug}`);
-		return { success: true, message: 'Settings saved.' };
+		return { success: true, message: translate(locals.locale, 'boardForm.saved') };
 	},
 
 	upload: async ({ request, params, locals }) => {
@@ -70,10 +71,10 @@ export const actions: Actions = {
 		const message = String(form.get('message') ?? '').trim() || 'Upload new version';
 
 		if (!(archive instanceof File) || archive.size === 0) {
-			return fail(400, { error: 'Choose a ZIP file to upload.' });
+			return fail(400, { error: translate(locals.locale, 'boardForm.error.chooseZip') });
 		}
 		if (archive.size > MAX_UPLOAD_BYTES) {
-			return fail(413, { error: 'Archive is larger than 200 MB.' });
+			return fail(413, { error: translate(locals.locale, 'upload.error.archiveTooLarge') });
 		}
 
 		let files;
@@ -81,11 +82,11 @@ export const actions: Actions = {
 			files = filesFromZip(Buffer.from(await archive.arrayBuffer()));
 		} catch (thrown) {
 			return fail(400, {
-				error: thrown instanceof UploadError ? thrown.message : 'Could not read the archive.'
+				error: thrown instanceof UploadError ? thrown.in(locals.locale) : translate(locals.locale, 'upload.error.unreadable')
 			});
 		}
 		if (!containsKicadProject(files)) {
-			return fail(400, { error: 'No .kicad_pcb or .kicad_sch file found in that archive.' });
+			return fail(400, { error: translate(locals.locale, 'upload.error.noKicad') });
 		}
 
 		await commitFiles(repoPath(project.owner_username, project.slug), files, {
@@ -99,8 +100,8 @@ export const actions: Actions = {
 		return {
 			success: true,
 			message: result.added
-				? 'New version uploaded. Rendering has started.'
-				: 'Upload produced no changes — the files are identical to the current version.'
+				? translate(locals.locale, 'boardForm.uploaded')
+				: translate(locals.locale, 'boardForm.noChanges')
 		};
 	},
 
@@ -108,7 +109,7 @@ export const actions: Actions = {
 		const project = requireEditable(params.owner, params.project, locals.user);
 		const confirmation = String((await request.formData()).get('confirm') ?? '');
 		if (confirmation !== project.slug) {
-			return fail(400, { error: `Type "${project.slug}" to confirm deletion.` });
+			return fail(400, { error: translate(locals.locale, 'boardForm.error.confirm', { slug: project.slug }) });
 		}
 
 		await deleteProject(project, locals.user!.id);

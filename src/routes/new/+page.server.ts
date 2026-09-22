@@ -1,4 +1,5 @@
 import { fail, redirect } from '@sveltejs/kit';
+import { translate } from '$lib/i18n';
 import type { Actions, PageServerLoad } from './$types';
 import { get } from '$lib/server/db';
 import { commitFiles } from '$lib/server/git';
@@ -30,7 +31,7 @@ export const actions: Actions = {
 		};
 
 		const user = locals.user;
-		if (!user) return fail(401, { error: 'Sign in first.', ...blank });
+		if (!user) return fail(401, { error: translate(locals.locale, 'error.signInFirst'), ...blank });
 
 		const name = String(form.get('name') ?? '').trim();
 		const slug = slugify(String(form.get('slug') ?? '') || name);
@@ -43,11 +44,11 @@ export const actions: Actions = {
 
 		const values = { name, slug, description, visibility, license, source_url: sourceUrl, tags };
 
-		if (name.length < 2) return fail(400, { error: 'Give the board a name.', ...values });
+		if (name.length < 2) return fail(400, { error: translate(locals.locale, 'boardForm.error.name'), ...values });
 		const slugError = validateSlug(slug);
-		if (slugError) return fail(400, { error: slugError, ...values });
+		if (slugError) return fail(400, { error: translate(locals.locale, slugError), ...values });
 		if (get('SELECT 1 AS x FROM projects WHERE owner_id = ? AND slug = ?', user.id, slug)) {
-			return fail(409, { error: `You already have a board called "${slug}".`, ...values });
+			return fail(409, { error: translate(locals.locale, 'newBoard.error.exists', { slug }), ...values });
 		}
 
 		const archive = form.get('archive');
@@ -55,17 +56,17 @@ export const actions: Actions = {
 
 		if (archive instanceof File && archive.size > 0) {
 			if (archive.size > MAX_UPLOAD_BYTES) {
-				return fail(413, { error: 'Archive is larger than 200 MB.', ...values });
+				return fail(413, { error: translate(locals.locale, 'upload.error.archiveTooLarge'), ...values });
 			}
 			try {
 				files = filesFromZip(Buffer.from(await archive.arrayBuffer()));
 			} catch (error) {
-				const message = error instanceof UploadError ? error.message : 'Could not read the archive.';
+				const message = error instanceof UploadError ? error.in(locals.locale) : translate(locals.locale, 'upload.error.unreadable');
 				return fail(400, { error: message, ...values });
 			}
 			if (!containsKicadProject(files)) {
 				return fail(400, {
-					error: 'No .kicad_pcb or .kicad_sch file found in that archive.',
+					error: translate(locals.locale, 'upload.error.noKicad'),
 					...values
 				});
 			}

@@ -4,6 +4,7 @@
 	import FormError from '$lib/components/FormError.svelte';
 	import TagPicker from '$lib/components/TagPicker.svelte';
 	import { formatBytes } from '$lib/format';
+	import { t, tParts } from '$lib/i18n/t';
 
 	let { data, form } = $props();
 
@@ -36,12 +37,12 @@
 	}
 </script>
 
-<svelte:head><title>New board · {data.site.name}</title></svelte:head>
+<svelte:head><title>{t('nav.newBoard')} · {data.site.name}</title></svelte:head>
 
 <div class="mx-auto max-w-2xl px-4 py-8">
-	<h1 class="text-xl font-semibold tracking-tight">Create a board</h1>
+	<h1 class="text-xl font-semibold tracking-tight">{t('newBoard.title')}</h1>
 	<p class="mt-1 text-sm text-[var(--text-secondary)]">
-		Upload a KiCad project now, or create it empty and push over git.
+		{t('newBoard.intro')}
 	</p>
 
 	<form
@@ -60,20 +61,20 @@
 
 		<div class="surface p-5">
 			<div class="mb-4">
-				<label class="label" for="name">Board name</label>
+				<label class="label" for="name">{t('newBoard.name')}</label>
 				<input
 					class="input"
 					id="name"
 					name="name"
 					value={name}
 					oninput={(event) => (typedName = event.currentTarget.value)}
-					placeholder="Sensor Hub v2"
+					placeholder={t('newBoard.namePlaceholder')}
 					required
 				/>
 			</div>
 
 			<div class="mb-4">
-				<label class="label" for="slug">URL</label>
+				<label class="label" for="slug">{t('newBoard.url')}</label>
 				<div class="flex items-center gap-1.5">
 					<span class="mono shrink-0 text-sm text-[var(--text-muted)]">/{data.user?.username}/</span>
 					<input
@@ -88,52 +89,52 @@
 			</div>
 
 			<div class="mb-4">
-				<label class="label" for="description">Description</label>
+				<label class="label" for="description">{t('boardForm.description')}</label>
 				<textarea
 					class="textarea"
 					id="description"
 					name="description"
 					maxlength="500"
-					placeholder="What the board does, and anything a reader should know before opening the schematic."
+					placeholder={t('newBoard.descriptionPlaceholder')}
 					>{form?.description ?? ''}</textarea
 				>
 			</div>
 
 			<div class="mb-4 grid gap-4 sm:grid-cols-2">
 				<div>
-					<label class="label" for="license">License</label>
+					<label class="label" for="license">{t('boardForm.license')}</label>
 					<select class="select" id="license" name="license">
-						<option value="">No license</option>
+						<option value="">{t('boardForm.noLicense')}</option>
 						{#each data.licenses as license}
 							<option value={license} selected={form?.license === license}>{license}</option>
 						{/each}
 					</select>
 				</div>
 				<div>
-					<label class="label" for="visibility">Visibility</label>
+					<label class="label" for="visibility">{t('boardForm.visibility')}</label>
 					<select class="select" id="visibility" name="visibility">
-						<option value="public" selected={form?.visibility !== 'private'}>Public — anyone can view</option>
-						<option value="private" selected={form?.visibility === 'private'}>Private — only you</option>
+						<option value="public" selected={form?.visibility !== 'private'}>{t('newBoard.public')}</option>
+						<option value="private" selected={form?.visibility === 'private'}>{t('newBoard.private')}</option>
 					</select>
 				</div>
 			</div>
 
 			<div class="mb-4">
-				<span class="label">Tags</span>
+				<span class="label">{t('nav.tags')}</span>
 				<TagPicker tags={data.allTags} selected={form?.tags ?? []} />
 			</div>
 
 			<div>
-				<label class="label" for="source_url">Source repository <span class="font-normal text-[var(--text-muted)]">(optional)</span></label>
-				<input class="input" id="source_url" name="source_url" type="url" value={form?.source_url ?? ''} placeholder="https://github.com/you/board" />
+				<label class="label" for="source_url">{t('newBoard.source')} <span class="font-normal text-[var(--text-muted)]">({t('common.optional')})</span></label>
+				<input class="input" id="source_url" name="source_url" type="url" value={form?.source_url ?? ''} placeholder={t('newBoard.sourcePlaceholder')} />
 			</div>
 		</div>
 
 		<!-- Upload -->
 		<div class="surface mt-4 p-5">
-			<h2 class="mb-1 text-sm font-semibold">Initial files</h2>
+			<h2 class="mb-1 text-sm font-semibold">{t('newBoard.files')}</h2>
 			<p class="mb-3 text-xs text-[var(--text-secondary)]">
-				A ZIP of your KiCad project. Leave empty to start with a bare repository.
+				{t('newBoard.filesHint')}
 			</p>
 
 			<!-- svelte-ignore a11y_no_static_element_interactions -->
@@ -157,8 +158,8 @@
 					<span class="mono text-sm">{file.name}</span>
 					<span class="text-xs text-[var(--text-muted)]">{formatBytes(file.size)}</span>
 				{:else}
-					<span class="text-sm">Drop a <span class="mono">.zip</span> here, or click to browse</span>
-					<span class="text-xs text-[var(--text-muted)]">Up to 200 MB</span>
+					<span class="text-sm">{#each tParts('newBoard.drop') as part}{#if typeof part === 'string'}{part}{:else}<span class="mono">.zip</span>{/if}{/each}</span>
+					<span class="text-xs text-[var(--text-muted)]">{t('newBoard.limit')}</span>
 				{/if}
 				<input
 					class="sr-only"
@@ -172,9 +173,9 @@
 
 		<div class="mt-5 flex items-center gap-3">
 			<button class="btn btn-primary" type="submit" disabled={submitting}>
-				{submitting ? 'Creating…' : 'Create board'}
+				{submitting ? t('newBoard.creating') : t('newBoard.create')}
 			</button>
-			<a href="/" class="btn btn-ghost">Cancel</a>
+			<a href="/" class="btn btn-ghost">{t('common.cancel')}</a>
 		</div>
 	</form>
 </div>

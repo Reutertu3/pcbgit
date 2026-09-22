@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { t } from '$lib/i18n/t';
+
 	interface Props {
 		status: string | null | undefined;
 		label?: boolean;
@@ -8,13 +10,13 @@
 	const config = $derived(
 		(
 			{
-				success: { color: 'var(--ok)', text: 'Rendered', pulse: false },
-				running: { color: 'var(--info)', text: 'Rendering', pulse: true },
-				queued: { color: 'var(--warn)', text: 'Queued', pulse: true },
-				failed: { color: 'var(--err)', text: 'Render failed', pulse: false },
-				skipped: { color: 'var(--text-muted)', text: 'Skipped', pulse: false }
+				success: { color: 'var(--ok)', text: t('status.success'), pulse: false },
+				running: { color: 'var(--info)', text: t('status.running'), pulse: true },
+				queued: { color: 'var(--warn)', text: t('status.queued'), pulse: true },
+				failed: { color: 'var(--err)', text: t('status.failed'), pulse: false },
+				skipped: { color: 'var(--text-muted)', text: t('status.skipped'), pulse: false }
 			} as Record<string, { color: string; text: string; pulse: boolean }>
-		)[status ?? ''] ?? { color: 'var(--text-muted)', text: 'No render', pulse: false }
+		)[status ?? ''] ?? { color: 'var(--text-muted)', text: t('status.none'), pulse: false }
 	);
 </script>
 

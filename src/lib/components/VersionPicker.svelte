@@ -4,6 +4,7 @@
 	import Icon from './Icon.svelte';
 	import StatusDot from './StatusDot.svelte';
 	import { relativeTime, shortSha } from '$lib/format';
+	import { t } from '$lib/i18n/t';
 
 	interface Version {
 		id: string;
@@ -45,8 +46,8 @@
 		aria-expanded={open}
 	>
 		<Icon name="history" size={13} />
-		<span class="mono">{current ? shortSha(current.sha) : 'no versions'}</span>
-		{#if isHead}<span class="chip !py-0 !text-[0.625rem]">latest</span>{/if}
+		<span class="mono">{current ? shortSha(current.sha) : t('versions.none')}</span>
+		{#if isHead}<span class="chip !py-0 !text-[0.625rem]">{t('versions.latest')}</span>{/if}
 		<Icon name="chevronDown" size={12} />
 	</button>
 
@@ -72,10 +73,10 @@
 					>
 						<StatusDot status={version.render_status} />
 						<span class="min-w-0 flex-1">
-							<span class="block truncate text-xs">{version.message || '(no message)'}</span>
+							<span class="block truncate text-xs">{version.message || t('versions.noMessage')}</span>
 							<span class="mono block text-[0.6875rem] text-[var(--text-muted)]">
 								{shortSha(version.sha)} · {relativeTime(version.committed_at)}
-								{#if index === 0}· latest{/if}
+								{#if index === 0}· {t('versions.latest')}{/if}
 							</span>
 						</span>
 					</a>
@@ -83,7 +84,7 @@
 			{/each}
 			<li class="border-t pt-1">
 				<a href={`/${page.params.owner}/${page.params.project}/history`} class="menu-item text-xs" onclick={() => (open = false)}>
-					<Icon name="history" size={13} /> Full version history
+					<Icon name="history" size={13} /> {t('versions.fullHistory')}
 				</a>
 			</li>
 		</ul>

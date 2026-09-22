@@ -2,8 +2,12 @@ import type { LayoutServerLoad } from './$types';
 import { getSetting } from '$lib/server/db';
 import { unreadCount } from '$lib/server/notifications';
 
+const DEFAULT_TAGLINE = 'Self-hosted home for hardware design';
+
 export const load: LayoutServerLoad = async ({ locals, url }) => {
+	const tagline = getSetting('site_tagline', DEFAULT_TAGLINE);
 	return {
+		locale: locals.locale,
 		user: locals.user
 			? {
 					id: locals.user.id,
@@ -14,7 +18,8 @@ export const load: LayoutServerLoad = async ({ locals, url }) => {
 			: null,
 		site: {
 			name: getSetting('site_name', 'pcbgit'),
-			tagline: getSetting('site_tagline', 'Self-hosted home for hardware design'),
+			// The stock tagline is translated; one an admin wrote is shown as written.
+			tagline: tagline === DEFAULT_TAGLINE ? null : tagline,
 			registrationOpen: getSetting('registration_open', 'true') === 'true'
 		},
 		pathname: url.pathname,

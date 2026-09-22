@@ -2,24 +2,25 @@
 	import { page } from '$app/state';
 	import Icon from '$lib/components/Icon.svelte';
 	import type { IconName } from '$lib/icons';
+	import { t } from '$lib/i18n/t';
 
 	let { data, children } = $props();
 
-	const NAV: { href: string; label: string; icon: IconName; badge?: keyof typeof data.badges }[] = [
-		{ href: '/admin', label: 'Overview', icon: 'dashboard' },
-		{ href: '/admin/users', label: 'Users', icon: 'users', badge: 'users' },
-		{ href: '/admin/projects', label: 'Boards', icon: 'board', badge: 'projects' },
-		{ href: '/admin/tags', label: 'Tags', icon: 'tag', badge: 'tags' },
-		{ href: '/admin/jobs', label: 'Render queue', icon: 'refresh', badge: 'jobs' },
-		{ href: '/admin/backups', label: 'Backups', icon: 'folder' },
-		{ href: '/admin/settings', label: 'Instance', icon: 'settings', badge: 'updates' }
-	];
+	const NAV: { href: string; label: string; icon: IconName; badge?: keyof typeof data.badges }[] = $derived([
+		{ href: '/admin', label: t('admin.nav.overview'), icon: 'dashboard' },
+		{ href: '/admin/users', label: t('admin.nav.users'), icon: 'users', badge: 'users' },
+		{ href: '/admin/projects', label: t('admin.nav.boards'), icon: 'board', badge: 'projects' },
+		{ href: '/admin/tags', label: t('nav.tags'), icon: 'tag', badge: 'tags' },
+		{ href: '/admin/jobs', label: t('about.queue'), icon: 'refresh', badge: 'jobs' },
+		{ href: '/admin/backups', label: t('admin.nav.backups'), icon: 'folder' },
+		{ href: '/admin/settings', label: t('admin.nav.instance'), icon: 'settings', badge: 'updates' }
+	]);
 </script>
 
 <div class="mx-auto flex max-w-[1400px] flex-col gap-5 px-4 py-6 lg:flex-row">
 	<aside class="lg:w-48 lg:shrink-0">
 		<h1 class="mb-3 flex items-center gap-2 px-1 text-sm font-semibold">
-			<Icon name="shield" size={15} class="text-[var(--accent)]" /> Admin
+			<Icon name="shield" size={15} class="text-[var(--accent)]" /> {t('admin.title')}
 		</h1>
 		<nav class="flex gap-1 overflow-x-auto lg:sticky lg:top-20 lg:flex-col">
 			{#each NAV as item}

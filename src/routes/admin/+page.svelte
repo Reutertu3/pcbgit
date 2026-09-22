@@ -2,22 +2,23 @@
 	import Icon from '$lib/components/Icon.svelte';
 	import { formatBytes, relativeTime, shortSha } from '$lib/format';
 	import Changelog from '$lib/components/Changelog.svelte';
+	import { t, tParts } from '$lib/i18n/t';
 
 	let { data } = $props();
 
 	const CARDS = $derived([
-		{ label: 'Users', value: data.stats.users, sub: `${data.stats.activeUsers} active`, href: '/admin/users' },
-		{ label: 'Boards', value: data.stats.projects, sub: `${data.stats.privateProjects} private`, href: '/admin/projects' },
-		{ label: 'Versions', value: data.stats.commits, sub: `${data.stats.failedRenders} failed`, href: '/admin/jobs' },
-		{ label: 'Artifacts', value: formatBytes(data.stats.artifactBytes), sub: 'on disk', href: null },
-		{ label: 'Render queue', value: `${data.queue.running}/${data.queue.queued}`, sub: 'running / queued', href: '/admin/jobs' },
-		{ label: 'Access tokens', value: data.stats.tokens, sub: 'issued', href: null }
+		{ label: t('admin.nav.users'), value: data.stats.users, sub: t('admin.card.active', { n: data.stats.activeUsers }), href: '/admin/users' },
+		{ label: t('admin.nav.boards'), value: data.stats.projects, sub: t('admin.card.private', { n: data.stats.privateProjects }), href: '/admin/projects' },
+		{ label: t('admin.card.versions'), value: data.stats.commits, sub: t('admin.card.failed', { n: data.stats.failedRenders }), href: '/admin/jobs' },
+		{ label: t('overview.artifacts'), value: formatBytes(data.stats.artifactBytes), sub: t('admin.card.onDisk'), href: null },
+		{ label: t('about.queue'), value: `${data.queue.running}/${data.queue.queued}`, sub: t('admin.card.runningQueued'), href: '/admin/jobs' },
+		{ label: t('nav.tokens'), value: data.stats.tokens, sub: t('admin.card.issued'), href: null }
 	]);
 </script>
 
-<svelte:head><title>Admin · {data.site.name}</title></svelte:head>
+<svelte:head><title>{t('admin.title')} · {data.site.name}</title></svelte:head>
 
-<h2 class="mb-4 text-lg font-semibold tracking-tight">Overview</h2>
+<h2 class="mb-4 text-lg font-semibold tracking-tight">{t('admin.nav.overview')}</h2>
 
 {#if data.availability && data.availability.behind > 0}
 	<!-- Surfaced here so a pending update is seen without visiting Instance. -->
@@ -29,10 +30,10 @@
 		<div class="mb-2.5 flex flex-wrap items-center justify-between gap-2">
 			<h3 class="flex items-center gap-2 text-sm font-semibold">
 				<Icon name="download" size={14} class="text-[var(--accent)]" />
-				Update available: {data.availability.behind} new commit{data.availability.behind === 1 ? '' : 's'}
+				{t('admin.updateAvailable', { count: data.availability.behind })}
 				<span class="mono text-xs font-normal text-[var(--text-muted)]">{data.availability.current} → {data.availability.latest}</span>
 			</h3>
-			<a href="/admin/settings#updates" class="btn btn-primary btn-sm">Review and update</a>
+			<a href="/admin/settings#updates" class="btn btn-primary btn-sm">{t('admin.reviewUpdate')}</a>
 		</div>
 		<Changelog commits={data.availability.commits} limit={5} total={data.availability.behind} />
 	</section>
@@ -53,7 +54,7 @@
 </div>
 
 <div class="mt-4 surface p-4">
-	<h3 class="mb-2 text-sm font-semibold">Render engine</h3>
+	<h3 class="mb-2 text-sm font-semibold">{t('about.engine')}</h3>
 	{#if data.kicad}
 		<p class="mono flex items-center gap-2 text-xs" style:color="var(--ok)">
 			<Icon name="check" size={13} /> {data.kicad}
@@ -62,23 +63,21 @@
 		<p class="flex items-start gap-2 text-xs leading-relaxed" style:color="var(--warn)">
 			<Icon name="alert" size={14} class="mt-0.5 shrink-0" />
 			<span>
-				kicad-cli was not found on this server. Versions are still tracked and a BOM is parsed from
-				the schematic, but schematic, board, 3D and DRC output cannot be produced. Run the Docker
-				image, or set <span class="mono">PCBGIT_KICAD_CLI</span> to the binary's path.
+				{#each tParts('admin.noKicad') as part}{#if typeof part === 'string'}{part}{:else}<span class="mono">PCBGIT_KICAD_CLI</span>{/if}{/each}
 			</span>
 		</p>
 	{/if}
 	<p class="mono mt-2 text-[0.6875rem] text-[var(--text-muted)]">
 		pcbgit {data.version}
-		{#if data.availability?.checked && data.availability.ok && data.availability.behind === 0}· up to date (checked {relativeTime(data.availability.checked)}){/if}
-		· data directory: {data.dataDir}
+		{#if data.availability?.checked && data.availability.ok && data.availability.behind === 0}· {t('admin.upToDate', { time: relativeTime(data.availability.checked) })}{/if}
+		· {t('admin.dataDir', { dir: data.dataDir })}
 	</p>
 </div>
 
 {#if data.failing.length}
 	<section class="surface mt-4 overflow-hidden">
 		<h3 class="border-b px-4 py-2.5 text-sm font-semibold" style:color="var(--err)">
-			Failed renders
+			{t('admin.failedRenders')}
 		</h3>
 		<ul class="divide-y text-sm">
 			{#each data.failing as item}
@@ -86,7 +85,7 @@
 					<a href="/{item.username}/{item.slug}/history?log={item.id}" class="mono truncate hover:text-[var(--accent)]">
 						{item.username}/{item.slug} @ {shortSha(item.sha)}
 					</a>
-					<a href="/{item.username}/{item.slug}/history?log={item.id}" class="btn btn-sm">Log</a>
+					<a href="/{item.username}/{item.slug}/history?log={item.id}" class="btn btn-sm">{t('admin.log')}</a>
 				</li>
 			{/each}
 		</ul>
@@ -94,9 +93,9 @@
 {/if}
 
 <section class="surface mt-4 overflow-hidden">
-	<h3 class="border-b px-4 py-2.5 text-sm font-semibold">Recent activity</h3>
+	<h3 class="border-b px-4 py-2.5 text-sm font-semibold">{t('admin.recent')}</h3>
 	{#if !data.recent.length}
-		<p class="px-4 py-8 text-center text-sm text-[var(--text-muted)]">Nothing logged yet.</p>
+		<p class="px-4 py-8 text-center text-sm text-[var(--text-muted)]">{t('admin.nothingLogged')}</p>
 	{:else}
 		<ul class="divide-y text-sm">
 			{#each data.recent as entry}
@@ -106,7 +105,7 @@
 						{entry.target}{entry.detail ? ` — ${entry.detail}` : ''}
 					</span>
 					<span class="text-xs text-[var(--text-muted)]">
-						{entry.username ?? 'system'} · {relativeTime(entry.created_at)}
+						{entry.username ?? t('admin.system')} · {relativeTime(entry.created_at)}
 					</span>
 				</li>
 			{/each}

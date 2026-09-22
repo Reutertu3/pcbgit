@@ -1,10 +1,11 @@
 import { all, get, newId, now, run, tx } from './db';
 import type { CommentThread, CommentView } from '$lib/types';
 import { notifyForComment, removeNotificationsFor } from './notifications';
+import { UserError } from '../i18n';
 
 export const MAX_COMMENT_LENGTH = 4000;
 
-export class CommentError extends Error {}
+export class CommentError extends UserError {}
 
 interface Row {
 	id: string;
@@ -63,9 +64,9 @@ export function countComments(projectId: string) {
  */
 export function addComment(projectId: string, userId: string, body: string, parentId?: string | null) {
 	const text = body.trim();
-	if (!text) throw new CommentError('Write something first.');
+	if (!text) throw new CommentError('comments.error.empty');
 	if (text.length > MAX_COMMENT_LENGTH) {
-		throw new CommentError(`Comment is too long (${MAX_COMMENT_LENGTH} characters max).`);
+		throw new CommentError('comments.error.tooLong', { max: MAX_COMMENT_LENGTH });
 	}
 
 	let rootId: string | null = null;
@@ -76,7 +77,7 @@ export function addComment(projectId: string, userId: string, body: string, pare
 			parentId,
 			projectId
 		);
-		if (!parent) throw new CommentError('The comment you replied to no longer exists.');
+		if (!parent) throw new CommentError('comments.error.parentGone');
 		rootId = parent.parent_id ?? parent.id;
 		// A deleted thread starter no longer hears about replies.
 		threadAuthorId =
@@ -115,7 +116,7 @@ export function removeComment(
 	if (!comment || comment.deleted_at !== null) return false;
 
 	const allowed = actor.role === 'admin' || actor.id === comment.user_id;
-	if (!allowed) throw new CommentError('You can only delete your own comments.');
+	if (!allowed) throw new CommentError('comments.error.notOwn');
 
 	tx(() => {
 		const replies = get<{ n: number }>('SELECT COUNT(*) AS n FROM comments WHERE parent_id = ?', comment.id)?.n ?? 0;

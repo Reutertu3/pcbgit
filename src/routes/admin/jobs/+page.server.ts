@@ -1,4 +1,5 @@
 import { fail } from '@sveltejs/kit';
+import { translate } from '$lib/i18n';
 import type { Actions, PageServerLoad } from './$types';
 import { all, audit, get, now, run } from '$lib/server/db';
 import { enqueueRender, kick, queueStats } from '$lib/server/render/worker';
@@ -60,11 +61,11 @@ export const actions: Actions = {
 			'SELECT project_id, commit_id FROM render_jobs WHERE id = ?',
 			id
 		);
-		if (!job) return fail(404, { error: 'Job not found.' });
+		if (!job) return fail(404, { error: translate(locals.locale, 'jobs.error.notFound') });
 
 		enqueueRender(job.project_id, job.commit_id);
 		audit(locals.user!.id, 'admin.job_retry', id);
-		return { success: true, message: 'Re-queued.' };
+		return { success: true, message: translate(locals.locale, 'jobs.requeued') };
 	},
 
 	retryAllFailed: async ({ locals }) => {
@@ -73,13 +74,13 @@ export const actions: Actions = {
 		);
 		for (const job of failed) enqueueRender(job.project_id, job.commit_id);
 		audit(locals.user!.id, 'admin.job_retry_all', String(failed.length));
-		return { success: true, message: `Re-queued ${failed.length} job(s).` };
+		return { success: true, message: translate(locals.locale, 'jobs.requeuedN', { count: failed.length }) };
 	},
 
 	clearFinished: async ({ locals }) => {
 		const removed = run("DELETE FROM render_jobs WHERE status IN ('success','failed')");
 		audit(locals.user!.id, 'admin.job_clear', String(removed.changes));
-		return { success: true, message: `Cleared ${removed.changes} finished job(s).` };
+		return { success: true, message: translate(locals.locale, 'jobs.cleared', { count: Number(removed.changes) }) };
 	},
 
 	unstick: async ({ locals }) => {
@@ -94,6 +95,6 @@ export const actions: Actions = {
 		run("UPDATE commits SET render_status = 'failed' WHERE render_status = 'running'");
 		kick();
 		audit(locals.user!.id, 'admin.job_unstick', String(reset.changes));
-		return { success: true, message: `Reset ${reset.changes} stalled job(s).` };
+		return { success: true, message: translate(locals.locale, 'jobs.reset', { count: Number(reset.changes) }) };
 	}
 };

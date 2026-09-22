@@ -1,4 +1,5 @@
 import { fail, redirect } from '@sveltejs/kit';
+import { translate } from '$lib/i18n';
 import type { Actions, PageServerLoad } from './$types';
 import { createSession, createUser, getUserByUsername, validateUsername } from '$lib/server/auth';
 import { audit, count, get, getBoolSetting } from '$lib/server/db';
@@ -13,7 +14,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 };
 
 export const actions: Actions = {
-	default: async ({ request, cookies, url }) => {
+	default: async ({ request, cookies, url, locals }) => {
 		const form = await request.formData();
 		const username = String(form.get('username') ?? '').trim();
 		const email = String(form.get('email') ?? '').trim();
@@ -21,22 +22,22 @@ export const actions: Actions = {
 		const values = { username, email };
 
 		if (!getBoolSetting('registration_open', true)) {
-			return fail(403, { error: 'Registration is closed on this instance.', ...values });
+			return fail(403, { error: translate(locals.locale, 'auth.registrationClosedHint'), ...values });
 		}
 
 		const usernameError = validateUsername(username);
-		if (usernameError) return fail(400, { error: usernameError, ...values });
+		if (usernameError) return fail(400, { error: translate(locals.locale, usernameError), ...values });
 		if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
-			return fail(400, { error: 'Enter a valid email address.', ...values });
+			return fail(400, { error: translate(locals.locale, 'auth.error.email'), ...values });
 		}
 		if (password.length < 8) {
-			return fail(400, { error: 'Password must be at least 8 characters.', ...values });
+			return fail(400, { error: translate(locals.locale, 'auth.error.passwordShort'), ...values });
 		}
 		if (getUserByUsername(username)) {
-			return fail(409, { error: 'That username is taken.', ...values });
+			return fail(409, { error: translate(locals.locale, 'auth.error.usernameTaken'), ...values });
 		}
 		if (get('SELECT 1 AS x FROM users WHERE email = ?', email)) {
-			return fail(409, { error: 'That email is already registered.', ...values });
+			return fail(409, { error: translate(locals.locale, 'auth.error.emailTaken'), ...values });
 		}
 
 		// The very first account to register owns the instance.

@@ -3,6 +3,7 @@ import { getSessionUser, purgeExpiredSessions } from '$lib/server/auth';
 import { ensureDirs } from '$lib/server/paths';
 import { recoverStuckJobs, rerenderAfterRestore } from '$lib/server/render/worker';
 import { bootstrap } from '$lib/server/bootstrap';
+import { detectLocale, LOCALE_COOKIE } from '$lib/i18n';
 
 export const SESSION_COOKIE = 'pcbgit_session';
 
@@ -25,6 +26,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 	const sessionId = event.cookies.get(SESSION_COOKIE) ?? null;
 	event.locals.sessionId = sessionId;
 	event.locals.user = getSessionUser(sessionId ?? undefined);
+	event.locals.locale = detectLocale(event.cookies.get(LOCALE_COOKIE), event.request.headers.get('accept-language'));
 
 	// Guard the whole admin area here, not in a load function: SvelteKit runs
 	// form actions before loads, so a load-only check leaves every action open.
@@ -35,7 +37,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 			redirect(303, `/login?next=${encodeURIComponent(event.url.pathname)}`);
 		}
 		if (event.locals.user.role !== 'admin') {
-			error(403, 'Administrator access required');
+			error(403, 'error.adminOnly');
 		}
 	}
 
@@ -45,7 +47,8 @@ export const handle: Handle = async ({ event, resolve }) => {
 	}
 
 	const response = await resolve(event, {
-		preload: ({ type }) => type === 'font' || type === 'css' || type === 'js'
+		preload: ({ type }) => type === 'font' || type === 'css' || type === 'js',
+		transformPageChunk: ({ html }) => html.replace('%pcbgit.lang%', event.locals.locale)
 	});
 	response.headers.set('X-Content-Type-Options', 'nosniff');
 	response.headers.set('Referrer-Policy', 'same-origin');

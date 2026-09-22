@@ -1,10 +1,11 @@
 <script lang="ts">
 	import Icon from './Icon.svelte';
 	import { DEFAULT_THEME, THEMES } from '$lib/themes';
+	import { t } from '$lib/i18n/t';
 
 	const GROUPS = [
-		{ label: 'Light', themes: THEMES.filter((theme) => !theme.dark) },
-		{ label: 'Dark', themes: THEMES.filter((theme) => theme.dark) }
+		{ label: 'theme.light' as const, themes: THEMES.filter((theme) => !theme.dark) },
+		{ label: 'theme.dark' as const, themes: THEMES.filter((theme) => theme.dark) }
 	];
 
 	let current = $state<string>(DEFAULT_THEME);
@@ -37,8 +38,8 @@
 			event.stopPropagation();
 			open = !open;
 		}}
-		title="Theme"
-		aria-label="Choose theme"
+		title={t('nav.theme')}
+		aria-label={t('nav.theme')}
 		aria-haspopup="listbox"
 		aria-expanded={open}
 	>
@@ -49,11 +50,11 @@
 		<ul
 			class="surface-raised absolute right-0 top-full z-50 mt-1.5 w-52 p-1 shadow-xl"
 			role="listbox"
-			aria-label="Theme"
+			aria-label={t('nav.theme')}
 		>
 			{#each GROUPS as group}
 				<li role="presentation" class="px-2 pb-0.5 pt-1.5 text-[0.625rem] font-semibold tracking-wider text-[var(--text-muted)] uppercase">
-					{group.label}
+					{t(group.label)}
 				</li>
 				{#each group.themes as theme}
 					<li>
@@ -72,7 +73,7 @@
 									<span class="h-4 w-2.5" style:background={color}></span>
 								{/each}
 							</span>
-							<span class="flex-1 text-left">{theme.label}</span>
+							<span class="flex-1 text-left">{t(`theme.name.${theme.id}`)}</span>
 							{#if current === theme.id}<Icon name="check" size={13} />{/if}
 						</button>
 					</li>

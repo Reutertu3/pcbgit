@@ -5,6 +5,7 @@
 	import EmptyTab from '$lib/components/EmptyTab.svelte';
 	import { relativeTime, shortSha } from '$lib/format';
 	import { ibomColorParam } from '$lib/ibomtheme';
+	import { t } from '$lib/i18n/t';
 
 	let { data } = $props();
 
@@ -97,33 +98,33 @@
 	}
 
 	const CHANGE_STYLE = {
-		added: { color: 'var(--ok)', mark: '+', label: 'Added' },
-		removed: { color: 'var(--err)', mark: '−', label: 'Removed' },
-		changed: { color: 'var(--warn)', mark: '~', label: 'Changed' },
+		added: { color: 'var(--ok)', mark: '+', label: t('bom.added') },
+		removed: { color: 'var(--err)', mark: '−', label: t('bom.removed') },
+		changed: { color: 'var(--warn)', mark: '~', label: t('bom.changed') },
 		same: { color: 'transparent', mark: '', label: '' }
 	};
 </script>
 
-<svelte:head><title>BOM · {data.project.name} · {data.site.name}</title></svelte:head>
+<svelte:head><title>{t('tabs.bom')} · {data.project.name} · {data.site.name}</title></svelte:head>
 
 <div class="mx-auto max-w-[1400px] px-4 py-4">
 	{#if data.tabs.ibom}
 		<div class="mb-3 flex items-center gap-2">
-			<div class="segmented" role="group" aria-label="BOM view">
+			<div class="segmented" role="group" aria-label={t('bom.view')}>
 				<button class:active={view === 'interactive'} aria-pressed={view === 'interactive'} onclick={() => (view = 'interactive')}>
-					<Icon name="board" size={13} /> Interactive
+					<Icon name="board" size={13} /> {t('bom.interactive')}
 				</button>
 				<button class:active={view === 'table'} aria-pressed={view === 'table'} onclick={() => (view = 'table')} disabled={!data.rows.length}>
-					<Icon name="list" size={13} /> Table
+					<Icon name="list" size={13} /> {t('bom.table')}
 				</button>
 			</div>
 			{#if interactive}
 				<span class="text-xs text-[var(--text-muted)]">
-					Click a line or part to highlight it on the board. Ticks reset on reload.
+					{t('bom.interactiveHint')}
 				</span>
 				<div class="flex-1"></div>
 				<a href="{data.tabs.ibom}{themeQuery ?? ''}" target="_blank" rel="noopener" class="btn btn-sm">
-					<Icon name="external" size={13} /> Full screen
+					<Icon name="external" size={13} /> {t('bom.fullScreen')}
 				</a>
 			{/if}
 		</div>
@@ -133,7 +134,7 @@
 		{#if themeQuery !== null}
 			<iframe
 				src="{data.tabs.ibom}{themeQuery}"
-				title="Interactive BOM"
+				title={t('bom.interactiveTitle')}
 				sandbox="allow-scripts"
 				class="ibom rounded-lg border"
 				class:dark
@@ -144,23 +145,23 @@
 	{:else if !data.rows.length}
 		<EmptyTab
 			icon="list"
-			title="No bill of materials in this version"
-			message="The BOM is extracted from the schematic's symbol fields. Parts marked 'exclude from BOM' are left out."
+			title={t('bom.emptyTitle')}
+			message={t('bom.emptyMessage')}
 			status={data.commit?.render_status}
 			project={data.project}
 		/>
 	{:else}
 		<!-- Summary -->
 		<div class="mb-3 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm">
-			<span><strong>{totals.lines}</strong> <span class="text-[var(--text-muted)]">line items</span></span>
-			<span><strong>{totals.parts}</strong> <span class="text-[var(--text-muted)]">parts to place</span></span>
+			<span><strong>{totals.lines}</strong> <span class="text-[var(--text-muted)]">{t('bom.lineItems', { count: totals.lines })}</span></span>
+			<span><strong>{totals.parts}</strong> <span class="text-[var(--text-muted)]">{t('bom.partsToPlace', { count: totals.parts })}</span></span>
 			{#if totals.dnp}
 				<span><strong>{totals.dnp}</strong> <span class="text-[var(--text-muted)]">DNP</span></span>
 			{/if}
 			{#if totals.unsourced}
-				<span title="Line items with no MPN field in the schematic">
+				<span title={t('bom.unsourcedTitle')}>
 					<strong style:color="var(--warn)">{totals.unsourced}</strong>
-					<span class="text-[var(--text-muted)]">without an MPN</span>
+					<span class="text-[var(--text-muted)]">{t('bom.unsourced')}</span>
 				</span>
 			{/if}
 			<div class="flex-1"></div>
@@ -179,7 +180,7 @@
 					class="input !py-1.5 !pl-8 text-[0.8125rem]"
 					type="search"
 					bind:value={search}
-					placeholder="Filter by reference, value, footprint or MPN…"
+					placeholder={t('bom.filter')}
 				/>
 			</div>
 
@@ -188,12 +189,12 @@
 					class="select !w-auto !py-1.5 text-[0.8125rem]"
 					value={data.compare?.sha ?? ''}
 					onchange={(event) => setCompare(event.currentTarget.value)}
-					aria-label="Compare with another version"
+					aria-label={t('bom.compareLabel')}
 				>
-					<option value="">No comparison</option>
+					<option value="">{t('viewer3d.compare.none')}</option>
 					{#each data.compareOptions as option}
 						<option value={option.sha}>
-							Compare with {shortSha(option.sha)} · {relativeTime(option.committed_at)}
+							{t('bom.compareWith', { sha: shortSha(option.sha) })} · {relativeTime(option.committed_at)}
 						</option>
 					{/each}
 				</select>
@@ -201,19 +202,19 @@
 
 			{#if data.compare}
 				<label class="flex cursor-pointer items-center gap-1.5 text-xs text-[var(--text-secondary)]">
-					<input type="checkbox" bind:checked={hideUnchanged} /> Changes only
+					<input type="checkbox" bind:checked={hideUnchanged} /> {t('bom.changesOnly')}
 				</label>
 			{/if}
 		</div>
 
 		{#if changeCounts}
 			<div class="mb-3 flex flex-wrap items-center gap-3 rounded-lg border px-3 py-2 text-xs">
-				<span class="text-[var(--text-muted)]">Compared with {shortSha(data.compare!.sha)}:</span>
-				<span style:color="var(--ok)">+{changeCounts.added} added</span>
-				<span style:color="var(--err)">−{changeCounts.removed} removed</span>
-				<span style:color="var(--warn)">~{changeCounts.changed} changed</span>
+				<span class="text-[var(--text-muted)]">{t('bom.comparedWith', { sha: shortSha(data.compare!.sha) })}</span>
+				<span style:color="var(--ok)">+{t('bom.nAdded', { count: changeCounts.added })}</span>
+				<span style:color="var(--err)">−{t('bom.nRemoved', { count: changeCounts.removed })}</span>
+				<span style:color="var(--warn)">~{t('bom.nChanged', { count: changeCounts.changed })}</span>
 				{#if !changeCounts.added && !changeCounts.removed && !changeCounts.changed}
-					<span class="text-[var(--text-muted)]">identical</span>
+					<span class="text-[var(--text-muted)]">{t('bom.identical')}</span>
 				{/if}
 			</div>
 		{/if}
@@ -224,7 +225,7 @@
 				<thead class="sticky top-0 bg-s2 text-xs">
 					<tr>
 						{#if data.compare}<th class="w-6 px-2 py-2"></th>{/if}
-						{#each [['refs', 'References'], ['quantity', 'Qty'], ['value', 'Value'], ['footprint', 'Footprint'], ['mpn', 'MPN']] as [column, label]}
+						{#each [['refs', t('bom.col.refs')], ['quantity', t('bom.col.qty')], ['value', t('bom.col.value')], ['footprint', t('bom.col.footprint')], ['mpn', 'MPN']] as [column, label]}
 							<th class="px-3 py-2 font-semibold">
 								<button
 									class="flex items-center gap-1 hover:text-[var(--accent)]"
@@ -237,7 +238,7 @@
 								</button>
 							</th>
 						{/each}
-						<th class="px-3 py-2 font-semibold">Description</th>
+						<th class="px-3 py-2 font-semibold">{t('bom.col.description')}</th>
 					</tr>
 				</thead>
 				<tbody>
@@ -259,7 +260,7 @@
 							<td class="mono px-3 py-1.5 tabular-nums">
 								{row.quantity}
 								{#if row.change === 'changed' && row.previousQuantity !== undefined && row.previousQuantity !== row.quantity}
-									<span class="text-[0.6875rem] text-[var(--text-muted)]">was {row.previousQuantity}</span>
+									<span class="text-[0.6875rem] text-[var(--text-muted)]">{t('bom.was', { n: row.previousQuantity })}</span>
 								{/if}
 							</td>
 							<td class="px-3 py-1.5 font-medium">{row.value}</td>
@@ -274,7 +275,7 @@
 							<td class="max-w-md truncate px-3 py-1.5 text-[var(--text-secondary)]" title={row.description}>
 								{#if row.datasheet}
 									<a href={row.datasheet} rel="nofollow noopener" target="_blank" class="hover:text-[var(--accent)]">
-										{row.description || 'Datasheet'}
+										{row.description || t('bom.datasheet')}
 										<Icon name="external" size={10} class="inline" />
 									</a>
 								{:else}
@@ -288,7 +289,7 @@
 
 			{#if !filtered.length}
 				<p class="px-4 py-10 text-center text-sm text-[var(--text-muted)]">
-					No line items match that filter.
+					{t('bom.noMatch')}
 				</p>
 			{/if}
 		</div>

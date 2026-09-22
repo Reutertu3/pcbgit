@@ -125,9 +125,9 @@ export function listSnapshots() {
 }
 
 export function snapshotPath(name: string) {
-	if (!isSnapshotName(name)) throw new SnapshotError('Invalid snapshot name.');
+	if (!isSnapshotName(name)) throw new SnapshotError('snapshot.error.badName');
 	const full = path.join(BACKUP_DIR, name);
-	if (!fs.existsSync(full)) throw new SnapshotError('Snapshot not found.');
+	if (!fs.existsSync(full)) throw new SnapshotError('snapshot.error.notFound');
 	return full;
 }
 
@@ -138,7 +138,7 @@ export function deleteBackupEntry(name: string, actorId: string) {
 	} else if (/^pre-restore-[A-Za-z0-9-]+$/.test(name)) {
 		fs.rmSync(path.join(BACKUP_DIR, name), { recursive: true, force: true });
 	} else {
-		throw new SnapshotError('Invalid name.');
+		throw new SnapshotError('snapshot.error.badName');
 	}
 	audit(actorId, 'admin.backup_delete', name);
 }

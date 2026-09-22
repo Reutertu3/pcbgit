@@ -2,6 +2,7 @@
 	import Icon from '$lib/components/Icon.svelte';
 	import EmptyTab from '$lib/components/EmptyTab.svelte';
 	import type { ViolationRow } from '$lib/types';
+	import { t } from '$lib/i18n/t';
 
 	let { data } = $props();
 
@@ -14,10 +15,10 @@
 	const versionQuery = $derived(data.isHead ? '' : `?v=${data.commit?.sha}`);
 
 	const SOURCES: { key: ViolationRow['source']; label: string; hint: string }[] = [
-		{ key: 'drc', label: 'Design rules', hint: 'Clearance, width and manufacturability rules on the board' },
-		{ key: 'unconnected', label: 'Unconnected', hint: 'Ratsnest connections with no copper between them' },
-		{ key: 'schematic_parity', label: 'Schematic parity', hint: 'Differences between the board and the schematic' },
-		{ key: 'erc', label: 'Electrical rules', hint: 'Electrical rule checks run on the schematic' }
+		{ key: 'drc', label: t('checks.drc'), hint: t('checks.drcHint') },
+		{ key: 'unconnected', label: t('checks.unconnected'), hint: t('checks.unconnectedHint') },
+		{ key: 'schematic_parity', label: t('checks.parity'), hint: t('checks.parityHint') },
+		{ key: 'erc', label: t('checks.erc'), hint: t('checks.ercHint') }
 	];
 
 	const counts = $derived.by(() => {
@@ -52,14 +53,14 @@
 	const clean = $derived(data.violations.length === 0 && data.commit?.render_status === 'success');
 
 	const SEVERITY = {
-		error: { color: 'var(--err)', icon: 'alert' as const, label: 'Error' },
-		warning: { color: 'var(--warn)', icon: 'alert' as const, label: 'Warning' },
-		info: { color: 'var(--info)', icon: 'info' as const, label: 'Info' },
-		exclusion: { color: 'var(--text-muted)', icon: 'eyeOff' as const, label: 'Excluded' }
+		error: { color: 'var(--err)', icon: 'alert' as const, label: t('checks.error') },
+		warning: { color: 'var(--warn)', icon: 'alert' as const, label: t('checks.warning') },
+		info: { color: 'var(--info)', icon: 'info' as const, label: t('checks.info') },
+		exclusion: { color: 'var(--text-muted)', icon: 'eyeOff' as const, label: t('checks.excluded') }
 	};
 </script>
 
-<svelte:head><title>Checks · {data.project.name} · {data.site.name}</title></svelte:head>
+<svelte:head><title>{t('tabs.checks')} · {data.project.name} · {data.site.name}</title></svelte:head>
 
 <div class="mx-auto max-w-[1400px] px-4 py-4">
 	{#if clean}
@@ -70,23 +71,23 @@
 			>
 				<Icon name="check" size={24} strokeWidth={2.4} style="color: var(--ok)" />
 			</span>
-			<h2 class="text-base font-semibold">All checks passed</h2>
+			<h2 class="text-base font-semibold">{t('checks.passed')}</h2>
 			<p class="max-w-md text-sm text-[var(--text-secondary)]">
-				KiCad reported no DRC or ERC violations for this version.
+				{t('checks.passedMessage')}
 			</p>
 		</div>
 	{:else if !data.violations.length}
 		<EmptyTab
 			icon="shield"
-			title="No check results for this version"
-			message="DRC runs against the board file and ERC against the schematic. Results appear here once a render completes."
+			title={t('checks.emptyTitle')}
+			message={t('checks.emptyMessage')}
 			status={data.commit?.render_status}
 			project={data.project}
 		/>
 	{:else}
 		<!-- Severity summary -->
 		<div class="mb-4 grid gap-px overflow-hidden rounded-lg border bg-[var(--border-subtle)] sm:grid-cols-4">
-			{#each [['error', 'Errors'], ['warning', 'Warnings'], ['info', 'Info'], ['exclusion', 'Excluded']] as [key, label]}
+			{#each [['error', t('checks.errors')], ['warning', t('checks.warnings')], ['info', t('checks.info')], ['exclusion', t('checks.excluded')]] as [key, label]}
 				{@const severity = key as keyof typeof SEVERITY}
 				<button
 					class="bg-s1 px-3 py-3 text-left transition-colors hover:bg-s2"
@@ -110,15 +111,15 @@
 				<span class="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--text-muted)]">
 					<Icon name="search" size={13} />
 				</span>
-				<input class="input !py-1.5 !pl-8 text-[0.8125rem]" type="search" bind:value={search} placeholder="Filter violations…" />
+				<input class="input !py-1.5 !pl-8 text-[0.8125rem]" type="search" bind:value={search} placeholder={t('checks.filter')} />
 			</div>
-			<select class="select !w-auto !py-1.5 text-[0.8125rem]" bind:value={sourceFilter} aria-label="Filter by check type">
-				<option value="all">All check types</option>
+			<select class="select !w-auto !py-1.5 text-[0.8125rem]" bind:value={sourceFilter} aria-label={t('checks.filterType')}>
+				<option value="all">{t('checks.allTypes')}</option>
 				{#each SOURCES as source}<option value={source.key}>{source.label}</option>{/each}
 			</select>
 			{#if severityFilter !== 'all'}
 				<button class="btn btn-sm" onclick={() => (severityFilter = 'all')}>
-					<Icon name="x" size={12} /> {severityFilter}s only
+					<Icon name="x" size={12} /> {t(severityFilter === 'error' ? 'checks.errorsOnly' : 'checks.warningsOnly')}
 				</button>
 			{/if}
 			<div class="flex-1"></div>
@@ -132,7 +133,7 @@
 
 		{#if !shownCount}
 			<p class="surface px-4 py-10 text-center text-sm text-[var(--text-muted)]">
-				No violations match these filters.
+				{t('checks.noMatch')}
 			</p>
 		{/if}
 
@@ -172,13 +173,13 @@
 										<button
 											class="btn btn-ghost btn-sm !px-1.5"
 											onclick={() => (expanded = { ...expanded, [violation.id]: !open })}
-											title={open ? 'Hide details' : 'Show details'}
+											title={open ? t('checks.hideDetails') : t('checks.showDetails')}
 										>
 											<Icon name="chevronDown" size={12} class={open ? 'rotate-180' : ''} />
 										</button>
 									{/if}
 									{#if violation.x_mm !== null && violation.source !== 'erc'}
-										<a class="btn btn-ghost btn-sm !px-1.5" href="{base}/pcb{versionQuery}" title="Show on the board">
+										<a class="btn btn-ghost btn-sm !px-1.5" href="{base}/pcb{versionQuery}" title={t('checks.showOnBoard')}>
 											<Icon name="board" size={12} />
 										</a>
 									{/if}

@@ -1,4 +1,5 @@
 import { fail } from '@sveltejs/kit';
+import { translate } from '$lib/i18n';
 import type { Actions, PageServerLoad } from './$types';
 import { all, audit, count, get, newId, now, run } from '$lib/server/db';
 import {
@@ -61,17 +62,17 @@ export const actions: Actions = {
 		const role = form.get('role') === 'admin' ? 'admin' : 'user';
 
 		const usernameError = validateUsername(username);
-		if (usernameError) return fail(400, { error: usernameError });
-		if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return fail(400, { error: 'Enter a valid email.' });
-		if (password.length < 8) return fail(400, { error: 'Password must be at least 8 characters.' });
-		if (getUserByUsername(username)) return fail(409, { error: 'That username is taken.' });
+		if (usernameError) return fail(400, { error: translate(locals.locale, usernameError) });
+		if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return fail(400, { error: translate(locals.locale, 'auth.error.email') });
+		if (password.length < 8) return fail(400, { error: translate(locals.locale, 'auth.error.passwordShort') });
+		if (getUserByUsername(username)) return fail(409, { error: translate(locals.locale, 'auth.error.usernameTaken') });
 		if (get('SELECT 1 AS x FROM users WHERE email = ?', email)) {
-			return fail(409, { error: 'That email is already registered.' });
+			return fail(409, { error: translate(locals.locale, 'auth.error.emailTaken') });
 		}
 
 		createUser({ username, email, password, role });
 		audit(locals.user!.id, 'admin.user_create', username, role);
-		return { success: true, message: `Created ${username}.` };
+		return { success: true, message: translate(locals.locale, 'users.created', { name: username }) };
 	},
 
 	setRole: async ({ request, locals }) => {
@@ -80,19 +81,19 @@ export const actions: Actions = {
 		const role = form.get('role') === 'admin' ? 'admin' : 'user';
 
 		if (role === 'user' && isLastAdmin(id)) {
-			return fail(400, { error: 'This is the only active administrator.' });
+			return fail(400, { error: translate(locals.locale, 'users.error.lastAdmin') });
 		}
 		run('UPDATE users SET role = ?, updated_at = ? WHERE id = ?', role, now(), id);
 		audit(locals.user!.id, 'admin.user_role', getUserById(id)?.username ?? id, role);
-		return { success: true, message: 'Role updated.' };
+		return { success: true, message: translate(locals.locale, 'users.roleUpdated') };
 	},
 
 	toggleActive: async ({ request, locals }) => {
 		const id = String((await request.formData()).get('id') ?? '');
 		const user = getUserById(id);
-		if (!user) return fail(404, { error: 'User not found.' });
+		if (!user) return fail(404, { error: translate(locals.locale, 'error.userNotFound') });
 		if (user.is_active && isLastAdmin(id)) {
-			return fail(400, { error: 'This is the only active administrator.' });
+			return fail(400, { error: translate(locals.locale, 'users.error.lastAdmin') });
 		}
 
 		const next = user.is_active ? 0 : 1;
@@ -100,30 +101,30 @@ export const actions: Actions = {
 		// A disabled account should lose its sessions immediately.
 		if (!next) destroyUserSessions(id);
 		audit(locals.user!.id, next ? 'admin.user_enable' : 'admin.user_disable', user.username);
-		return { success: true, message: `${user.username} ${next ? 'enabled' : 'disabled'}.` };
+		return { success: true, message: translate(locals.locale, next ? 'users.enabled' : 'users.disabled', { name: user.username }) };
 	},
 
 	resetPassword: async ({ request, locals }) => {
 		const form = await request.formData();
 		const id = String(form.get('id') ?? '');
 		const password = String(form.get('password') ?? '');
-		if (password.length < 8) return fail(400, { error: 'Password must be at least 8 characters.' });
+		if (password.length < 8) return fail(400, { error: translate(locals.locale, 'auth.error.passwordShort') });
 
 		const user = getUserById(id);
-		if (!user) return fail(404, { error: 'User not found.' });
+		if (!user) return fail(404, { error: translate(locals.locale, 'error.userNotFound') });
 
 		run('UPDATE users SET password_hash = ?, updated_at = ? WHERE id = ?', hashPassword(password), now(), id);
 		destroyUserSessions(id);
 		audit(locals.user!.id, 'admin.user_password_reset', user.username);
-		return { success: true, message: `Password reset for ${user.username}.` };
+		return { success: true, message: translate(locals.locale, 'users.passwordReset', { name: user.username }) };
 	},
 
 	delete: async ({ request, locals }) => {
 		const id = String((await request.formData()).get('id') ?? '');
 		const user = getUserById(id);
-		if (!user) return fail(404, { error: 'User not found.' });
-		if (id === locals.user!.id) return fail(400, { error: 'You cannot delete your own account here.' });
-		if (isLastAdmin(id)) return fail(400, { error: 'This is the only active administrator.' });
+		if (!user) return fail(404, { error: translate(locals.locale, 'error.userNotFound') });
+		if (id === locals.user!.id) return fail(400, { error: translate(locals.locale, 'users.error.self') });
+		if (isLastAdmin(id)) return fail(400, { error: translate(locals.locale, 'users.error.lastAdmin') });
 
 		// Projects cascade, but their bare repositories must go too.
 		const projects = all<{ slug: string }>('SELECT slug FROM projects WHERE owner_id = ?', id);
@@ -132,6 +133,6 @@ export const actions: Actions = {
 
 		run('DELETE FROM users WHERE id = ?', id);
 		audit(locals.user!.id, 'admin.user_delete', user.username, `${projects.length} board(s)`);
-		return { success: true, message: `Deleted ${user.username} and ${projects.length} board(s).` };
+		return { success: true, message: translate(locals.locale, 'users.deleted', { name: user.username, count: projects.length }) };
 	}
 };

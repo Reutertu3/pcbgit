@@ -11,6 +11,7 @@ import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
+import { UserError } from '../i18n';
 
 export const SNAPSHOT_FORMAT = 'pcbgit-snapshot';
 /**
@@ -30,7 +31,7 @@ export interface SnapshotManifest {
 	counts: { users: number; projects: number; commits: number; tags: number };
 }
 
-export class SnapshotError extends Error {}
+export class SnapshotError extends UserError {}
 
 export function stagingDir(dataDir: string) {
 	return path.join(dataDir, 'restore-staging');
@@ -55,25 +56,25 @@ export function checkArchive(file: string) {
 		names = execFileSync('tar', ['-tzf', file], { maxBuffer: 256 * 1024 * 1024 }).toString().split('\n').filter(Boolean);
 		verbose = execFileSync('tar', ['-tvzf', file], { maxBuffer: 256 * 1024 * 1024 }).toString().split('\n').filter(Boolean);
 	} catch {
-		throw new SnapshotError('Not a readable .tar.gz archive.');
+		throw new SnapshotError('snapshot.error.notTar');
 	}
 
 	for (const name of names) {
 		const clean = name.replace(/^\.\//, '');
 		if (clean.startsWith('/') || clean.split('/').includes('..')) {
-			throw new SnapshotError(`Unsafe path in archive: ${name}`);
+			throw new SnapshotError('upload.error.unsafePath', { path: name });
 		}
 		if (!/^(manifest\.json|(pcbgit|kupfergit|pcbhub)\.db|repos(\/.*)?|artifacts(\/.*)?)$/.test(clean)) {
-			throw new SnapshotError(`Unexpected file in archive: ${name}`);
+			throw new SnapshotError('snapshot.error.unexpected', { path: name });
 		}
 	}
 	if (verbose.some((line) => line[0] === 'l' || line[0] === 'h')) {
-		throw new SnapshotError('Archive contains links, which snapshots never do.');
+		throw new SnapshotError('snapshot.error.links');
 	}
 
 	const present = new Set(names.map((name) => name.replace(/^\.\//, '')));
 	if (!present.has('manifest.json') || !['pcbgit.db', ...LEGACY_DBS].some((name) => present.has(name))) {
-		throw new SnapshotError('Archive is missing manifest.json or pcbgit.db — not a pcbgit snapshot.');
+		throw new SnapshotError('snapshot.error.missing');
 	}
 }
 
@@ -82,19 +83,19 @@ export function readManifest(file: string): SnapshotManifest {
 	try {
 		raw = execFileSync('tar', ['-xzOf', file, 'manifest.json']).toString();
 	} catch {
-		throw new SnapshotError('Could not read manifest.json from the archive.');
+		throw new SnapshotError('snapshot.error.manifestRead');
 	}
 	let manifest: SnapshotManifest;
 	try {
 		manifest = JSON.parse(raw);
 	} catch {
-		throw new SnapshotError('manifest.json is not valid JSON.');
+		throw new SnapshotError('snapshot.error.manifestJson');
 	}
 	if (manifest.format !== SNAPSHOT_FORMAT && !(LEGACY_FORMATS as readonly string[]).includes(manifest.format)) {
-		throw new SnapshotError('Not a pcbgit snapshot.');
+		throw new SnapshotError('snapshot.error.notSnapshot');
 	}
 	if (manifest.version > SNAPSHOT_VERSION) {
-		throw new SnapshotError(`Snapshot format v${manifest.version} is newer than this server understands.`);
+		throw new SnapshotError('snapshot.error.newer', { version: manifest.version });
 	}
 	return manifest;
 }
@@ -104,12 +105,12 @@ function checkDatabase(dbPath: string) {
 	try {
 		database = new DatabaseSync(dbPath, { readOnly: true });
 		const result = database.prepare('PRAGMA integrity_check').get() as { integrity_check: string };
-		if (result.integrity_check !== 'ok') throw new SnapshotError(`Database integrity check failed: ${result.integrity_check}`);
+		if (result.integrity_check !== 'ok') throw new SnapshotError('snapshot.error.integrity', { detail: result.integrity_check });
 		const users = database.prepare("SELECT COUNT(*) AS n FROM sqlite_master WHERE type = 'table' AND name IN ('users','projects','commits')").get() as { n: number };
-		if (users.n !== 3) throw new SnapshotError('Database does not contain pcbgit tables.');
+		if (users.n !== 3) throw new SnapshotError('snapshot.error.tables');
 	} catch (error) {
 		if (error instanceof SnapshotError) throw error;
-		throw new SnapshotError(`Database in snapshot cannot be opened: ${(error as Error).message}`);
+		throw new SnapshotError('snapshot.error.dbOpen', { detail: (error as Error).message });
 	} finally {
 		database?.close();
 	}
@@ -133,7 +134,7 @@ export function stageSnapshot(file: string, dataDir: string) {
 	} catch (error) {
 		fs.rmSync(staging, { recursive: true, force: true });
 		if (error instanceof SnapshotError) throw error;
-		throw new SnapshotError(`Extraction failed: ${(error as Error).message}`);
+		throw new SnapshotError('snapshot.error.extract', { detail: (error as Error).message });
 	}
 	// Written last: its presence is what marks the staging area as complete.
 	fs.writeFileSync(path.join(staging, 'READY'), JSON.stringify(manifest));

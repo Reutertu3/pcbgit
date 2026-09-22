@@ -7,6 +7,7 @@
 	import TagChip from '$lib/components/TagChip.svelte';
 	import { formatCount } from '$lib/format';
 	import type { IconName } from '$lib/icons';
+	import { t } from '$lib/i18n/t';
 
 	let { data, children } = $props();
 
@@ -22,20 +23,20 @@
 	}
 
 	const tabs = $derived<Tab[]>([
-		{ href: '', label: 'Overview', icon: 'dashboard' },
-		{ href: '/schematic', label: 'Schematic', icon: 'schematic', muted: !data.tabs.schematic },
-		{ href: '/pcb', label: 'PCB', icon: 'board', muted: !data.tabs.pcb },
+		{ href: '', label: t('tabs.overview'), icon: 'dashboard' },
+		{ href: '/schematic', label: t('tabs.schematic'), icon: 'schematic', muted: !data.tabs.schematic },
+		{ href: '/pcb', label: t('tabs.pcb'), icon: 'board', muted: !data.tabs.pcb },
 		{ href: '/3d', label: '3D', icon: 'cube', muted: !data.tabs.three },
-		{ href: '/bom', label: 'BOM', icon: 'list', badge: data.tabs.bom || undefined, muted: !data.tabs.bom && !data.tabs.ibom },
+		{ href: '/bom', label: t('tabs.bom'), icon: 'list', badge: data.tabs.bom || undefined, muted: !data.tabs.bom && !data.tabs.ibom },
 		{
 			href: '/drc',
-			label: 'Checks',
+			label: t('tabs.checks'),
 			icon: 'shield',
 			badge: data.tabs.drc || undefined,
 			muted: !data.tabs.drc
 		},
-		{ href: '/files', label: 'Files', icon: 'folder' },
-		{ href: '/history', label: 'History', icon: 'history', badge: data.project.commit_count || undefined }
+		{ href: '/files', label: t('tabs.files'), icon: 'folder' },
+		{ href: '/history', label: t('tabs.history'), icon: 'history', badge: data.project.commit_count || undefined }
 	]);
 
 	const activePath = $derived(page.url.pathname.replace(base, '') || '');
@@ -83,7 +84,7 @@
 					<span class="text-[var(--text-muted)]">/</span>
 					<h1 class="text-lg font-semibold tracking-tight">{data.project.name}</h1>
 					{#if data.project.visibility === 'private'}
-						<span class="chip"><Icon name="lock" size={10} /> Private</span>
+						<span class="chip"><Icon name="lock" size={10} /> {t('common.private')}</span>
 					{/if}
 					{#if data.project.license}
 						<span class="chip">{data.project.license}</span>
@@ -114,20 +115,20 @@
 					class:!border-[var(--accent)]={starred}
 					onclick={toggleStar}
 					disabled={!data.user || starring}
-					title={data.user ? (starred ? 'Unstar' : 'Star this board') : 'Sign in to star'}
+					title={data.user ? (starred ? t('board.unstar') : t('board.star')) : t('board.signInToStar')}
 				>
 					<Icon name="star" size={13} fill={starred} />
 					{formatCount(starCount)}
 				</button>
 				{#if data.editable}
-					<a href="{base}/settings" class="btn btn-sm" title="Board settings">
+					<a href="{base}/settings" class="btn btn-sm" title={t('board.settings')}>
 						<Icon name="settings" size={13} />
 					</a>
 				{/if}
 			</div>
 		</div>
 
-		<nav class="-mb-px mt-4 flex gap-0.5 overflow-x-auto" aria-label="Board sections">
+		<nav class="-mb-px mt-4 flex gap-0.5 overflow-x-auto" aria-label={t('board.sections')}>
 			{#each tabs as tab}
 				{@const active = activePath === tab.href}
 				<a

@@ -1,4 +1,5 @@
 import { fail } from '@sveltejs/kit';
+import { translate } from '$lib/i18n';
 import type { Actions, PageServerLoad } from './$types';
 import { all, audit, get, now, run } from '$lib/server/db';
 import { deleteProject, getProjectById, syncCommits } from '$lib/server/projects';
@@ -53,30 +54,30 @@ export const actions: Actions = {
 		const visibility = form.get('visibility') === 'private' ? 'private' : 'public';
 		run('UPDATE projects SET visibility = ?, updated_at = ? WHERE id = ?', visibility, now(), id);
 		audit(locals.user!.id, 'admin.project_visibility', id, visibility);
-		return { success: true, message: `Board is now ${visibility}.` };
+		return { success: true, message: translate(locals.locale, visibility === 'private' ? 'adminBoards.nowPrivate' : 'adminBoards.nowPublic') };
 	},
 
 	rerender: async ({ request, locals }) => {
 		const id = String((await request.formData()).get('id') ?? '');
 		const project = getProjectById(id);
-		if (!project) return fail(404, { error: 'Board not found.' });
-		if (!project.head_commit_id) return fail(400, { error: 'That board has no versions to render.' });
+		if (!project) return fail(404, { error: translate(locals.locale, 'error.boardNotFound') });
+		if (!project.head_commit_id) return fail(400, { error: translate(locals.locale, 'adminBoards.error.noVersions') });
 
 		enqueueRender(project.id, project.head_commit_id);
 		audit(locals.user!.id, 'admin.project_rerender', `${project.owner_username}/${project.slug}`);
-		return { success: true, message: 'Re-render queued.' };
+		return { success: true, message: translate(locals.locale, 'history.rerenderQueued') };
 	},
 
 	resync: async ({ request, locals }) => {
 		const id = String((await request.formData()).get('id') ?? '');
 		const project = getProjectById(id);
-		if (!project) return fail(404, { error: 'Board not found.' });
+		if (!project) return fail(404, { error: translate(locals.locale, 'error.boardNotFound') });
 
 		const result = await syncCommits(project, project.owner_username);
 		audit(locals.user!.id, 'admin.project_resync', `${project.owner_username}/${project.slug}`);
 		return {
 			success: true,
-			message: result.added ? `Indexed ${result.added} new commit(s).` : 'Already up to date.'
+			message: result.added ? translate(locals.locale, 'history.synced', { count: result.added }) : translate(locals.locale, 'history.alreadySynced')
 		};
 	},
 
@@ -86,19 +87,19 @@ export const actions: Actions = {
 		);
 		for (const commit of failed) enqueueRender(commit.project_id, commit.id);
 		audit(locals.user!.id, 'admin.rerender_failed', String(failed.length));
-		return { success: true, message: `Queued ${failed.length} failed render(s).` };
+		return { success: true, message: translate(locals.locale, 'adminBoards.queuedFailed', { count: failed.length }) };
 	},
 
 	delete: async ({ request, locals }) => {
 		const form = await request.formData();
 		const id = String(form.get('id') ?? '');
 		const project = getProjectById(id);
-		if (!project) return fail(404, { error: 'Board not found.' });
+		if (!project) return fail(404, { error: translate(locals.locale, 'error.boardNotFound') });
 		if (String(form.get('confirm') ?? '') !== project.slug) {
-			return fail(400, { error: `Type "${project.slug}" to confirm.` });
+			return fail(400, { error: translate(locals.locale, 'boardForm.error.confirm', { slug: project.slug }) });
 		}
 
 		await deleteProject(project, locals.user!.id);
-		return { success: true, message: `Deleted ${project.owner_username}/${project.slug}.` };
+		return { success: true, message: translate(locals.locale, 'adminBoards.deleted', { name: `${project.owner_username}/${project.slug}` }) };
 	}
 };

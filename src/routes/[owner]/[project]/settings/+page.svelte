@@ -5,6 +5,7 @@
 	import CloneBox from '$lib/components/CloneBox.svelte';
 	import TagPicker from '$lib/components/TagPicker.svelte';
 	import { formatBytes } from '$lib/format';
+	import { t, tParts } from '$lib/i18n/t';
 
 	let { data, form } = $props();
 
@@ -14,7 +15,7 @@
 
 </script>
 
-<svelte:head><title>Settings · {data.project.name} · {data.site.name}</title></svelte:head>
+<svelte:head><title>{t('nav.settings')} · {data.project.name} · {data.site.name}</title></svelte:head>
 
 <div class="mx-auto max-w-3xl px-4 py-6">
 	{#if form?.message}<FormError message={form.message} kind="success" />{/if}
@@ -22,64 +23,65 @@
 
 	<!-- Metadata -->
 	<section class="surface p-5">
-		<h2 class="mb-4 text-sm font-semibold">Board details</h2>
+		<h2 class="mb-4 text-sm font-semibold">{t('boardForm.details')}</h2>
 		<form method="POST" action="?/save" use:enhance>
 			<div class="mb-4">
-				<label class="label" for="name">Name</label>
+				<label class="label" for="name">{t('boardForm.name')}</label>
 				<input class="input" id="name" name="name" value={data.project.name} required />
 			</div>
 
 			<div class="mb-4">
-				<label class="label" for="description">Description</label>
+				<label class="label" for="description">{t('boardForm.description')}</label>
 				<textarea class="textarea" id="description" name="description" maxlength="500">{data.project.description}</textarea>
 			</div>
 
 			<div class="mb-4 grid gap-4 sm:grid-cols-2">
 				<div>
-					<label class="label" for="license">License</label>
+					<label class="label" for="license">{t('boardForm.license')}</label>
 					<select class="select" id="license" name="license">
-						<option value="">No license</option>
+						<option value="">{t('boardForm.noLicense')}</option>
 						{#each data.licenses as license}
 							<option value={license} selected={data.project.license === license}>{license}</option>
 						{/each}
 					</select>
 				</div>
 				<div>
-					<label class="label" for="visibility">Visibility</label>
+					<label class="label" for="visibility">{t('boardForm.visibility')}</label>
 					<select class="select" id="visibility" name="visibility">
-						<option value="public" selected={data.project.visibility === 'public'}>Public</option>
-						<option value="private" selected={data.project.visibility === 'private'}>Private</option>
+						<option value="public" selected={data.project.visibility === 'public'}>{t('common.public')}</option>
+						<option value="private" selected={data.project.visibility === 'private'}>{t('common.private')}</option>
 					</select>
 				</div>
 			</div>
 
 			<div class="mb-4 grid gap-4 sm:grid-cols-2">
 				<div>
-					<label class="label" for="default_branch">Default branch</label>
+					<label class="label" for="default_branch">{t('boardForm.branch')}</label>
 					<input class="input mono" id="default_branch" name="default_branch" value={data.project.default_branch} />
-					<p class="hint">Renders track this branch.</p>
+					<p class="hint">{t('boardForm.branchHint')}</p>
 				</div>
 				<div>
-					<label class="label" for="source_url">Upstream repository</label>
+					<label class="label" for="source_url">{t('overview.upstream')}</label>
 					<input class="input" id="source_url" name="source_url" type="url" value={data.project.source_url} placeholder="https://github.com/…" />
 				</div>
 			</div>
 
 			<div class="mb-4">
-				<span class="label">Tags</span>
+				<span class="label">{t('nav.tags')}</span>
 				<TagPicker tags={data.allTags} selected={data.project.tags.map((tag) => tag.slug)} />
 			</div>
 
-			<button class="btn btn-primary" type="submit">Save changes</button>
+			<button class="btn btn-primary" type="submit">{t('common.saveChanges')}</button>
 		</form>
 	</section>
 
 	<!-- Upload -->
 	<section class="surface mt-4 p-5">
-		<h2 class="mb-1 text-sm font-semibold">Upload a new version</h2>
+		<h2 class="mb-1 text-sm font-semibold">{t('boardForm.uploadTitle')}</h2>
 		<p class="mb-4 text-xs leading-relaxed text-[var(--text-secondary)]">
-			The archive replaces the whole working tree and becomes one commit on
-			<span class="mono">{data.project.default_branch}</span>, exactly as a push would.
+			{#each tParts('boardForm.uploadHint') as part}
+				{#if typeof part === 'string'}{part}{:else}<span class="mono">{data.project.default_branch}</span>{/if}
+			{/each}
 		</p>
 
 		<form
@@ -96,8 +98,8 @@
 			}}
 		>
 			<div class="mb-3">
-				<label class="label" for="message">Version message</label>
-				<input class="input" id="message" name="message" placeholder="Fix USB differential pair impedance" />
+				<label class="label" for="message">{t('boardForm.message')}</label>
+				<input class="input" id="message" name="message" placeholder={t('boardForm.messagePlaceholder')} />
 			</div>
 
 			<label class="traces mb-3 flex cursor-pointer flex-col items-center gap-2 rounded-lg border border-dashed px-4 py-6 text-center">
@@ -106,7 +108,7 @@
 					<span class="mono text-sm">{file.name}</span>
 					<span class="text-xs text-[var(--text-muted)]">{formatBytes(file.size)}</span>
 				{:else}
-					<span class="text-sm">Choose a <span class="mono">.zip</span></span>
+					<span class="text-sm">{#each tParts('boardForm.chooseZip') as part}{#if typeof part === 'string'}{part}{:else}<span class="mono">.zip</span>{/if}{/each}</span>
 				{/if}
 				<input
 					class="sr-only"
@@ -118,13 +120,13 @@
 			</label>
 
 			<button class="btn btn-primary" type="submit" disabled={!file || uploading}>
-				{uploading ? 'Uploading…' : 'Upload version'}
+				{uploading ? t('boardForm.uploading') : t('boardForm.upload')}
 			</button>
 		</form>
 
 		<div class="mt-5 border-t pt-4">
 			<h3 class="mb-2 text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">
-				Or push over git
+				{t('boardForm.orPush')}
 			</h3>
 			<CloneBox url={data.cloneUrl} username={data.user?.username} />
 		</div>
@@ -135,19 +137,20 @@
 		class="mt-4 rounded-lg border p-5"
 		style:border-color="color-mix(in srgb, var(--err) 35%, transparent)"
 	>
-		<h2 class="mb-1 text-sm font-semibold" style:color="var(--err)">Delete this board</h2>
+		<h2 class="mb-1 text-sm font-semibold" style:color="var(--err)">{t('boardForm.deleteTitle')}</h2>
 		<p class="mb-4 text-xs leading-relaxed text-[var(--text-secondary)]">
-			The repository, every version and all rendered output are removed permanently. This cannot be
-			undone.
+			{t('boardForm.deleteHint')}
 		</p>
 		<form method="POST" action="?/delete" use:enhance>
 			<label class="label" for="confirm">
-				Type <span class="mono text-[var(--text-primary)]">{data.project.slug}</span> to confirm
+				{#each tParts('boardForm.typeToConfirm') as part}
+					{#if typeof part === 'string'}{part}{:else}<span class="mono text-[var(--text-primary)]">{data.project.slug}</span>{/if}
+				{/each}
 			</label>
 			<div class="flex flex-wrap gap-2">
 				<input class="input mono !w-auto flex-1" id="confirm" name="confirm" bind:value={confirmText} autocomplete="off" />
 				<button class="btn btn-danger" type="submit" disabled={confirmText !== data.project.slug}>
-					<Icon name="trash" size={13} /> Delete board
+					<Icon name="trash" size={13} /> {t('boardForm.delete')}
 				</button>
 			</div>
 		</form>

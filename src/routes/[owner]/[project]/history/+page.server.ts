@@ -1,4 +1,5 @@
 import { error, fail } from '@sveltejs/kit';
+import { translate } from '$lib/i18n';
 import type { Actions, PageServerLoad } from './$types';
 import { all, get } from '$lib/server/db';
 import { canEdit, getProject, listProjectCommits, syncCommits } from '$lib/server/projects';
@@ -45,8 +46,8 @@ export const load: PageServerLoad = async ({ parent, url }) => {
 export const actions: Actions = {
 	rerender: async ({ params, locals, request }) => {
 		const project = getProject(params.owner, params.project);
-		if (!project) error(404, 'Board not found');
-		if (!canEdit(project, locals.user)) return fail(403, { error: 'You cannot re-render this board.' });
+		if (!project) error(404, 'error.boardNotFound');
+		if (!canEdit(project, locals.user)) return fail(403, { error: translate(locals.locale, 'history.error.rerender') });
 
 		const commitId = String((await request.formData()).get('commit') ?? '');
 		const commit = get<{ id: string }>(
@@ -54,23 +55,23 @@ export const actions: Actions = {
 			commitId,
 			project.id
 		);
-		if (!commit) return fail(404, { error: 'Version not found.' });
+		if (!commit) return fail(404, { error: translate(locals.locale, 'error.versionNotFound') });
 
 		enqueueRender(project.id, commit.id);
-		return { success: true, message: 'Re-render queued.' };
+		return { success: true, message: translate(locals.locale, 'history.rerenderQueued') };
 	},
 
 	resync: async ({ params, locals }) => {
 		const project = getProject(params.owner, params.project);
-		if (!project) error(404, 'Board not found');
-		if (!canEdit(project, locals.user)) return fail(403, { error: 'You cannot sync this board.' });
+		if (!project) error(404, 'error.boardNotFound');
+		if (!canEdit(project, locals.user)) return fail(403, { error: translate(locals.locale, 'history.error.sync') });
 
 		const result = await syncCommits(project, project.owner_username);
 		return {
 			success: true,
 			message: result.added
-				? `Found ${result.added} new commit${result.added === 1 ? '' : 's'}.`
-				: 'Already up to date with the repository.'
+				? translate(locals.locale, 'history.synced', { count: result.added })
+				: translate(locals.locale, 'history.alreadySynced')
 		};
 	}
 };

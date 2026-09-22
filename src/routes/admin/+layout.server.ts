@@ -6,7 +6,7 @@ import { updateAvailability } from '$lib/server/updater';
 
 export const load: LayoutServerLoad = async ({ locals, url }) => {
 	if (!locals.user) redirect(303, `/login?next=${encodeURIComponent(url.pathname)}`);
-	if (locals.user.role !== 'admin') error(403, 'Administrator access required');
+	if (locals.user.role !== 'admin') error(403, 'error.adminOnly');
 
 	return {
 		badges: {

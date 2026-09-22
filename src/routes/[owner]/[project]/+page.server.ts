@@ -1,4 +1,5 @@
 import { error, fail } from '@sveltejs/kit';
+import { translate } from '$lib/i18n';
 import type { Actions, PageServerLoad } from './$types';
 import { all } from '$lib/server/db';
 import { listTree, readBlob } from '$lib/server/git';
@@ -66,10 +67,10 @@ export const load: PageServerLoad = async ({ params, locals, url, parent }) => {
 
 export const actions: Actions = {
 	comment: async ({ request, params, locals }) => {
-		if (!locals.user) return fail(401, { error: 'Sign in to comment.', parentId: '' });
+		if (!locals.user) return fail(401, { error: translate(locals.locale, 'comments.error.signIn'), parentId: '' });
 
 		const project = getProject(params.owner, params.project);
-		if (!project || !canView(project, locals.user)) error(404, 'Board not found');
+		if (!project || !canView(project, locals.user)) error(404, 'error.boardNotFound');
 
 		const form = await request.formData();
 		const parentId = String(form.get('parent_id') ?? '') || null;
@@ -77,22 +78,22 @@ export const actions: Actions = {
 			const { id } = addComment(project.id, locals.user.id, String(form.get('body') ?? ''), parentId);
 			return { success: true, commentId: id };
 		} catch (thrown) {
-			if (thrown instanceof CommentError) return fail(400, { error: thrown.message, parentId: parentId ?? '' });
+			if (thrown instanceof CommentError) return fail(400, { error: thrown.in(locals.locale), parentId: parentId ?? '' });
 			throw thrown;
 		}
 	},
 
 	deleteComment: async ({ request, params, locals }) => {
-		if (!locals.user) return fail(401, { error: 'Sign in first.', parentId: '' });
+		if (!locals.user) return fail(401, { error: translate(locals.locale, 'error.signInFirst'), parentId: '' });
 		const project = getProject(params.owner, params.project);
-		if (!project) error(404, 'Board not found');
+		if (!project) error(404, 'error.boardNotFound');
 
 		const id = String((await request.formData()).get('id') ?? '');
 		try {
 			removeComment(project.id, id, locals.user);
 			return { success: true };
 		} catch (thrown) {
-			if (thrown instanceof CommentError) return fail(403, { error: thrown.message, parentId: '' });
+			if (thrown instanceof CommentError) return fail(403, { error: thrown.in(locals.locale), parentId: '' });
 			throw thrown;
 		}
 	}

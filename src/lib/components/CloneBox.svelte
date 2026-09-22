@@ -1,5 +1,6 @@
 <script lang="ts">
 	import Icon from './Icon.svelte';
+	import { t, tParts } from '$lib/i18n/t';
 
 	interface Props {
 		url: string;
@@ -29,7 +30,7 @@
 <div class="surface overflow-hidden">
 	<div class="flex items-center gap-1 border-b px-2 py-1.5">
 		<Icon name="git" size={13} class="mx-1 text-[var(--text-muted)]" />
-		{#each [['clone', 'Clone'], ['push', 'Push existing']] as [value, label]}
+		{#each [['clone', t('clone.clone')], ['push', t('clone.push')]] as [value, label]}
 			<button
 				class="rounded px-2 py-1 text-xs transition-colors"
 				class:bg-s3={tab === value}
@@ -41,16 +42,17 @@
 			</button>
 		{/each}
 		<div class="flex-1"></div>
-		<button class="btn btn-ghost btn-sm" onclick={copy} title="Copy to clipboard">
+		<button class="btn btn-ghost btn-sm" onclick={copy} title={t('common.copyToClipboard')}>
 			<Icon name={copied ? 'check' : 'copy'} size={12} />
-			{copied ? 'Copied' : 'Copy'}
+			{copied ? t('common.copied') : t('common.copy')}
 		</button>
 	</div>
 	<pre class="mono overflow-x-auto bg-[var(--surface-0)] px-3 py-2.5 text-[0.75rem] leading-relaxed text-[var(--text-secondary)]">{text}</pre>
 	<p class="border-t px-3 py-2 text-[0.6875rem] leading-relaxed text-[var(--text-muted)]">
-		Pushing asks for a username and password. Use
-		{#if username}<span class="mono text-[var(--text-secondary)]">{username}</span>{:else}your username{/if}
-		and a <a href="/settings/tokens" class="text-[var(--accent)] hover:underline">personal access token</a>.
-		Every push renders automatically.
+		{#each tParts('clone.hint') as part}
+			{#if typeof part === 'string'}{part}{:else if part.slot === 'user'}
+				{#if username}<span class="mono text-[var(--text-secondary)]">{username}</span>{:else}{t('clone.yourUsername')}{/if}
+			{:else}<a href="/settings/tokens" class="text-[var(--accent)] hover:underline">{t('clone.token')}</a>{/if}
+		{/each}
 	</p>
 </div>

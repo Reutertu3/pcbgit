@@ -6,7 +6,7 @@ import { browseProjects } from '$lib/server/projects';
 
 export const load: PageServerLoad = async ({ params, locals, url }) => {
 	const owner = getUserByUsername(params.owner);
-	if (!owner || (!owner.is_active && locals.user?.role !== 'admin')) error(404, 'User not found');
+	if (!owner || (!owner.is_active && locals.user?.role !== 'admin')) error(404, 'error.userNotFound');
 
 	const result = browseProjects({
 		viewer: locals.user,

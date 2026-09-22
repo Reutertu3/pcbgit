@@ -26,7 +26,7 @@ export function loadProjectContext(
 	versionParam: string | null
 ): ProjectContext {
 	const project = getProject(owner, slug);
-	if (!project || !canView(project, viewer)) error(404, 'Board not found');
+	if (!project || !canView(project, viewer)) error(404, 'error.boardNotFound');
 
 	const versions = all<ProjectContext['versions'][number]>(
 		`SELECT id, sha, message, committed_at, render_status FROM commits
@@ -49,7 +49,7 @@ export function loadProjectContext(
 				`${versionParam}%`
 			) ??
 			null;
-		if (!commit) error(404, 'Version not found');
+		if (!commit) error(404, 'error.versionNotFound');
 	} else if (project.head_commit_id) {
 		commit = get<CommitSummary>('SELECT * FROM commits WHERE id = ?', project.head_commit_id) ?? null;
 	}

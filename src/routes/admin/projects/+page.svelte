@@ -4,6 +4,7 @@
 	import StatusDot from '$lib/components/StatusDot.svelte';
 	import FormError from '$lib/components/FormError.svelte';
 	import { formatBytes, relativeTime } from '$lib/format';
+	import { t, tParts } from '$lib/i18n/t';
 
 	let { data, form } = $props();
 
@@ -11,17 +12,17 @@
 	let confirmText = $state('');
 </script>
 
-<svelte:head><title>Boards · Admin · {data.site.name}</title></svelte:head>
+<svelte:head><title>{t('admin.nav.boards')} · {t('admin.title')} · {data.site.name}</title></svelte:head>
 
 <div class="mb-4 flex flex-wrap items-center justify-between gap-2">
-	<h2 class="text-lg font-semibold tracking-tight">Boards</h2>
+	<h2 class="text-lg font-semibold tracking-tight">{t('admin.nav.boards')}</h2>
 	<div class="flex gap-2">
 		<form method="GET">
-			<input class="input !w-48 !py-1.5 text-[0.8125rem]" type="search" name="q" value={data.search} placeholder="Search boards…" />
+			<input class="input !w-48 !py-1.5 text-[0.8125rem]" type="search" name="q" value={data.search} placeholder={t('nav.search')} />
 		</form>
 		<form method="POST" action="?/rerenderFailed" use:enhance>
-			<button class="btn btn-sm" type="submit" title="Queue a re-render for every failed version">
-				<Icon name="refresh" size={13} /> Retry failed
+			<button class="btn btn-sm" type="submit" title={t('adminBoards.retryFailedTitle')}>
+				<Icon name="refresh" size={13} /> {t('adminBoards.retryFailed')}
 			</button>
 		</form>
 	</div>
@@ -34,12 +35,12 @@
 	<table class="w-full text-left text-[0.8125rem]">
 		<thead class="bg-s2 text-xs">
 			<tr>
-				<th class="px-3 py-2 font-semibold">Board</th>
-				<th class="px-3 py-2 font-semibold">Visibility</th>
-				<th class="px-3 py-2 font-semibold">Versions</th>
-				<th class="px-3 py-2 font-semibold">Stars</th>
-				<th class="px-3 py-2 font-semibold">Artifacts</th>
-				<th class="px-3 py-2 font-semibold">Updated</th>
+				<th class="px-3 py-2 font-semibold">{t('adminBoards.board')}</th>
+				<th class="px-3 py-2 font-semibold">{t('boardForm.visibility')}</th>
+				<th class="px-3 py-2 font-semibold">{t('admin.card.versions')}</th>
+				<th class="px-3 py-2 font-semibold">{t('adminBoards.stars')}</th>
+				<th class="px-3 py-2 font-semibold">{t('overview.artifacts')}</th>
+				<th class="px-3 py-2 font-semibold">{t('adminBoards.updated')}</th>
 				<th class="px-3 py-2"></th>
 			</tr>
 		</thead>
@@ -63,8 +64,8 @@
 								value={project.visibility}
 								onchange={(event) => event.currentTarget.form?.requestSubmit()}
 							>
-								<option value="public">Public</option>
-								<option value="private">Private</option>
+								<option value="public">{t('common.public')}</option>
+								<option value="private">{t('common.private')}</option>
 							</select>
 						</form>
 					</td>
@@ -76,13 +77,13 @@
 						<div class="flex justify-end gap-1">
 							<form method="POST" action="?/resync" use:enhance>
 								<input type="hidden" name="id" value={project.id} />
-								<button class="btn btn-sm" type="submit" title="Index commits pushed outside the app">
+								<button class="btn btn-sm" type="submit" title={t('adminBoards.resync')}>
 									<Icon name="git" size={12} />
 								</button>
 							</form>
 							<form method="POST" action="?/rerender" use:enhance>
 								<input type="hidden" name="id" value={project.id} />
-								<button class="btn btn-sm" type="submit" title="Re-render the current version">
+								<button class="btn btn-sm" type="submit" title={t('adminBoards.rerender')}>
 									<Icon name="refresh" size={12} />
 								</button>
 							</form>
@@ -92,7 +93,7 @@
 									confirmDelete = confirmDelete === project.id ? null : project.id;
 									confirmText = '';
 								}}
-								title="Delete board"
+								title={t('boardForm.delete')}
 							>
 								<Icon name="trash" size={12} />
 							</button>
@@ -109,14 +110,13 @@
 							}} class="flex flex-wrap items-center gap-2">
 								<input type="hidden" name="id" value={project.id} />
 								<span class="text-xs">
-									Type <span class="mono font-semibold">{project.slug}</span> to delete this board, its
-									repository and all rendered output:
+									{#each tParts('adminBoards.deleteConfirm') as part}{#if typeof part === 'string'}{part}{:else}<span class="mono font-semibold">{project.slug}</span>{/if}{/each}
 								</span>
 								<input class="input mono !w-40 !py-1" name="confirm" bind:value={confirmText} autocomplete="off" />
 								<button class="btn btn-danger btn-sm" type="submit" disabled={confirmText !== project.slug}>
-									Delete permanently
+									{t('users.deletePermanently')}
 								</button>
-								<button class="btn btn-ghost btn-sm" type="button" onclick={() => (confirmDelete = null)}>Cancel</button>
+								<button class="btn btn-ghost btn-sm" type="button" onclick={() => (confirmDelete = null)}>{t('common.cancel')}</button>
 							</form>
 						</td>
 					</tr>
@@ -125,6 +125,6 @@
 		</tbody>
 	</table>
 	{#if !data.projects.length}
-		<p class="px-4 py-10 text-center text-sm text-[var(--text-muted)]">No boards match that search.</p>
+		<p class="px-4 py-10 text-center text-sm text-[var(--text-muted)]">{t('adminBoards.noMatch')}</p>
 	{/if}
 </div>

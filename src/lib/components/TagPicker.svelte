@@ -1,4 +1,7 @@
 <script lang="ts">
+	import { t } from '$lib/i18n/t';
+	import type { MessageKey } from '$lib/i18n';
+
 	interface PickerTag {
 		slug: string;
 		name: string;
@@ -13,12 +16,12 @@
 	}
 	let { tags, selected, name = 'tags' }: Props = $props();
 
-	const LABELS: Record<string, string> = {
-		component: 'Components',
-		interface: 'Interfaces',
-		domain: 'Application',
-		process: 'Fabrication',
-		general: 'Other'
+	const LABELS: Record<string, MessageKey> = {
+		component: 'tagCategory.component',
+		interface: 'tagCategory.interface',
+		domain: 'tagCategory.domain',
+		process: 'tagCategory.process',
+		general: 'tagCategory.general'
 	};
 
 	// Seeded from the prop; after that the checkboxes are the source of truth.
@@ -35,13 +38,13 @@
 </script>
 
 {#if !tags.length}
-	<p class="hint">No tags exist yet. An administrator can create them in the admin panel.</p>
+	<p class="hint">{t('tagPicker.none')}</p>
 {:else}
 	<div class="flex flex-col gap-2.5">
 		{#each groups as group}
 			<fieldset>
 				<legend class="mb-1 text-[0.625rem] uppercase tracking-wide text-[var(--text-muted)]">
-					{LABELS[group.category]}
+					{t(LABELS[group.category])}
 				</legend>
 				<div class="flex flex-wrap gap-1.5">
 					{#each group.tags as tag}
@@ -56,7 +59,7 @@
 			</fieldset>
 		{/each}
 	</div>
-	<p class="hint">{chosen.length} selected. Tags are managed by administrators.</p>
+	<p class="hint">{t('tagPicker.selected', { count: chosen.length })}</p>
 {/if}
 
 <style>

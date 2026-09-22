@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { t } from '$lib/i18n/t';
 	import Icon from '$lib/components/Icon.svelte';
 	import Avatar from '$lib/components/Avatar.svelte';
 	import StatusDot from '$lib/components/StatusDot.svelte';
@@ -31,7 +32,7 @@
 				{#if project.has_schematic && schematicSrc}
 					<img
 						src={schematicSrc}
-						alt="Schematic preview of {project.name}"
+						alt={t('card.schematicAlt', { name: project.name })}
 						class="h-full w-full object-contain p-2 opacity-90 transition-transform duration-300 group-hover:scale-[1.04]"
 						loading="lazy"
 						decoding="async"
@@ -52,7 +53,7 @@
 				{#if project.has_pcb && previewSrc}
 					<img
 						src={previewSrc}
-						alt="Board preview of {project.name}"
+						alt={t('card.boardAlt', { name: project.name })}
 						class="h-full w-full object-contain p-2 transition-transform duration-300 group-hover:scale-[1.04]"
 						loading="lazy"
 						decoding="async"
@@ -72,7 +73,7 @@
 
 		{#if project.visibility === 'private'}
 			<span class="chip absolute right-1.5 top-1.5 !bg-black/60 !text-white/85">
-				<Icon name="lock" size={10} /> Private
+				<Icon name="lock" size={10} /> {t('common.private')}
 			</span>
 		{/if}
 	</a>
@@ -116,7 +117,7 @@
 		<div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-[0.6875rem] text-[var(--text-muted)]">
 			{#if dimensions}<span class="flex items-center gap-1"><Icon name="ruler" size={11} />{dimensions}</span>{/if}
 			{#if project.layer_count}<span class="flex items-center gap-1"><Icon name="layers" size={11} />{project.layer_count}L</span>{/if}
-			{#if project.part_count}<span class="flex items-center gap-1"><Icon name="chip" size={11} />{project.part_count} parts</span>{/if}
+			{#if project.part_count}<span class="flex items-center gap-1"><Icon name="chip" size={11} />{t('card.parts', { count: project.part_count })}</span>{/if}
 			{#if project.drc_errors > 0}
 				<span class="flex items-center gap-1" style:color="var(--err)">
 					<Icon name="alert" size={11} />{project.drc_errors} DRC
@@ -126,10 +127,10 @@
 
 		<div class="flex items-center justify-between border-t pt-2 text-[0.6875rem] text-[var(--text-muted)]">
 			<div class="flex items-center gap-3">
-				<span class="flex items-center gap-1" title="{project.star_count} stars">
+				<span class="flex items-center gap-1" title={t('card.stars', { count: project.star_count })}>
 					<Icon name="star" size={11} />{formatCount(project.star_count)}
 				</span>
-				<span class="flex items-center gap-1" title="{project.commit_count} versions">
+				<span class="flex items-center gap-1" title={t('card.versions', { count: project.commit_count })}>
 					<Icon name="history" size={11} />{formatCount(project.commit_count)}
 				</span>
 				{#if project.comment_count}

@@ -1,4 +1,5 @@
 import { fail } from '@sveltejs/kit';
+import { translate } from '$lib/i18n';
 import type { Actions, PageServerLoad } from './$types';
 import { audit, count, get, newId, now, run } from '$lib/server/db';
 import { CATEGORY_COLORS, isTagColor, listTags, slugify } from '$lib/server/projects';
@@ -19,11 +20,11 @@ export const actions: Actions = {
 		const description = String(form.get('description') ?? '').trim().slice(0, 200);
 		const color = String(form.get('color') ?? '');
 		const slug = slugify(name);
-		if (!isTagColor(color)) return fail(400, { error: 'Pick a colour for the tag.' });
+		if (!isTagColor(color)) return fail(400, { error: translate(locals.locale, 'adminTags.error.colour') });
 
-		if (!slug) return fail(400, { error: 'Give the tag a name.' });
+		if (!slug) return fail(400, { error: translate(locals.locale, 'adminTags.error.name') });
 		if (get('SELECT 1 AS x FROM tags WHERE slug = ?', slug)) {
-			return fail(409, { error: `A tag "${slug}" already exists.` });
+			return fail(409, { error: translate(locals.locale, 'adminTags.error.exists', { slug }) });
 		}
 
 		run(
@@ -37,7 +38,7 @@ export const actions: Actions = {
 			now()
 		);
 		audit(locals.user!.id, 'admin.tag_create', slug);
-		return { success: true, message: `Created tag "${name}".` };
+		return { success: true, message: translate(locals.locale, 'adminTags.created', { name }) };
 	},
 
 	update: async ({ request, locals }) => {
@@ -46,8 +47,8 @@ export const actions: Actions = {
 		const name = String(form.get('name') ?? '').trim();
 		const category = CATEGORIES.includes(String(form.get('category'))) ? String(form.get('category')) : 'general';
 		const color = String(form.get('color') ?? '');
-		if (!name) return fail(400, { error: 'Tag name cannot be empty.' });
-		if (!isTagColor(color)) return fail(400, { error: 'Pick a colour for the tag.' });
+		if (!name) return fail(400, { error: translate(locals.locale, 'adminTags.error.name') });
+		if (!isTagColor(color)) return fail(400, { error: translate(locals.locale, 'adminTags.error.colour') });
 
 		run(
 			'UPDATE tags SET name = ?, category = ?, color = ?, description = ? WHERE id = ?',
@@ -58,7 +59,7 @@ export const actions: Actions = {
 			id
 		);
 		audit(locals.user!.id, 'admin.tag_update', name);
-		return { success: true, message: 'Tag updated.' };
+		return { success: true, message: translate(locals.locale, 'adminTags.updated') };
 	},
 
 	delete: async ({ request, locals }) => {
@@ -67,7 +68,7 @@ export const actions: Actions = {
 		// project_tags cascades, so the tag simply disappears from every board.
 		run('DELETE FROM tags WHERE id = ?', id);
 		audit(locals.user!.id, 'admin.tag_delete', tag?.slug ?? id);
-		return { success: true, message: 'Tag deleted.' };
+		return { success: true, message: translate(locals.locale, 'adminTags.deleted') };
 	},
 
 	prune: async ({ locals }) => {
@@ -75,6 +76,6 @@ export const actions: Actions = {
 			'DELETE FROM tags WHERE NOT EXISTS (SELECT 1 FROM project_tags pt WHERE pt.tag_id = tags.id)'
 		);
 		audit(locals.user!.id, 'admin.tag_prune', String(removed.changes));
-		return { success: true, message: `Removed ${removed.changes} unused tag(s).` };
+		return { success: true, message: translate(locals.locale, 'adminTags.pruned', { count: Number(removed.changes) }) };
 	}
 };

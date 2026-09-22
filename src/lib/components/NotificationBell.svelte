@@ -2,6 +2,7 @@
 	import { goto } from '$app/navigation';
 	import Icon from './Icon.svelte';
 	import { relativeTime } from '$lib/format';
+	import { t, tParts } from '$lib/i18n/t';
 	import type { NotificationView } from '$lib/types';
 
 	interface Props {
@@ -84,10 +85,10 @@
 			event.stopPropagation();
 			toggle();
 		}}
-		aria-label={count ? `Notifications, ${count} unread` : 'Notifications'}
+		aria-label={count ? t('notifications.unreadLabel', { count }) : t('notifications.title')}
 		aria-haspopup="dialog"
 		aria-expanded={open}
-		title="Notifications"
+		title={t('notifications.title')}
 	>
 		<Icon name="bell" size={16} />
 		{#if count > 0}
@@ -100,29 +101,29 @@
 		<div
 			class="surface-raised absolute right-0 top-full z-50 mt-1.5 w-[22rem] max-w-[calc(100vw-2rem)] overflow-hidden shadow-xl"
 			role="dialog"
-			aria-label="Notifications"
+			aria-label={t('notifications.title')}
 			tabindex="-1"
 			onclick={(event) => event.stopPropagation()}
 		>
 			<div class="flex items-center justify-between border-b px-3 py-2">
-				<h2 class="text-sm font-semibold">Notifications</h2>
+				<h2 class="text-sm font-semibold">{t('notifications.title')}</h2>
 				<button
 					class="text-xs text-[var(--accent)] hover:underline disabled:cursor-default disabled:text-[var(--text-muted)] disabled:no-underline"
 					onclick={markAll}
 					disabled={count === 0}
 				>
-					Mark all as read
+					{t('notifications.markAll')}
 				</button>
 			</div>
 
 			<div class="max-h-[26rem] overflow-y-auto">
 				{#if loading && !items.length}
-					<p class="px-3 py-6 text-center text-xs text-[var(--text-muted)]">Loading…</p>
+					<p class="px-3 py-6 text-center text-xs text-[var(--text-muted)]">{t('common.loading')}</p>
 				{:else if failed}
-					<p class="px-3 py-6 text-center text-xs" style:color="var(--err)">Could not load notifications.</p>
+					<p class="px-3 py-6 text-center text-xs" style:color="var(--err)">{t('notifications.loadFailed')}</p>
 				{:else if !items.length}
 					<p class="px-3 py-8 text-center text-xs text-[var(--text-muted)]">
-						No notifications yet. Comments on your boards and replies to you appear here.
+						{t('notifications.empty')}
 					</p>
 				{:else}
 					<ul class="divide-y">
@@ -131,9 +132,11 @@
 								<span class="dot mt-1.5" aria-hidden="true"></span>
 								<button class="min-w-0 flex-1 text-left" onclick={() => openItem(item)}>
 									<span class="block text-xs leading-snug text-[var(--text-secondary)]">
-										<strong class="font-semibold text-[var(--text-primary)]">{item.actor}</strong>
-										{item.kind === 'reply' ? 'replied to your comment on' : 'commented on'}
-										<strong class="font-semibold text-[var(--text-primary)]">{item.project_name}</strong>
+										{#each tParts(item.kind === 'reply' ? 'notifications.reply' : 'notifications.comment') as part}
+											{#if typeof part === 'string'}{part}{:else}<strong class="font-semibold text-[var(--text-primary)]"
+													>{part.slot === 'actor' ? item.actor : item.project_name}</strong
+												>{/if}
+										{/each}
 									</span>
 									<span class="excerpt mt-0.5 block text-xs text-[var(--text-muted)]">“{item.excerpt}”</span>
 									<span class="mt-0.5 block text-[0.6875rem] text-[var(--text-muted)]">{relativeTime(item.created_at)}</span>
@@ -142,8 +145,8 @@
 									<button
 										class="mt-0.5 rounded p-1 text-[var(--text-muted)] hover:bg-s2 hover:text-[var(--accent)]"
 										onclick={() => markOne(item)}
-										title="Mark as read"
-										aria-label="Mark as read"
+										title={t('notifications.markRead')}
+										aria-label={t('notifications.markRead')}
 									>
 										<Icon name="check" size={13} />
 									</button>

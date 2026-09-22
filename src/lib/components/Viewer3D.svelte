@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import Icon from './Icon.svelte';
+	import { t } from '$lib/i18n/t';
 
 	interface Props {
 		url: string;
@@ -32,8 +33,8 @@
 	] as const;
 	/** Surface finish of the exposed pads. Roughness is a uniform too, so switching is free. */
 	const FINISHES = [
-		{ id: 'hasl', label: 'HASL', title: 'Solder (HASL)', color: '#c3c6c9', roughness: 0.34 },
-		{ id: 'enig', label: 'ENIG', title: 'Immersion gold (ENIG)', color: '#dcb65e', roughness: 0.2 }
+		{ id: 'hasl', label: 'HASL', title: 'viewer3d.finish.hasl', color: '#c3c6c9', roughness: 0.34 },
+		{ id: 'enig', label: 'ENIG', title: 'viewer3d.finish.enig', color: '#dcb65e', roughness: 0.2 }
 	] as const;
 	type MaskId = (typeof MASKS)[number]['id'];
 	type SilkId = (typeof SILKS)[number]['id'];
@@ -60,10 +61,10 @@
 
 	/* View options panel */
 	const COMPARISONS = [
-		{ id: 'none', label: 'No comparison' },
-		{ id: 'card', label: 'Bank card' },
-		{ id: 'coin', label: '1 € coin' },
-		{ id: 'banana', label: 'Banana' }
+		{ id: 'none', label: 'viewer3d.compare.none' },
+		{ id: 'card', label: 'viewer3d.compare.card' },
+		{ id: 'coin', label: 'viewer3d.compare.coin' },
+		{ id: 'banana', label: 'viewer3d.compare.banana' }
 	] as const;
 	type CompareId = (typeof COMPARISONS)[number]['id'];
 	let showSmd = $state(true);
@@ -80,8 +81,8 @@
 
 	/* Image export */
 	const EXPORT_SIZES = [
-		{ id: 'view2', label: 'Viewport ×2', scale: 2 },
-		{ id: 'view4', label: 'Viewport ×4', scale: 4 },
+		{ id: 'view2', label: 'viewer3d.size.view2', scale: 2 },
+		{ id: 'view4', label: 'viewer3d.size.view4', scale: 4 },
 		{ id: 'fhd', label: '1920 × 1080', width: 1920, height: 1080 },
 		{ id: 'uhd', label: '3840 × 2160 (4K)', width: 3840, height: 2160 },
 		{ id: 'square', label: '2048 × 2048', width: 2048, height: 2048 }
@@ -114,7 +115,7 @@
 		caption: false
 	});
 	let exportImage = $state<(options: ExportOptions) => Promise<Blob>>(async () => {
-		throw new Error('The viewer is not ready yet.');
+		throw new Error(t('viewer3d.notReady'));
 	});
 
 	/** Pixel size an option resolves to, clamped to what browsers can render. */
@@ -140,7 +141,7 @@
 			setTimeout(() => URL.revokeObjectURL(link.href), 10_000);
 			exportOpen = false;
 		} catch (error) {
-			exportError = error instanceof Error ? error.message : 'Export failed.';
+			exportError = error instanceof Error ? error.message : t('viewer3d.exportFailed');
 		} finally {
 			exporting = false;
 		}
@@ -188,12 +189,12 @@
 
 	/** Face orientation (right, up) chosen so every label reads upright. */
 	const FACE_BASIS: Record<string, { label: string; x: Vec3; y: Vec3 }> = {
-		'0,1,0': { label: 'Top', x: [1, 0, 0], y: [0, 0, -1] },
-		'0,-1,0': { label: 'Bottom', x: [1, 0, 0], y: [0, 0, 1] },
-		'0,0,1': { label: 'Front', x: [1, 0, 0], y: [0, 1, 0] },
-		'0,0,-1': { label: 'Back', x: [-1, 0, 0], y: [0, 1, 0] },
-		'1,0,0': { label: 'Right', x: [0, 0, -1], y: [0, 1, 0] },
-		'-1,0,0': { label: 'Left', x: [0, 0, 1], y: [0, 1, 0] }
+		'0,1,0': { label: 'viewer3d.cube.top', x: [1, 0, 0], y: [0, 0, -1] },
+		'0,-1,0': { label: 'viewer3d.cube.bottom', x: [1, 0, 0], y: [0, 0, 1] },
+		'0,0,1': { label: 'viewer3d.cube.front', x: [1, 0, 0], y: [0, 1, 0] },
+		'0,0,-1': { label: 'viewer3d.cube.back', x: [-1, 0, 0], y: [0, 1, 0] },
+		'1,0,0': { label: 'viewer3d.cube.right', x: [0, 0, -1], y: [0, 1, 0] },
+		'-1,0,0': { label: 'viewer3d.cube.left', x: [0, 0, 1], y: [0, 1, 0] }
 	};
 
 	const sub = (a: Vec3, b: Vec3): Vec3 => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
@@ -280,6 +281,13 @@
 			shade: Math.round(55 + 35 * n[1])
 		};
 	}
+
+	/** "top-front" → "Top-Front" in the viewer's language. */
+	const facetName = (facet: Facet) =>
+		facet.name
+			.split('-')
+			.map((part) => t(`viewer3d.cube.${part}` as 'viewer3d.cube.top'))
+			.join('-');
 
 	const FACETS: Facet[] = [];
 	for (const sx of [-1, 0, 1]) for (const sy of [-1, 0, 1]) for (const sz of [-1, 0, 1]) {
@@ -890,7 +898,7 @@
 			 * over the chosen background together with the ruler labels and caption.
 			 */
 			exportImage = async (options) => {
-				if (!host) throw new Error('The viewer is not ready yet.');
+				if (!host) throw new Error(t('viewer3d.notReady'));
 				const { width, height, keepsFraming } = exportDimensions(options.size);
 				const saved = {
 					position: camera.position.clone(),
@@ -967,7 +975,7 @@
 
 					const type = `image/${options.format}`;
 					const blob = await new Promise<Blob | null>((resolve) => shot.toBlob(resolve, type, 0.92));
-					if (!blob) throw new Error('The browser could not encode the image.');
+					if (!blob) throw new Error(t('viewer3d.encodeFailed'));
 					return blob;
 				} finally {
 					renderer.setPixelRatio(saved.pixelRatio);
@@ -1075,7 +1083,7 @@
 					if (event.total) progress = Math.round((event.loaded / event.total) * 100);
 				},
 				() => {
-					if (!disposed) error = 'The 3D model could not be loaded.';
+					if (!disposed) error = t('viewer3d.loadFailed');
 				}
 			);
 
@@ -1107,7 +1115,7 @@
 			};
 		})().catch((thrown) => {
 			console.error(thrown);
-			if (!disposed) error = 'Neither WebGPU nor WebGL 2 is available in this browser.';
+			if (!disposed) error = t('viewer3d.noWebgl');
 		});
 
 		return () => {
@@ -1130,45 +1138,45 @@
 		<div class="absolute left-2 top-2 flex flex-col items-start gap-2">
 			{#if recolorable}
 				<div class="flex flex-col gap-1.5 rounded-md border bg-[var(--surface-1)]/92 px-2 py-1.5">
-					<div class="flex items-center gap-1.5" role="radiogroup" aria-label="Soldermask colour">
-						<span class="w-10 text-[0.625rem] uppercase tracking-wide text-[var(--text-muted)]">Mask</span>
+					<div class="flex items-center gap-1.5" role="radiogroup" aria-label={t('viewer3d.maskColour')}>
+						<span class="w-10 text-[0.625rem] uppercase tracking-wide text-[var(--text-muted)]">{t('viewer3d.mask')}</span>
 						{#each MASKS as option}
 							<button
 								class="swatch"
 								class:active={mask === option.id}
 								style:background={option.color}
-								title="{option.label} soldermask"
-								aria-label="{option.label} soldermask"
+								title={t('viewer3d.maskOption', { color: t(`colour.${option.id}`) })}
+								aria-label={t('viewer3d.maskOption', { color: t(`colour.${option.id}`) })}
 								role="radio"
 								aria-checked={mask === option.id}
 								onclick={() => choose({ mask: option.id })}
 							></button>
 						{/each}
 					</div>
-					<div class="flex items-center gap-1.5" role="radiogroup" aria-label="Silkscreen colour">
-						<span class="w-10 text-[0.625rem] uppercase tracking-wide text-[var(--text-muted)]">Silk</span>
+					<div class="flex items-center gap-1.5" role="radiogroup" aria-label={t('viewer3d.silkColour')}>
+						<span class="w-10 text-[0.625rem] uppercase tracking-wide text-[var(--text-muted)]">{t('viewer3d.silk')}</span>
 						{#each SILKS as option}
 							<button
 								class="swatch"
 								class:active={silk === option.id}
 								style:background={option.color}
-								title="{option.label} silkscreen"
-								aria-label="{option.label} silkscreen"
+								title={t('viewer3d.silkOption', { color: t(`colour.${option.id}`) })}
+								aria-label={t('viewer3d.silkOption', { color: t(`colour.${option.id}`) })}
 								role="radio"
 								aria-checked={silk === option.id}
 								onclick={() => choose({ silk: option.id })}
 							></button>
 						{/each}
 					</div>
-					<div class="flex items-center gap-1.5" role="radiogroup" aria-label="Pad finish">
-						<span class="w-10 text-[0.625rem] uppercase tracking-wide text-[var(--text-muted)]">Finish</span>
+					<div class="flex items-center gap-1.5" role="radiogroup" aria-label={t('viewer3d.finishLabel')}>
+						<span class="w-10 text-[0.625rem] uppercase tracking-wide text-[var(--text-muted)]">{t('viewer3d.finish')}</span>
 						{#each FINISHES as option}
 							<button
 								class="finish"
 								class:active={finish === option.id}
 								style:--metal={option.color}
-								title={option.title}
-								aria-label={option.title}
+								title={t(option.title)}
+								aria-label={t(option.title)}
 								role="radio"
 								aria-checked={finish === option.id}
 								onclick={() => choose({ finish: option.id })}
@@ -1182,12 +1190,12 @@
 
 			<div class="flex flex-col gap-1.5 rounded-md border bg-[var(--surface-1)]/92 px-2 py-1.5">
 				<div class="flex items-center gap-1.5">
-					<span class="w-10 text-[0.625rem] uppercase tracking-wide text-[var(--text-muted)]">Show</span>
+					<span class="w-10 text-[0.625rem] uppercase tracking-wide text-[var(--text-muted)]">{t('viewer3d.show')}</span>
 					{#if counts.smd}
 						<button
 							class="toggle"
 							aria-pressed={showSmd}
-							title="Surface-mount parts"
+							title={t('viewer3d.smd')}
 							onclick={() => {
 								showSmd = !showSmd;
 								setShown('smd', showSmd);
@@ -1198,7 +1206,7 @@
 						<button
 							class="toggle"
 							aria-pressed={showTht}
-							title="Through-hole parts"
+							title={t('viewer3d.tht')}
 							onclick={() => {
 								showTht = !showTht;
 								setShown('tht', showTht);
@@ -1208,24 +1216,24 @@
 					<button
 						class="toggle"
 						aria-pressed={showRuler}
-						title="Board dimensions"
+						title={t('viewer3d.dimensions')}
 						onclick={() => {
 							showRuler = !showRuler;
 							setRuler(showRuler);
 						}}
 					>
-						<Icon name="ruler" size={11} /> Ruler
+						<Icon name="ruler" size={11} /> {t('viewer3d.ruler')}
 					</button>
 				</div>
 				<div class="flex items-center gap-1.5">
-					<label for="compare-{url}" class="w-10 text-[0.625rem] uppercase tracking-wide text-[var(--text-muted)]">Scale</label>
+					<label for="compare-{url}" class="w-10 text-[0.625rem] uppercase tracking-wide text-[var(--text-muted)]">{t('viewer3d.scale')}</label>
 					<select
 						id="compare-{url}"
 						class="compare"
 						bind:value={compare}
 						onchange={() => setCompare(compare)}
 					>
-						{#each COMPARISONS as option}<option value={option.id}>{option.label}</option>{/each}
+						{#each COMPARISONS as option}<option value={option.id}>{t(option.label)}</option>{/each}
 					</select>
 				</div>
 			</div>
@@ -1234,42 +1242,42 @@
 
 	{#if exportOpen && loaded}
 		{@const dims = exportDimensions(exportOptions.size)}
-		<div class="export-panel" role="dialog" aria-label="Export image">
+		<div class="export-panel" role="dialog" aria-label={t('viewer3d.export')}>
 			<div class="mb-2 flex items-center justify-between">
-				<h3 class="text-xs font-semibold">Export image</h3>
-				<button class="viewer-btn !h-6 !w-6" onclick={() => (exportOpen = false)} aria-label="Close"><Icon name="x" size={12} /></button>
+				<h3 class="text-xs font-semibold">{t('viewer3d.export')}</h3>
+				<button class="viewer-btn !h-6 !w-6" onclick={() => (exportOpen = false)} aria-label={t('common.close')}><Icon name="x" size={12} /></button>
 			</div>
 
-			<label class="export-label" for="export-size">Size</label>
+			<label class="export-label" for="export-size">{t('viewer3d.size')}</label>
 			<select id="export-size" class="compare w-full" bind:value={exportOptions.size}>
 				{#each EXPORT_SIZES as option}
 					{@const d = exportDimensions(option.id)}
-					<option value={option.id}>{option.label}{'scale' in option ? ` — ${d.width} × ${d.height}` : ''}</option>
+					<option value={option.id}>{option.label.startsWith('viewer3d.') ? t(option.label as 'viewer3d.size.view2') : option.label}{'scale' in option ? ` — ${d.width} × ${d.height}` : ''}</option>
 				{/each}
 			</select>
 			{#if !dims.keepsFraming}
 				<label class="export-check">
-					<input type="checkbox" bind:checked={exportOptions.reframe} /> Re-frame for this shape
+					<input type="checkbox" bind:checked={exportOptions.reframe} /> {t('viewer3d.reframe')}
 				</label>
 			{/if}
 
-			<span class="export-label">Background</span>
+			<span class="export-label">{t('viewer3d.background')}</span>
 			<div class="flex flex-wrap gap-1">
-				{#each [['viewer', 'Viewer'], ['transparent', 'Transparent'], ['white', 'White'], ['custom', 'Custom']] as [value, label]}
+				{#each [['viewer', t('viewer3d.bg.viewer')], ['transparent', t('viewer3d.bg.transparent')], ['white', t('colour.white')], ['custom', t('viewer3d.bg.custom')]] as [value, label]}
 					<button
 						class="toggle"
 						aria-pressed={exportOptions.background === value}
 						disabled={value === 'transparent' && exportOptions.format === 'jpeg'}
-						title={value === 'transparent' && exportOptions.format === 'jpeg' ? 'JPEG has no transparency' : undefined}
+						title={value === 'transparent' && exportOptions.format === 'jpeg' ? t('viewer3d.jpegNoAlpha') : undefined}
 						onclick={() => (exportOptions.background = value as ExportBackground)}>{label}</button
 					>
 				{/each}
 				{#if exportOptions.background === 'custom'}
-					<input type="color" class="h-5 w-8 cursor-pointer rounded border bg-transparent" bind:value={exportOptions.customColor} aria-label="Background colour" />
+					<input type="color" class="h-5 w-8 cursor-pointer rounded border bg-transparent" bind:value={exportOptions.customColor} aria-label={t('viewer3d.bgColour')} />
 				{/if}
 			</div>
 
-			<span class="export-label">Format</span>
+			<span class="export-label">{t('viewer3d.format')}</span>
 			<div class="flex gap-1">
 				{#each [['png', 'PNG'], ['jpeg', 'JPEG'], ['webp', 'WebP']] as [value, label]}
 					<button
@@ -1285,10 +1293,10 @@
 
 			<div class="mt-2 flex flex-col gap-1">
 				{#if showRuler}
-					<label class="export-check"><input type="checkbox" bind:checked={exportOptions.labels} /> Dimension labels</label>
+					<label class="export-check"><input type="checkbox" bind:checked={exportOptions.labels} /> {t('viewer3d.dimensionLabels')}</label>
 				{/if}
 				{#if caption}
-					<label class="export-check"><input type="checkbox" bind:checked={exportOptions.caption} /> Caption <span class="truncate text-[var(--text-muted)]">({caption})</span></label>
+					<label class="export-check"><input type="checkbox" bind:checked={exportOptions.caption} /> {t('viewer3d.caption')} <span class="truncate text-[var(--text-muted)]">({caption})</span></label>
 				{/if}
 			</div>
 
@@ -1296,7 +1304,7 @@
 
 			<button class="btn btn-primary btn-sm mt-3 w-full" onclick={runExport} disabled={exporting}>
 				<Icon name="download" size={12} />
-				{exporting ? 'Rendering…' : `Download ${dims.width} × ${dims.height}`}
+				{exporting ? t('viewer3d.rendering') : t('viewer3d.download', { size: `${dims.width} × ${dims.height}` })}
 			</button>
 		</div>
 	{/if}
@@ -1308,15 +1316,15 @@
 	<!-- View cube: rotates with the camera; faces, edges and corners are clickable. -->
 	<div class="absolute right-1 top-1 flex items-start" class:invisible={!loaded}>
 		<div class="mt-2 flex flex-col gap-1">
-			<button class="viewer-btn rounded-md border bg-[var(--surface-1)]/92" onclick={() => viewFrom(HOME)} title="Home view" aria-label="Home view">
+			<button class="viewer-btn rounded-md border bg-[var(--surface-1)]/92" onclick={() => viewFrom(HOME)} title={t('viewer3d.home')} aria-label={t('viewer3d.home')}>
 				<Icon name="home" size={14} />
 			</button>
 			<button
 				class="viewer-btn rounded-md border bg-[var(--surface-1)]/92"
 				class:!text-[var(--accent)]={exportOpen}
 				onclick={() => (exportOpen = !exportOpen)}
-				title="Export image"
-				aria-label="Export image"
+				title={t('viewer3d.export')}
+				aria-label={t('viewer3d.export')}
 				aria-expanded={exportOpen}
 			>
 				<Icon name="camera" size={14} />
@@ -1340,11 +1348,11 @@
 						style:clip-path={facet.clip}
 						style:--shade="{facet.shade}%"
 						onclick={() => viewFrom(facet.dir)}
-						aria-label="View from {facet.name}"
-						title={facet.kind === 'face' ? undefined : facet.name}
+						aria-label={t('viewer3d.viewFrom', { side: facetName(facet) })}
+						title={facet.kind === 'face' ? undefined : facetName(facet)}
 						tabindex={facet.kind === 'face' ? 0 : -1}
 					>
-						{facet.label}
+						{facet.label ? t(facet.label as 'viewer3d.cube.top') : ''}
 					</button>
 				{/each}
 			</div>
@@ -1353,7 +1361,7 @@
 
 	{#if loaded && backend}
 		<span class="mono pointer-events-none absolute bottom-2 left-2 rounded bg-black/45 px-1.5 py-0.5 text-[0.625rem] text-white/70">
-			{backend} · {fps === null ? 'idle' : `${fps} fps`}
+			{backend} · {fps === null ? t('viewer3d.idle') : `${fps} fps`}
 		</span>
 	{/if}
 
@@ -1361,7 +1369,7 @@
 		<div class="absolute inset-0 flex flex-col items-center justify-center gap-2 text-center">
 			<Icon name="alert" size={24} style="color: var(--err)" />
 			<p class="text-sm" style:color="var(--err)">{error}</p>
-			<a href={url} download class="btn btn-sm">Download the GLB instead</a>
+			<a href={url} download class="btn btn-sm">{t('viewer3d.downloadGlb')}</a>
 		</div>
 	{:else if !loaded}
 		<div class="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-3">
@@ -1369,7 +1377,7 @@
 			<div class="h-1 w-40 overflow-hidden rounded-full bg-[var(--surface-3)]">
 				<div class="h-full rounded-full bg-[var(--accent)] transition-all duration-200" style:width="{progress}%"></div>
 			</div>
-			<p class="text-xs text-[var(--text-muted)]">Loading 3D model… {progress}%</p>
+			<p class="text-xs text-[var(--text-muted)]">{t('viewer3d.loading', { progress })}</p>
 		</div>
 	{/if}
 </div>

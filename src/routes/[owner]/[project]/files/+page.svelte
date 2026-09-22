@@ -2,6 +2,7 @@
 	import { page } from '$app/state';
 	import Icon from '$lib/components/Icon.svelte';
 	import { formatBytes, shortSha } from '$lib/format';
+	import { t, tParts } from '$lib/i18n/t';
 
 	let { data } = $props();
 
@@ -35,23 +36,24 @@
 	}
 </script>
 
-<svelte:head><title>Files · {data.project.name} · {data.site.name}</title></svelte:head>
+<svelte:head><title>{t('tabs.files')} · {data.project.name} · {data.site.name}</title></svelte:head>
 
 <div class="mx-auto max-w-[1400px] px-4 py-4">
 	{#if !data.tree.length}
 		<div class="surface traces px-6 py-16 text-center">
 			<Icon name="folder" size={28} class="mx-auto text-[var(--text-muted)]" />
-			<p class="mt-3 text-sm text-[var(--text-secondary)]">This version has no files.</p>
+			<p class="mt-3 text-sm text-[var(--text-secondary)]">{t('files.none')}</p>
 		</div>
 	{:else}
 		<div class="mb-3 flex flex-wrap items-center justify-between gap-2 text-xs text-[var(--text-muted)]">
 			<span>
-				<strong class="text-[var(--text-primary)]">{data.tree.length}</strong> files ·
-				{formatBytes(data.totalBytes)} at
-				<span class="mono">{shortSha(data.commit?.sha)}</span>
+				{#each tParts('files.summary', { count: data.tree.length, size: formatBytes(data.totalBytes) }) as part}
+					{#if typeof part === 'string'}{part}{:else if part.slot === 'n'}<strong class="text-[var(--text-primary)]">{data.tree.length}</strong
+						>{:else}<span class="mono">{shortSha(data.commit?.sha)}</span>{/if}
+				{/each}
 			</span>
 			<a href="{base}/archive/{data.commit?.sha}.zip" class="btn btn-sm">
-				<Icon name="download" size={12} /> Download ZIP
+				<Icon name="download" size={12} /> {t('files.downloadZip')}
 			</a>
 		</div>
 
@@ -93,14 +95,14 @@
 					<div class="flex items-center gap-2 border-b bg-s2 px-3 py-2">
 						<Icon name={iconFor(data.preview.path)} size={13} />
 						<span class="mono min-w-0 flex-1 truncate text-xs">{data.preview.path}</span>
-						<a href="{base}/files" class="btn btn-ghost btn-sm !px-1.5" title="Close preview">
+						<a href="{base}/files" class="btn btn-ghost btn-sm !px-1.5" title={t('files.closePreview')}>
 							<Icon name="x" size={12} />
 						</a>
 					</div>
 					<pre class="mono max-h-[calc(100vh-18rem)] overflow-auto bg-[var(--surface-0)] px-3 py-2.5 text-[0.6875rem] leading-relaxed text-[var(--text-secondary)]">{data.preview.content}</pre>
 					{#if data.preview.truncated}
 						<p class="border-t px-3 py-1.5 text-[0.6875rem] text-[var(--text-muted)]">
-							Preview truncated. Download the ZIP for the whole file.
+							{t('files.truncated')}
 						</p>
 					{/if}
 				</div>

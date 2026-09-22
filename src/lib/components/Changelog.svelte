@@ -1,6 +1,7 @@
 <script lang="ts">
 	import Icon from './Icon.svelte';
 	import { relativeTime } from '$lib/format';
+	import { t } from '$lib/i18n/t';
 	import type { ChangelogEntry } from '$lib/types';
 
 	interface Props {
@@ -30,7 +31,7 @@
 	{/each}
 	{#if total > shown.length}
 		<li class="flex items-center gap-1.5 px-3 py-2 text-[0.6875rem] text-[var(--text-muted)]">
-			<Icon name="history" size={11} /> and {total - shown.length} more
+			<Icon name="history" size={11} /> {t('changelog.more', { count: total - shown.length })}
 		</li>
 	{/if}
 </ol>

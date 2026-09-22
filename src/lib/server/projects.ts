@@ -49,7 +49,7 @@ export function slugify(value: string) {
 
 export function validateSlug(slug: string) {
 	if (!/^[a-z0-9][a-z0-9._-]{0,62}[a-z0-9]$/i.test(slug)) {
-		return 'Use 2-64 characters: letters, numbers, dot, dash or underscore.';
+		return 'validation.slug' as const;
 	}
 	return null;
 }

@@ -3,6 +3,7 @@
 	import Avatar from '$lib/components/Avatar.svelte';
 	import ProjectCardView from '$lib/components/ProjectCard.svelte';
 	import { formatCount, formatDate } from '$lib/format';
+	import { t, tParts } from '$lib/i18n/t';
 
 	let { data } = $props();
 </script>
@@ -16,23 +17,23 @@
 			<div class="flex flex-wrap items-center gap-2">
 				<h1 class="text-xl font-semibold tracking-tight">{data.owner.displayName}</h1>
 				<span class="mono text-sm text-[var(--text-muted)]">@{data.owner.username}</span>
-				{#if data.owner.role === 'admin'}<span class="chip">Admin</span>{/if}
-				{#if !data.owner.isActive}<span class="chip" style:color="var(--err)">Disabled</span>{/if}
+				{#if data.owner.role === 'admin'}<span class="chip">{t('profile.admin')}</span>{/if}
+				{#if !data.owner.isActive}<span class="chip" style:color="var(--err)">{t('profile.disabled')}</span>{/if}
 			</div>
 			{#if data.owner.bio}
 				<p class="mt-1.5 max-w-2xl text-sm leading-relaxed text-[var(--text-secondary)]">{data.owner.bio}</p>
 			{/if}
 			<div class="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-xs text-[var(--text-muted)]">
-				<span><strong class="text-[var(--text-primary)]">{formatCount(data.total)}</strong> boards</span>
-				<span><strong class="text-[var(--text-primary)]">{formatCount(data.counts.versions)}</strong> versions</span>
-				<span><strong class="text-[var(--text-primary)]">{formatCount(data.counts.starsReceived)}</strong> stars received</span>
-				<span>Joined {formatDate(data.owner.createdAt)}</span>
+				{#each [['profile.boards', data.total], ['profile.versions', data.counts.versions], ['profile.stars', data.counts.starsReceived]] as const as [key, n]}
+					<span>{#each tParts(key, { count: n }) as part}{#if typeof part === 'string'}{part}{:else}<strong class="text-[var(--text-primary)]">{formatCount(n)}</strong>{/if}{/each}</span>
+				{/each}
+				<span>{t('profile.joined', { date: formatDate(data.owner.createdAt) })}</span>
 			</div>
 		</div>
 		{#if data.isSelf}
 			<div class="flex gap-2">
-				<a href="/settings" class="btn btn-sm"><Icon name="settings" size={13} /> Settings</a>
-				<a href="/new" class="btn btn-primary btn-sm"><Icon name="plus" size={13} /> New board</a>
+				<a href="/settings" class="btn btn-sm"><Icon name="settings" size={13} /> {t('nav.settings')}</a>
+				<a href="/new" class="btn btn-primary btn-sm"><Icon name="plus" size={13} /> {t('nav.newBoard')}</a>
 			</div>
 		{/if}
 	</header>
@@ -41,10 +42,10 @@
 		<div class="surface traces px-6 py-16 text-center">
 			<Icon name="board" size={28} class="mx-auto text-[var(--text-muted)]" />
 			<p class="mt-3 text-sm text-[var(--text-secondary)]">
-				{data.isSelf ? 'You have no boards yet.' : 'No public boards here yet.'}
+				{data.isSelf ? t('profile.noBoardsSelf') : t('profile.noBoards')}
 			</p>
 			{#if data.isSelf}
-				<a href="/new" class="btn btn-primary btn-sm mt-3"><Icon name="plus" size={13} /> Create your first board</a>
+				<a href="/new" class="btn btn-primary btn-sm mt-3"><Icon name="plus" size={13} /> {t('profile.createFirst')}</a>
 			{/if}
 		</div>
 	{:else}

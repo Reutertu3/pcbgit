@@ -40,9 +40,9 @@ export function verifyPassword(password: string, stored: string) {
 
 export function validateUsername(username: string) {
 	if (!/^[a-z0-9][a-z0-9-]{1,30}[a-z0-9]$/i.test(username)) {
-		return 'Username must be 3-32 characters: letters, numbers and dashes, not starting or ending with a dash.';
+		return 'validation.username' as const;
 	}
-	if (RESERVED.has(username.toLowerCase())) return 'That username is reserved.';
+	if (RESERVED.has(username.toLowerCase())) return 'validation.usernameReserved' as const;
 	return null;
 }
 

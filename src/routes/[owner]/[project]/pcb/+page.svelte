@@ -3,6 +3,8 @@
 	import PanZoom from '$lib/components/PanZoom.svelte';
 	import EmptyTab from '$lib/components/EmptyTab.svelte';
 	import { unionViewBox } from '$lib/viewbox';
+	import { t, tParts } from '$lib/i18n/t';
+	import type { MessageKey } from '$lib/i18n';
 
 	let { data } = $props();
 
@@ -29,12 +31,12 @@
 
 	const groups = $derived(
 		[
-			['Copper', 'copper'],
-			['Silkscreen', 'silkscreen'],
-			['Soldermask', 'mask'],
-			['Paste', 'paste'],
-			['Outline', 'outline'],
-			['Fabrication', 'fabrication']
+			[t('layerGroup.copper'), 'copper'],
+			[t('layerGroup.silkscreen'), 'silkscreen'],
+			[t('layerGroup.mask'), 'mask'],
+			[t('layerGroup.paste'), 'paste'],
+			[t('layerGroup.outline'), 'outline'],
+			[t('layerGroup.fabrication'), 'fabrication']
 		]
 			.map(([label, key]) => ({
 				label,
@@ -42,6 +44,15 @@
 			}))
 			.filter((group) => group.layers.length)
 	);
+
+	/** Layer descriptions are stored in English with the render; shown in the viewer's language. */
+	function layerLabel(name: string, stored: string) {
+		const inner = /^In(\d+)\.Cu$/.exec(name);
+		if (inner) return t('layer.inner', { n: inner[1] });
+		const key = `layer.${name}` as MessageKey;
+		const text = t(key);
+		return text === key ? stored : text;
+	}
 
 	const bbox = $derived.by(() => {
 		try {
@@ -96,8 +107,8 @@
 	{#if !data.layers.length}
 		<EmptyTab
 			icon="board"
-			title="No board layout in this version"
-			message="Layer views are rendered from the .kicad_pcb file at the root of the project."
+			title={t('pcb.emptyTitle')}
+			message={t('pcb.emptyMessage')}
 			status={data.commit?.render_status}
 			project={data.project}
 		/>
@@ -111,7 +122,7 @@
 						onclick={() => (panelOpen = !panelOpen)}
 					>
 						<span class="flex items-center gap-1.5 text-xs font-semibold">
-							<Icon name="layers" size={13} /> Layers
+							<Icon name="layers" size={13} /> {t('pcb.layers')}
 							<span class="chip !px-1.5 !py-0 !text-[0.625rem]">{visibleCount}</span>
 						</span>
 						<Icon name={panelOpen ? 'chevronDown' : 'chevronRight'} size={13} />
@@ -120,7 +131,7 @@
 					{#if panelOpen}
 						<div class="border-t p-2">
 							<div class="mb-2 flex flex-wrap gap-1">
-								{#each [['front', 'Front'], ['back', 'Back'], ['copper', 'Copper'], ['all', 'All'], ['none', 'None']] as [preset, label]}
+								{#each [['front', t('common.front')], ['back', t('common.back')], ['copper', t('layerGroup.copper')], ['all', t('common.all')], ['none', t('common.none')]] as [preset, label]}
 									<button class="btn btn-sm !px-1.5 !py-0.5 !text-[0.6875rem]" onclick={() => applyPreset(preset as never)}>
 										{label}
 									</button>
@@ -148,7 +159,7 @@
 											<span
 												class="mono flex-1 truncate text-[0.6875rem]"
 												class:text-[var(--text-muted)]={!visible[layer.name]}
-												title={layer.style.label}
+												title={layerLabel(layer.name, layer.style.label)}
 											>
 												{layer.name}
 											</span>
@@ -164,11 +175,11 @@
 					<label class="surface mt-2 flex cursor-pointer items-center gap-2 px-3 py-2 text-xs">
 						<input type="checkbox" bind:checked={showMarkers} class="accent-[var(--err)]" />
 						<Icon name="alert" size={12} style="color: var(--err)" />
-						<span class="flex-1">DRC markers</span>
+						<span class="flex-1">{t('pcb.markers')}</span>
 						<span class="chip !px-1.5 !py-0 !text-[0.625rem]">{markerCount}</span>
 					</label>
 					{#if !bbox}
-						<p class="hint px-1">Marker positions need a board outline on Edge.Cuts.</p>
+						<p class="hint px-1">{t('pcb.markersNeedOutline')}</p>
 					{/if}
 				{/if}
 			</aside>
@@ -185,10 +196,10 @@
 							<button
 								class="viewer-btn !w-auto gap-1.5 px-2 text-xs"
 								onclick={() => (flipped = !flipped)}
-								title="Flip the board over"
+								title={t('pcb.flip')}
 							>
 								<Icon name="refresh" size={12} />
-								{flipped ? 'Back' : 'Front'}
+								{flipped ? t('common.back') : t('common.front')}
 							</button>
 						</div>
 					{/snippet}
@@ -235,12 +246,14 @@
 
 				<div class="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs text-[var(--text-muted)]">
 					<span>
-						Scroll to zoom, drag to pan. <span class="kbd">F</span> fits.
-						{#if flipped}Viewing from the back — the board is mirrored.{/if}
+						{#each tParts('pcb.hint') as part}
+							{#if typeof part === 'string'}{part}{:else}<span class="kbd">F</span>{/if}
+						{/each}
+						{#if flipped}{t('pcb.mirrored')}{/if}
 					</span>
 					{#if markerCount}
 						<a href="/{data.project.owner_username}/{data.project.slug}/drc" class="hover:text-[var(--accent)]">
-							{markerCount} located violation{markerCount === 1 ? '' : 's'} →
+							{t('pcb.located', { count: markerCount })} →
 						</a>
 					{/if}
 				</div>

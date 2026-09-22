@@ -1,6 +1,7 @@
 import AdmZip from 'adm-zip';
 import path from 'node:path';
 import type { UploadFile } from './git';
+import { UserError } from '../i18n';
 
 export const MAX_UPLOAD_BYTES = 200 * 1024 * 1024;
 const MAX_FILES = 4000;
@@ -19,7 +20,7 @@ const IGNORED = [
 	/\.lck$/
 ];
 
-export class UploadError extends Error {}
+export class UploadError extends UserError {}
 
 /** Expands an uploaded archive into the file list that becomes a commit. */
 export function filesFromZip(buffer: Buffer): UploadFile[] {
@@ -27,17 +28,17 @@ export function filesFromZip(buffer: Buffer): UploadFile[] {
 	try {
 		zip = new AdmZip(buffer);
 	} catch {
-		throw new UploadError('That file is not a readable ZIP archive.');
+		throw new UploadError('upload.error.notZip');
 	}
 
 	const entries = zip.getEntries().filter((entry) => !entry.isDirectory);
 	if (entries.length > MAX_FILES) {
-		throw new UploadError(`Archive contains too many files (limit ${MAX_FILES}).`);
+		throw new UploadError('upload.error.tooMany', { limit: MAX_FILES });
 	}
 	// Check the declared sizes before inflating anything: a small archive can expand to
 	// gigabytes. adm-zip inflates into a buffer of exactly the declared size, so it can't lie.
 	if (entries.reduce((sum, entry) => sum + entry.header.size, 0) > MAX_UPLOAD_BYTES) {
-		throw new UploadError('Archive expands to more than 200 MB.');
+		throw new UploadError('upload.error.tooLarge');
 	}
 
 	const raw = entries.map((entry) => ({
@@ -46,7 +47,7 @@ export function filesFromZip(buffer: Buffer): UploadFile[] {
 	}));
 
 	const kept = raw.filter((file) => file.path && !IGNORED.some((pattern) => pattern.test(file.path)));
-	if (!kept.length) throw new UploadError('The archive contained no usable files.');
+	if (!kept.length) throw new UploadError('upload.error.empty');
 
 	// Archives usually wrap everything in one folder; drop it so paths stay short.
 	return stripCommonPrefix(kept);
@@ -57,7 +58,7 @@ function normalize(entryName: string) {
 	const cleaned = entryName.replace(/\\/g, '/').replace(/^\/+/, '');
 	const resolved = path.posix.normalize(cleaned);
 	if (resolved.startsWith('../') || resolved === '..' || path.posix.isAbsolute(resolved)) {
-		throw new UploadError(`Unsafe path in archive: ${entryName}`);
+		throw new UploadError('upload.error.unsafePath', { path: entryName });
 	}
 	return resolved === '.' ? '' : resolved;
 }

@@ -3,6 +3,7 @@
 	import Icon from '$lib/components/Icon.svelte';
 	import FormError from '$lib/components/FormError.svelte';
 	import { formatBytes, formatDateTime, relativeTime } from '$lib/format';
+	import { t, tParts } from '$lib/i18n/t';
 
 	let { data, form } = $props();
 
@@ -13,14 +14,12 @@
 	let upload = $state<File | null>(null);
 </script>
 
-<svelte:head><title>Backups · Admin · {data.site.name}</title></svelte:head>
+<svelte:head><title>{t('admin.nav.backups')} · {t('admin.title')} · {data.site.name}</title></svelte:head>
 
 <div class="mb-4">
-	<h2 class="text-lg font-semibold tracking-tight">Backups &amp; snapshots</h2>
+	<h2 class="text-lg font-semibold tracking-tight">{t('backups.title')}</h2>
 	<p class="text-xs leading-relaxed text-[var(--text-muted)]">
-		A snapshot is one <span class="mono">.tar.gz</span> holding the database, every git repository and
-		optionally the rendered output. Restore it here, or deploy a new server straight from it with
-		<span class="mono">PCBGIT_IMPORT_SNAPSHOT</span>.
+		{#each tParts('backups.intro') as part}{#if typeof part === 'string'}{part}{:else if part.slot === 'ext'}<span class="mono">.tar.gz</span>{:else}<span class="mono">PCBGIT_IMPORT_SNAPSHOT</span>{/if}{/each}
 	</p>
 </div>
 
@@ -35,19 +34,18 @@
 	>
 		<Icon name="alert" size={15} style="color: var(--warn)" />
 		<span class="flex-1">
-			A restore of the snapshot from <strong>{formatDateTime(data.pending.created_at)}</strong> is staged and
-			applies on the next restart. Changes made until then will be replaced.
+			{#each tParts('backups.pending') as part}{#if typeof part === 'string'}{part}{:else}<strong>{formatDateTime(data.pending.created_at)}</strong>{/if}{/each}
 		</span>
 		<form method="POST" action="?/cancel" use:enhance>
-			<button class="btn btn-sm" type="submit">Cancel restore</button>
+			<button class="btn btn-sm" type="submit">{t('backups.cancelRestore')}</button>
 		</form>
 	</div>
 {/if}
 
 <div class="grid gap-4 lg:grid-cols-2">
 	<section class="surface p-4">
-		<h3 class="mb-1 text-sm font-semibold">Create a snapshot</h3>
-		<p class="mb-3 text-xs text-[var(--text-secondary)]">Runs while the server stays online.</p>
+		<h3 class="mb-1 text-sm font-semibold">{t('backups.create')}</h3>
+		<p class="mb-3 text-xs text-[var(--text-secondary)]">{t('backups.online')}</p>
 		<form
 			method="POST"
 			action="?/create"
@@ -62,25 +60,23 @@
 			<label class="mb-3 flex cursor-pointer items-start gap-2.5">
 				<input type="checkbox" name="artifacts" checked class="mt-0.5" />
 				<span>
-					<span class="block text-sm">Include rendered output</span>
+					<span class="block text-sm">{t('backups.includeOutput')}</span>
 					<span class="block text-xs leading-relaxed text-[var(--text-muted)]">
-						Larger, but a restored server is ready immediately. Without it, every version is rendered
-						again after restore.
+						{t('backups.includeOutputHint')}
 					</span>
 				</span>
 			</label>
 			<button class="btn btn-primary btn-sm" type="submit" disabled={creating}>
 				<Icon name="download" size={13} />
-				{creating ? 'Creating snapshot…' : 'Create snapshot'}
+				{creating ? t('backups.creating') : t('backups.createButton')}
 			</button>
 		</form>
 	</section>
 
 	<section class="surface p-4">
-		<h3 class="mb-1 text-sm font-semibold">Import a snapshot</h3>
+		<h3 class="mb-1 text-sm font-semibold">{t('backups.import')}</h3>
 		<p class="mb-3 text-xs text-[var(--text-secondary)]">
-			It is checked and added to the list; nothing changes until you restore it. Larger than the upload
-			limit? Copy it into <span class="mono">/data/backups/</span> instead and it appears below.
+			{#each tParts('backups.importHint') as part}{#if typeof part === 'string'}{part}{:else}<span class="mono">/data/backups/</span>{/if}{/each}
 		</p>
 		<form
 			method="POST"
@@ -98,7 +94,7 @@
 		>
 			<label class="btn btn-sm cursor-pointer">
 				<Icon name="upload" size={13} />
-				{upload ? upload.name : 'Choose .tar.gz'}
+				{upload ? upload.name : t('backups.choose')}
 				<input
 					class="sr-only"
 					type="file"
@@ -109,7 +105,7 @@
 			</label>
 			{#if upload}<span class="text-xs text-[var(--text-muted)]">{formatBytes(upload.size)}</span>{/if}
 			<button class="btn btn-primary btn-sm" type="submit" disabled={!upload || uploading}>
-				{uploading ? 'Verifying…' : 'Upload'}
+				{uploading ? t('backups.verifying') : t('backups.upload')}
 			</button>
 		</form>
 	</section>
@@ -117,10 +113,10 @@
 
 <section class="surface mt-4 overflow-hidden">
 	<h3 class="border-b px-4 py-2.5 text-sm font-semibold">
-		Snapshots {#if data.snapshots.length}<span class="chip ml-1">{data.snapshots.length}</span>{/if}
+		{t('backups.snapshots')} {#if data.snapshots.length}<span class="chip ml-1">{data.snapshots.length}</span>{/if}
 	</h3>
 	{#if !data.snapshots.length}
-		<p class="px-4 py-10 text-center text-sm text-[var(--text-muted)]">No snapshots yet.</p>
+		<p class="px-4 py-10 text-center text-sm text-[var(--text-muted)]">{t('backups.none')}</p>
 	{:else}
 		<ul class="divide-y">
 			{#each data.snapshots as snap (snap.name)}
@@ -132,16 +128,15 @@
 							<p class="text-[0.6875rem] text-[var(--text-muted)]">
 								{formatBytes(snap.size)} · {relativeTime(snap.modified)}
 								{#if snap.manifest}
-									· {snap.manifest.counts.projects} boards, {snap.manifest.counts.commits} versions,
-									{snap.manifest.counts.users} users
-									· {snap.manifest.includes_artifacts ? 'with rendered output' : 'without rendered output'}
+									· {t('backups.counts', { boards: snap.manifest.counts.projects, versions: snap.manifest.counts.commits, users: snap.manifest.counts.users })}
+									· {snap.manifest.includes_artifacts ? t('backups.withOutput') : t('backups.withoutOutput')}
 								{:else}
-									· <span style:color="var(--err)">unreadable manifest</span>
+									· <span style:color="var(--err)">{t('backups.unreadable')}</span>
 								{/if}
 							</p>
 						</div>
 						<div class="flex gap-1">
-							<a class="btn btn-sm" href="/admin/backups/download/{snap.name}" title="Download">
+							<a class="btn btn-sm" href="/admin/backups/download/{snap.name}" title={t('backups.download')}>
 								<Icon name="download" size={12} />
 							</a>
 							<button
@@ -152,13 +147,13 @@
 									confirmText = '';
 								}}
 							>
-								<Icon name="refresh" size={12} /> Restore
+								<Icon name="refresh" size={12} /> {t('backups.restore')}
 							</button>
 							<form method="POST" action="?/delete" use:enhance={({ cancel }) => {
-								if (!confirm(`Delete ${snap.name}?`)) cancel();
+								if (!confirm(t('backups.confirmDelete', { name: snap.name }))) cancel();
 							}}>
 								<input type="hidden" name="name" value={snap.name} />
-								<button class="btn btn-danger btn-sm" type="submit" title="Delete"><Icon name="trash" size={12} /></button>
+								<button class="btn btn-danger btn-sm" type="submit" title={t('common.delete')}><Icon name="trash" size={12} /></button>
 							</form>
 						</div>
 					</div>
@@ -177,16 +172,13 @@
 						>
 							<input type="hidden" name="name" value={snap.name} />
 							<p class="w-full text-xs leading-relaxed">
-								This <strong>replaces all current data</strong> — users, boards, repositories and settings —
-								with the snapshot. The current data is moved aside to a pre-restore copy, not deleted.
-								{data.autoRestart
-									? 'The server restarts to apply it.'
-									: 'Restart the server afterwards to apply it.'}
+								{#each tParts('backups.restoreWarning') as part}{#if typeof part === 'string'}{part}{:else}<strong>{t('backups.replacesAll')}</strong>{/if}{/each}
+								{data.autoRestart ? t('backups.autoRestart') : t('backups.manualRestart')}
 							</p>
-							<label class="text-xs" for="confirm-{snap.name}">Type <span class="mono font-semibold">RESTORE</span></label>
+							<label class="text-xs" for="confirm-{snap.name}">{#each tParts('backups.typeRestore') as part}{#if typeof part === 'string'}{part}{:else}<span class="mono font-semibold">RESTORE</span>{/if}{/each}</label>
 							<input id="confirm-{snap.name}" class="input mono !w-32 !py-1" name="confirm" bind:value={confirmText} autocomplete="off" />
-							<button class="btn btn-danger btn-sm" type="submit" disabled={confirmText !== 'RESTORE'}>Restore snapshot</button>
-							<button class="btn btn-ghost btn-sm" type="button" onclick={() => (restoreTarget = null)}>Cancel</button>
+							<button class="btn btn-danger btn-sm" type="submit" disabled={confirmText !== 'RESTORE'}>{t('backups.restoreSnapshot')}</button>
+							<button class="btn btn-ghost btn-sm" type="button" onclick={() => (restoreTarget = null)}>{t('common.cancel')}</button>
 						</form>
 					{/if}
 				</li>
@@ -197,9 +189,9 @@
 
 {#if data.preRestore.length}
 	<section class="surface mt-4 overflow-hidden">
-		<h3 class="border-b px-4 py-2.5 text-sm font-semibold">Pre-restore copies</h3>
+		<h3 class="border-b px-4 py-2.5 text-sm font-semibold">{t('backups.preRestore')}</h3>
 		<p class="px-4 pt-2.5 text-xs text-[var(--text-muted)]">
-			The data that was in place before a restore. Kept on disk until you delete it.
+			{t('backups.preRestoreHint')}
 		</p>
 		<ul class="divide-y">
 			{#each data.preRestore as entry (entry.name)}
@@ -207,7 +199,7 @@
 					<span class="mono flex-1 truncate text-sm">{entry.name}</span>
 					<span class="text-xs text-[var(--text-muted)]">{relativeTime(entry.modified)}</span>
 					<form method="POST" action="?/delete" use:enhance={({ cancel }) => {
-						if (!confirm(`Permanently delete ${entry.name}?`)) cancel();
+						if (!confirm(t('backups.confirmDeletePermanent', { name: entry.name }))) cancel();
 					}}>
 						<input type="hidden" name="name" value={entry.name} />
 						<button class="btn btn-danger btn-sm" type="submit"><Icon name="trash" size={12} /></button>

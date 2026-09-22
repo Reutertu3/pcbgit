@@ -1,4 +1,5 @@
 import { fail, redirect } from '@sveltejs/kit';
+import { translate } from '$lib/i18n';
 import type { Actions, PageServerLoad } from './$types';
 import { createAccessToken, listAccessTokens, revokeAccessToken } from '$lib/server/auth';
 
@@ -12,17 +13,17 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 
 export const actions: Actions = {
 	create: async ({ request, locals }) => {
-		if (!locals.user) return fail(401, { error: 'Sign in first.' });
+		if (!locals.user) return fail(401, { error: translate(locals.locale, 'error.signInFirst') });
 		const name = String((await request.formData()).get('name') ?? '').trim();
-		if (!name) return fail(400, { error: 'Give the token a name so you can recognise it later.' });
+		if (!name) return fail(400, { error: translate(locals.locale, 'tokens.error.name') });
 
 		// Shown exactly once; only the hash is kept.
 		return { created: createAccessToken(locals.user.id, name), name };
 	},
 
 	revoke: async ({ request, locals }) => {
-		if (!locals.user) return fail(401, { error: 'Sign in first.' });
+		if (!locals.user) return fail(401, { error: translate(locals.locale, 'error.signInFirst') });
 		revokeAccessToken(locals.user.id, String((await request.formData()).get('id') ?? ''));
-		return { success: true, message: 'Token revoked.' };
+		return { success: true, message: translate(locals.locale, 'tokens.revoked') };
 	}
 };

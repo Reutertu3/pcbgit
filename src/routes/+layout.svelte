@@ -5,6 +5,8 @@
 	import Avatar from '$lib/components/Avatar.svelte';
 	import ThemePicker from '$lib/components/ThemePicker.svelte';
 	import NotificationBell from '$lib/components/NotificationBell.svelte';
+	import LanguagePicker from '$lib/components/LanguagePicker.svelte';
+	import { t } from '$lib/i18n/t';
 
 	let { data, children } = $props();
 
@@ -22,7 +24,7 @@
 
 <svelte:head>
 	<title>{data.site.name}</title>
-	<meta name="description" content={data.site.tagline} />
+	<meta name="description" content={data.site.tagline ?? t('site.tagline')} />
 	<link rel="preconnect" href="https://fonts.googleapis.com" />
 	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous" />
 	<link
@@ -58,20 +60,20 @@
 					href="/"
 					class="btn btn-ghost"
 					class:!text-[var(--text-primary)]={current === '/'}
-					class:bg-s2={current === '/'}>Browse</a
+					class:bg-s2={current === '/'}>{t('nav.browse')}</a
 				>
 				<a
 					href="/tags"
 					class="btn btn-ghost"
 					class:!text-[var(--text-primary)]={current.startsWith('/tags')}
-					class:bg-s2={current.startsWith('/tags')}>Tags</a
+					class:bg-s2={current.startsWith('/tags')}>{t('nav.tags')}</a
 				>
 				{#if data.user}
 					<a
 						href="/stars"
 						class="btn btn-ghost"
 						class:!text-[var(--text-primary)]={current.startsWith('/stars')}
-						class:bg-s2={current.startsWith('/stars')}>Starred</a
+						class:bg-s2={current.startsWith('/stars')}>{t('nav.starred')}</a
 					>
 				{/if}
 			</nav>
@@ -87,17 +89,18 @@
 						class="input !w-64 !py-1.5 !pl-8 text-[0.8125rem]"
 						type="search"
 						name="q"
-						placeholder="Search boards…"
+						placeholder={t('nav.search')}
 						value={page.url.searchParams.get('q') ?? ''}
 					/>
 				</div>
 			</form>
 
+			<LanguagePicker />
 			<ThemePicker />
 
 			{#if data.user}
 				<a href="/new" class="btn btn-primary btn-sm">
-					<Icon name="plus" size={14} /><span class="hidden sm:inline">New board</span>
+					<Icon name="plus" size={14} /><span class="hidden sm:inline">{t('nav.newBoard')}</span>
 				</a>
 				<NotificationBell unread={data.unreadNotifications} />
 				<div class="relative">
@@ -126,31 +129,31 @@
 								<div class="mono truncate text-[var(--text-muted)]">@{data.user.username}</div>
 							</div>
 							<a href="/{data.user.username}" class="menu-item" onclick={closeMenus}>
-								<Icon name="user" size={14} /> Your boards
+								<Icon name="user" size={14} /> {t('nav.yourBoards')}
 							</a>
 							<a href="/settings" class="menu-item" onclick={closeMenus}>
-								<Icon name="settings" size={14} /> Settings
+								<Icon name="settings" size={14} /> {t('nav.settings')}
 							</a>
 							<a href="/settings/tokens" class="menu-item" onclick={closeMenus}>
-								<Icon name="git" size={14} /> Access tokens
+								<Icon name="git" size={14} /> {t('nav.tokens')}
 							</a>
 							{#if isAdmin}
 								<a href="/admin" class="menu-item" onclick={closeMenus}>
-									<Icon name="dashboard" size={14} /> Admin panel
+									<Icon name="dashboard" size={14} /> {t('nav.admin')}
 								</a>
 							{/if}
 							<form method="POST" action="/logout" class="border-t pt-1">
 								<button class="menu-item w-full text-left" type="submit">
-									<Icon name="logout" size={14} /> Sign out
+									<Icon name="logout" size={14} /> {t('nav.signOut')}
 								</button>
 							</form>
 						</div>
 					{/if}
 				</div>
 			{:else}
-				<a href="/login" class="btn btn-sm">Sign in</a>
+				<a href="/login" class="btn btn-sm">{t('nav.signIn')}</a>
 				{#if data.site.registrationOpen}
-					<a href="/register" class="btn btn-primary btn-sm hidden sm:inline-flex">Create account</a>
+					<a href="/register" class="btn btn-primary btn-sm hidden sm:inline-flex">{t('nav.register')}</a>
 				{/if}
 			{/if}
 
@@ -160,7 +163,7 @@
 					event.stopPropagation();
 					mobileNavOpen = !mobileNavOpen;
 				}}
-				aria-label="Menu"
+				aria-label={t('nav.menu')}
 			>
 				<Icon name="list" size={16} />
 			</button>
@@ -168,11 +171,11 @@
 
 		{#if mobileNavOpen}
 			<nav class="flex flex-col gap-1 border-t p-2 md:hidden">
-				<a href="/" class="menu-item" onclick={closeMenus}>Browse</a>
-				<a href="/tags" class="menu-item" onclick={closeMenus}>Tags</a>
-				{#if data.user}<a href="/stars" class="menu-item" onclick={closeMenus}>Starred</a>{/if}
+				<a href="/" class="menu-item" onclick={closeMenus}>{t('nav.browse')}</a>
+				<a href="/tags" class="menu-item" onclick={closeMenus}>{t('nav.tags')}</a>
+				{#if data.user}<a href="/stars" class="menu-item" onclick={closeMenus}>{t('nav.starred')}</a>{/if}
 				<form action="/" method="GET" class="p-1">
-					<input class="input" type="search" name="q" placeholder="Search boards…" />
+					<input class="input" type="search" name="q" placeholder={t('nav.search')} />
 				</form>
 			</nav>
 		{/if}
@@ -194,11 +197,11 @@
 				<span>·</span>
 				<a href="https://www.gnu.org/licenses/agpl-3.0.html" class="hover:text-[var(--text-primary)]" rel="license">AGPL-3.0</a>
 				<span>·</span>
-				<a href={data.source} class="hover:text-[var(--text-primary)]">Source</a>
+				<a href={data.source} class="hover:text-[var(--text-primary)]">{t('footer.source')}</a>
 			</span>
 			<span class="flex items-center gap-4">
-				<a href="/about" class="hover:text-[var(--text-primary)]">About</a>
-				<a href="/tags" class="hover:text-[var(--text-primary)]">Tags</a>
+				<a href="/about" class="hover:text-[var(--text-primary)]">{t('footer.about')}</a>
+				<a href="/tags" class="hover:text-[var(--text-primary)]">{t('nav.tags')}</a>
 				<span class="mono">KiCad-native</span>
 			</span>
 		</div>
