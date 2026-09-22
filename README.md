@@ -121,6 +121,25 @@ All data (database, repositories, renders) lives in the `pcbgit-data` volume.
 Create your first board with **New board**, or push one over git — see
 [Using pcbgit](#using-pcbgit).
 
+### On a LAN, without a domain
+
+pcbgit needs no domain and no HTTPS: an IP address is fine. Put the address
+colleagues will type into `.env` before starting, because only that one address
+may submit forms:
+
+```sh
+PCBGIT_ORIGIN=http://192.168.1.50:3000   # or http://pcbgit.lan:3000
+docker compose up -d --build
+```
+
+Everyone on the network then uses `http://192.168.1.50:3000`, including on the
+server itself, and pushes to `http://192.168.1.50:3000/git/<user>/<board>.git`.
+
+> [!NOTE]
+> Reading pages and `git clone`/`push` work from any address. Only form posts
+> (sign in, comments, admin actions) are tied to `PCBGIT_ORIGIN`; a mismatch
+> shows "Cross-site POST form submissions are forbidden".
+
 ## Deploying to a server
 
 Tested on Debian 13. Caddy runs in front of pcbgit and handles HTTPS with a
@@ -274,7 +293,7 @@ Set these in `.env`:
 | Variable | Default | Purpose |
 |---|---|---|
 | `PCBGIT_DOMAIN` | — | Public domain (production). Used by Caddy and to set `ORIGIN`. |
-| `PCBGIT_ORIGIN` | `http://localhost:3000` | URL of a local instance. Form posts from other origins are rejected. |
+| `PCBGIT_ORIGIN` | `http://localhost:3000` | Exact URL of a local or LAN instance, e.g. `http://192.168.1.50:3000`. Form posts from other addresses are rejected. |
 | `PCBGIT_ADMIN_USER` | `admin` | Admin account created when no active admin exists |
 | `PCBGIT_ADMIN_PASSWORD` | — | Password for that account. Required. |
 | `PCBGIT_ADMIN_EMAIL` | `admin@localhost` | Email for that account |
@@ -300,7 +319,7 @@ Set these in `.env`:
 
 | Symptom | Cause and fix |
 |---|---|
-| Pages load, but login and forms fail with "Cross-site POST form submissions are forbidden" | `ORIGIN` does not match the site URL. Check that `PCBGIT_DOMAIN` is the bare domain and `.env` contains `COMPOSE_FILE`, then run `docker compose up -d`. `docker compose exec pcbgit printenv ORIGIN` must show `https://<your domain>`. |
+| Pages load, but login and forms fail with "Cross-site POST form submissions are forbidden" | `ORIGIN` does not match the address you typed. `docker compose exec pcbgit printenv ORIGIN` must equal it exactly, including scheme and port. On a server: check `PCBGIT_DOMAIN` is the bare domain and `.env` contains `COMPOSE_FILE`. On a LAN: set `PCBGIT_ORIGIN` to the IP or hostname, e.g. `http://192.168.1.50:3000`. Then `docker compose up -d`. |
 | 502 from Caddy | pcbgit is starting or has stopped. Check `docker compose logs pcbgit`. |
 | No certificate / HTTPS fails | DNS does not point at the server yet, or ports 80/443 are blocked. Check `docker compose logs caddy`. |
 | A version shows "Render failed" | Open the board's **History** tab and view the render log. |
