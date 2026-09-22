@@ -9,6 +9,11 @@
 </p>
 
 <p align="center">
+  <b><a href="https://pcbgit.com">Live demo at pcbgit.com</a></b> — browse real boards without an account.<br>
+  <sub>Sign-ups are disabled there; run your own instance to push boards.</sub>
+</p>
+
+<p align="center">
   <img alt="License: AGPL-3.0" src="https://img.shields.io/badge/license-AGPL--3.0-2b5748">
   <img alt="KiCad 10" src="https://img.shields.io/badge/KiCad-10-9cb080">
   <img alt="Runs in Docker" src="https://img.shields.io/badge/deploy-Docker-618764">
@@ -16,6 +21,7 @@
 </p>
 
 <p align="center">
+  <a href="https://pcbgit.com">Demo</a> ·
   <a href="#quick-start">Quick start</a> ·
   <a href="#deploying-to-a-server">Deploy</a> ·
   <a href="#using-pcbgit">Usage</a> ·
