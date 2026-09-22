@@ -4,9 +4,15 @@
 
 	interface Props {
 		url: string;
+		/** Reference designator -> mounting type, from the board file. */
+		mounts?: Record<string, 'smd' | 'tht' | 'other'>;
+		/** Printed on exported images when the caption option is on. */
+		caption?: string;
+		/** Download file name, without extension. */
+		fileBase?: string;
 		class?: string;
 	}
-	let { url, class: className = '' }: Props = $props();
+	let { url, mounts = {}, caption = '', fileBase = 'board-3d', class: className = '' }: Props = $props();
 
 	type Vec3 = [number, number, number];
 
@@ -49,6 +55,94 @@
 	let finish = $state<FinishId>('hasl');
 	/** False for models without KiCad's named board layers; the pickers are hidden then. */
 	let recolorable = $state(false);
+
+	/* View options panel */
+	const COMPARISONS = [
+		{ id: 'none', label: 'No comparison' },
+		{ id: 'card', label: 'Bank card' },
+		{ id: 'coin', label: '1 € coin' },
+		{ id: 'banana', label: 'Banana' }
+	] as const;
+	type CompareId = (typeof COMPARISONS)[number]['id'];
+	let showSmd = $state(true);
+	let showTht = $state(true);
+	let showRuler = $state(false);
+	let compare = $state<CompareId>('none');
+	let counts = $state({ smd: 0, tht: 0 });
+	let rulerLabels = $state<{ width: string; depth: string }>({ width: '', depth: '' });
+	let widthLabel = $state<HTMLSpanElement | null>(null);
+	let depthLabel = $state<HTMLSpanElement | null>(null);
+	let setShown = $state<(category: 'smd' | 'tht', on: boolean) => void>(() => {});
+	let setRuler = $state<(on: boolean) => void>(() => {});
+	let setCompare = $state<(kind: CompareId) => void>(() => {});
+
+	/* Image export */
+	const EXPORT_SIZES = [
+		{ id: 'view2', label: 'Viewport ×2', scale: 2 },
+		{ id: 'view4', label: 'Viewport ×4', scale: 4 },
+		{ id: 'fhd', label: '1920 × 1080', width: 1920, height: 1080 },
+		{ id: 'uhd', label: '3840 × 2160 (4K)', width: 3840, height: 2160 },
+		{ id: 'square', label: '2048 × 2048', width: 2048, height: 2048 }
+	] as const;
+	type ExportSizeId = (typeof EXPORT_SIZES)[number]['id'];
+	type ExportBackground = 'transparent' | 'viewer' | 'white' | 'custom';
+	type ExportFormat = 'png' | 'jpeg' | 'webp';
+	interface ExportOptions {
+		size: ExportSizeId;
+		background: ExportBackground;
+		customColor: string;
+		format: ExportFormat;
+		reframe: boolean;
+		labels: boolean;
+		caption: boolean;
+	}
+	/** Browsers cap canvas and GPU buffer sizes; stay well inside common limits. */
+	const MAX_EXPORT_EDGE = 8192;
+
+	let exportOpen = $state(false);
+	let exporting = $state(false);
+	let exportError = $state<string | null>(null);
+	let exportOptions = $state<ExportOptions>({
+		size: 'view2',
+		background: 'viewer',
+		customColor: '#ffffff',
+		format: 'png',
+		reframe: true,
+		labels: true,
+		caption: false
+	});
+	let exportImage = $state<(options: ExportOptions) => Promise<Blob>>(async () => {
+		throw new Error('The viewer is not ready yet.');
+	});
+
+	/** Pixel size an option resolves to, clamped to what browsers can render. */
+	function exportDimensions(id: ExportSizeId) {
+		const option = EXPORT_SIZES.find((o) => o.id === id)!;
+		let width = 'scale' in option ? Math.round((host?.clientWidth ?? 1280) * option.scale) : option.width;
+		let height = 'scale' in option ? Math.round((host?.clientHeight ?? 720) * option.scale) : option.height;
+		const shrink = Math.min(1, MAX_EXPORT_EDGE / Math.max(width, height));
+		width = Math.round(width * shrink);
+		height = Math.round(height * shrink);
+		return { width, height, keepsFraming: 'scale' in option };
+	}
+
+	async function runExport() {
+		exporting = true;
+		exportError = null;
+		try {
+			const blob = await exportImage($state.snapshot(exportOptions));
+			const link = document.createElement('a');
+			link.href = URL.createObjectURL(blob);
+			link.download = `${fileBase}.${exportOptions.format === 'jpeg' ? 'jpg' : exportOptions.format}`;
+			link.click();
+			setTimeout(() => URL.revokeObjectURL(link.href), 10_000);
+			exportOpen = false;
+		} catch (error) {
+			exportError = error instanceof Error ? error.message : 'Export failed.';
+		} finally {
+			exporting = false;
+		}
+	}
 
 	// Assigned once three.js has loaded.
 	let viewFrom = $state<(direction: Vec3) => void>(() => {});
@@ -308,11 +402,14 @@
 			};
 			function frame(now: number) {
 				pending = 0;
+				// An export owns the canvas while it runs; it re-requests a frame when done.
+				if (exporting) return;
 				const animating = stepAnimation(now);
 				// With damping, update() keeps emitting 'change' until the motion settles.
 				controls.update();
 				renderer.render(scene, camera);
 				syncCube();
+				syncRulerLabels();
 				if (animating) requestRender();
 				else if (!pending && trailing > 0) {
 					trailing--;
@@ -326,6 +423,21 @@
 				if (!cube) return;
 				const e = camera.matrixWorldInverse.elements;
 				cube.style.transform = `matrix3d(${e[0]},${-e[1]},${e[2]},0,${e[4]},${-e[5]},${e[6]},0,${e[8]},${-e[9]},${e[10]},0,0,0,0,1)`;
+			}
+
+			/** Pins the ruler's HTML labels to their 3D anchor points. */
+			const labelAnchors: { el: () => HTMLElement | null; at: import('three/webgpu').Vector3 }[] = [];
+			function syncRulerLabels() {
+				if (!host) return;
+				const w = host.clientWidth, h = host.clientHeight;
+				for (const { el, at } of labelAnchors) {
+					const node = el();
+					if (!node) continue;
+					const ndc = at.clone().project(camera);
+					const visible = showRuler && ndc.z < 1;
+					node.style.display = visible ? '' : 'none';
+					if (visible) node.style.transform = `translate(${((ndc.x + 1) / 2) * w}px, ${((1 - ndc.y) / 2) * h}px) translate(-50%, -50%)`;
+				}
 			}
 
 			let currentDir = new THREE.Vector3(...HOME).normalize();
@@ -441,8 +553,10 @@
 			};
 
 			/* ---- board layer materials: mask, silkscreen, pad finish ---- */
-			type Role = 'mask' | 'silk' | 'pad';
-			const roleMaterials: Record<Role, import('three/webgpu').MeshStandardMaterial[]> = { mask: [], silk: [], pad: [] };
+			type Role = 'mask' | 'silk' | 'pad' | 'body';
+			type Category = 'board' | 'smd' | 'tht' | 'other';
+			const roleMaterials: Record<Role, import('three/webgpu').MeshStandardMaterial[]> = { mask: [], silk: [], pad: [], body: [] };
+			const categoryMeshes: Record<Category, import('three/webgpu').Mesh[]> = { board: [], smd: [], tht: [], other: [] };
 			const roleClones = new Map<string, import('three/webgpu').Material>();
 			const materials = new Set<import('three/webgpu').Material>();
 
@@ -466,9 +580,12 @@
 			 * them, and every one is a draw call. Baking transforms and merging all
 			 * meshes that share a material collapses that to one draw call per material.
 			 */
-			function mergeByMaterial(root: import('three/webgpu').Object3D, roleOf: (mesh: import('three/webgpu').Mesh) => Role | null) {
+			function mergeByMaterial(
+				root: import('three/webgpu').Object3D,
+				classify: (mesh: import('three/webgpu').Mesh) => { role: Role | null; category: Category }
+			) {
 				root.updateMatrixWorld(true);
-				const groups = new Map<string, { material: import('three/webgpu').Material; geometries: import('three/webgpu').BufferGeometry[] }>();
+				const groups = new Map<string, { material: import('three/webgpu').Material; category: Category; geometries: import('three/webgpu').BufferGeometry[] }>();
 				const loose: import('three/webgpu').Mesh[] = [];
 
 				root.traverse((object) => {
@@ -479,7 +596,7 @@
 						return;
 					}
 					let material = mesh.material;
-					const role = roleOf(mesh);
+					const { role, category } = classify(mesh);
 					if (role) {
 						// Cloned so recolouring the board never touches a component's material.
 						let clone = roleClones.get(material.uuid);
@@ -490,6 +607,14 @@
 							// Silkscreen ink is opaque; KiCad's 0.9 greys black print on a white mask.
 							// It stays in the transparent pass so it can be ordered after the mask.
 							if (role === 'silk') clone.opacity = 1;
+							// KiCad exports the board core 2% transparent; transparent surfaces do
+							// not write depth, so the board could be seen through. Make it solid.
+							if (role === 'body') {
+								clone.transparent = false;
+								clone.opacity = 1;
+								clone.depthWrite = true;
+								clone.side = THREE.DoubleSide;
+							}
 							roleClones.set(material.uuid, clone);
 							roleMaterials[role].push(clone as import('three/webgpu').MeshStandardMaterial);
 						}
@@ -497,13 +622,14 @@
 					}
 					const geometry = mesh.geometry.clone().applyMatrix4(mesh.matrixWorld);
 					const signature = Object.keys(geometry.attributes).sort().join(',');
-					const key = `${material.uuid}|${signature}|${geometry.index ? 'i' : 'n'}`;
-					if (!groups.has(key)) groups.set(key, { material, geometries: [] });
+					// Split by category too, so SMD/THT parts can be hidden without rebuilding.
+					const key = `${material.uuid}|${category}|${signature}|${geometry.index ? 'i' : 'n'}`;
+					if (!groups.has(key)) groups.set(key, { material, category, geometries: [] });
 					groups.get(key)!.geometries.push(geometry);
 				});
 
 				const merged = new THREE.Group();
-				for (const { material, geometries } of groups.values()) {
+				for (const { material, category, geometries } of groups.values()) {
 					const combined = geometries.length > 1 ? mergeGeometries(geometries, false) : geometries[0];
 					const meshes = combined ? [combined] : geometries;
 					for (const geometry of meshes) {
@@ -512,6 +638,7 @@
 						// explicitly rather than trusting depth sorting between them.
 						if (roleMaterials.mask.includes(material as never)) mesh.renderOrder = 1;
 						if (roleMaterials.silk.includes(material as never)) mesh.renderOrder = 2;
+						categoryMeshes[category].push(mesh);
 						merged.add(mesh);
 					}
 					if (combined && combined !== geometries[0]) geometries.forEach((geometry) => geometry.dispose());
@@ -529,22 +656,316 @@
 				return merged;
 			}
 
-			/** Up to ~60k vertices, evenly strided; plenty for framing, fast to project. */
-			function samplePoints(model: import('three/webgpu').Object3D, origin: import('three/webgpu').Vector3) {
-				const positions: import('three/webgpu').BufferAttribute[] = [];
-				let total = 0;
-				model.traverse((object) => {
-					const mesh = object as import('three/webgpu').Mesh;
-					if (!mesh.isMesh) return;
-					const position = mesh.geometry.getAttribute('position') as import('three/webgpu').BufferAttribute;
-					positions.push(position);
-					total += position.count;
+			/* ---- ruler, scale comparison, and refitting to whatever is shown ---- */
+			let modelRoot: import('three/webgpu').Object3D | null = null;
+			let ruler: import('three/webgpu').Group | null = null;
+			let comparison: import('three/webgpu').Object3D | null = null;
+			const boardBounds = new THREE.Box3();
+			const MM = 0.001;
+
+			/** Recomputes the framing set: model, plus the ruler and comparison when shown. */
+			function refreshFit() {
+				const roots = [modelRoot, ruler, comparison].filter((o): o is import('three/webgpu').Object3D => !!o && o.visible);
+				bounds.makeEmpty();
+				for (const root of roots) bounds.expandByObject(root);
+				bounds.getCenter(centre);
+				fitPoints = samplePoints(roots, centre);
+				// KiCad exports in metres: a typical board is ~0.1 units across, so the
+				// radius must not be clamped to a "sensible" minimum like 1.
+				const radius = Math.max(bounds.getSize(new THREE.Vector3()).length() / 2, 1e-4);
+				camera.near = radius / 500;
+				camera.far = radius * 60;
+				camera.updateProjectionMatrix();
+				controls.minDistance = radius * 0.05;
+				controls.maxDistance = radius * 14;
+			}
+
+			/** Glides to frame the current contents from the current viewing angle. */
+			function reframe() {
+				refreshFit();
+				const dir = camera.position.clone().sub(controls.target).normalize();
+				viewFrom([dir.x, dir.y, dir.z]);
+			}
+
+			/** Dimension lines for width (X) and depth (Z), just above the board. */
+			function buildRuler() {
+				const group = new THREE.Group();
+				const b = boardBounds;
+				const size = b.getSize(new THREE.Vector3());
+				const y = b.max.y + 0.2 * MM;
+				const off = Math.max(size.x, size.z) * 0.07;
+				const tick = off * 0.3;
+				const zLine = b.max.z + off;
+				const xLine = b.min.x - off;
+				const segments = [
+					// Width: extension lines from the front corners, the dimension line, end ticks.
+					[b.min.x, y, b.max.z, b.min.x, y, zLine + tick], [b.max.x, y, b.max.z, b.max.x, y, zLine + tick],
+					[b.min.x, y, zLine, b.max.x, y, zLine],
+					// Depth: the same along the left edge.
+					[b.min.x, y, b.min.z, xLine - tick, y, b.min.z], [b.min.x, y, b.max.z, xLine - tick, y, b.max.z],
+					[xLine, y, b.min.z, xLine, y, b.max.z]
+				].flat();
+				const geometry = new THREE.BufferGeometry();
+				geometry.setAttribute('position', new THREE.Float32BufferAttribute(segments, 3));
+				group.add(new THREE.LineSegments(geometry, new THREE.LineBasicMaterial({ color: 0xf2d27a })));
+
+				labelAnchors.length = 0;
+				labelAnchors.push({ el: () => widthLabel, at: new THREE.Vector3((b.min.x + b.max.x) / 2, y, zLine) });
+				labelAnchors.push({ el: () => depthLabel, at: new THREE.Vector3(xLine, y, (b.min.z + b.max.z) / 2) });
+				rulerLabels = { width: `${(size.x / MM).toFixed(1)} mm`, depth: `${(size.z / MM).toFixed(1)} mm` };
+				return group;
+			}
+
+			/* Real-world objects for scale, in metres. Built on demand. */
+			function bankCard() {
+				// ISO/IEC 7810 ID-1: 85.60 x 53.98 x 0.76 mm, corner radius 3.18 mm.
+				const w = 85.6 * MM, h = 53.98 * MM, r = 3.18 * MM;
+				const shape = new THREE.Shape();
+				shape.moveTo(-w / 2 + r, -h / 2);
+				shape.lineTo(w / 2 - r, -h / 2);
+				shape.quadraticCurveTo(w / 2, -h / 2, w / 2, -h / 2 + r);
+				shape.lineTo(w / 2, h / 2 - r);
+				shape.quadraticCurveTo(w / 2, h / 2, w / 2 - r, h / 2);
+				shape.lineTo(-w / 2 + r, h / 2);
+				shape.quadraticCurveTo(-w / 2, h / 2, -w / 2, h / 2 - r);
+				shape.lineTo(-w / 2, -h / 2 + r);
+				shape.quadraticCurveTo(-w / 2, -h / 2, -w / 2 + r, -h / 2);
+				const body = new THREE.Mesh(
+					new THREE.ExtrudeGeometry(shape, { depth: 0.76 * MM, bevelEnabled: false, curveSegments: 6 }),
+					new THREE.MeshStandardMaterial({ color: '#1f4f96', roughness: 0.45 })
+				);
+				body.rotation.x = -Math.PI / 2;
+				const chip = new THREE.Mesh(
+					new THREE.BoxGeometry(11.8 * MM, 0.08 * MM, 8.9 * MM),
+					new THREE.MeshStandardMaterial({ color: '#d8b35a', metalness: 1, roughness: 0.3 })
+				);
+				chip.position.set(-w / 2 + 16 * MM, 0.8 * MM, -3 * MM);
+				const group = new THREE.Group();
+				group.add(body, chip);
+				return group;
+			}
+
+			function euroCoin() {
+				// 23.25 mm across, 2.33 mm thick; brass ring around a cupronickel centre.
+				const ring = new THREE.Mesh(
+					new THREE.CylinderGeometry(11.625 * MM, 11.625 * MM, 2.33 * MM, 64),
+					new THREE.MeshStandardMaterial({ color: '#c9a646', metalness: 1, roughness: 0.35 })
+				);
+				const centre = new THREE.Mesh(
+					new THREE.CylinderGeometry(8.1 * MM, 8.1 * MM, 2.4 * MM, 64),
+					new THREE.MeshStandardMaterial({ color: '#c8ccd0', metalness: 1, roughness: 0.3 })
+				);
+				const group = new THREE.Group();
+				group.add(ring, centre);
+				return group;
+			}
+
+			function banana() {
+				// ~19 cm long, lying on its side; a tube with a tapered, slightly ridged section.
+				const curve = new THREE.CatmullRomCurve3(
+					[[0, 0], [40, -19], [95, -29], [150, -19], [190, 0]].map(([x, z]) => new THREE.Vector3(x * MM, 0, z * MM))
+				);
+				const tubular = 90, radial = 24;
+				const frames = curve.computeFrenetFrames(tubular, false);
+				const positions: number[] = [], colors: number[] = [], indices: number[] = [];
+				const yellow = new THREE.Color('#e6c43a'), brown = new THREE.Color('#5b3d1c'), green = new THREE.Color('#a3b23a');
+				for (let i = 0; i <= tubular; i++) {
+					const t = i / tubular;
+					const p = curve.getPointAt(t);
+					const n = frames.normals[i], b = frames.binormals[i];
+					const radius = Math.max(1.6 * MM, 17 * MM * Math.pow(Math.sin(Math.PI * t), 0.55));
+					const tip = t < 0.05 || t > 0.95;
+					const color = tip ? brown : t > 0.85 ? yellow.clone().lerp(green, (t - 0.85) / 0.1) : yellow;
+					for (let j = 0; j <= radial; j++) {
+						const v = (j / radial) * Math.PI * 2;
+						const ridge = 1 + 0.05 * Math.cos(5 * v);
+						const cx = Math.cos(v) * radius * ridge, cy = Math.sin(v) * radius * ridge;
+						positions.push(p.x + cx * n.x + cy * b.x, p.y + cx * n.y + cy * b.y, p.z + cx * n.z + cy * b.z);
+						colors.push(color.r, color.g, color.b);
+					}
+				}
+				for (let i = 0; i < tubular; i++) {
+					for (let j = 0; j < radial; j++) {
+						const a = i * (radial + 1) + j, c = a + radial + 1;
+						indices.push(a, c, a + 1, c, c + 1, a + 1);
+					}
+				}
+				const geometry = new THREE.BufferGeometry();
+				geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+				geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+				geometry.setIndex(indices);
+				geometry.computeVertexNormals();
+				return new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.6, side: THREE.DoubleSide }));
+			}
+
+			function disposeObject(object: import('three/webgpu').Object3D) {
+				object.traverse((child) => {
+					const mesh = child as import('three/webgpu').Mesh;
+					if (!mesh.isMesh && !(child as import('three/webgpu').Line).isLine) return;
+					mesh.geometry.dispose();
+					(Array.isArray(mesh.material) ? mesh.material : [mesh.material]).forEach((m) => m.dispose());
 				});
+			}
+
+			setShown = (category, on) => {
+				for (const mesh of categoryMeshes[category]) mesh.visible = on;
+				requestRender();
+			};
+
+			setRuler = (on) => {
+				if (!ruler) return;
+				ruler.visible = on;
+				reframe();
+			};
+
+			setCompare = async (kind) => {
+				if (comparison) {
+					scene.remove(comparison);
+					disposeObject(comparison);
+					comparison = null;
+				}
+				if (kind !== 'none') {
+					const object = kind === 'card' ? bankCard() : kind === 'coin' ? euroCoin() : banana();
+					// Lie it next to the board's right edge, resting on the board's plane.
+					const size = boardBounds.getSize(new THREE.Vector3());
+					const gap = Math.max(8 * MM, Math.max(size.x, size.z) * 0.08);
+					const own = new THREE.Box3().setFromObject(object);
+					object.position.set(
+						boardBounds.max.x + gap - own.min.x,
+						boardBounds.min.y - own.min.y,
+						(boardBounds.min.z + boardBounds.max.z) / 2 - (own.min.z + own.max.z) / 2
+					);
+					comparison = object;
+					scene.add(object);
+					// New materials compile asynchronously; see compileAsync on load.
+					await renderer.compileAsync(scene, camera);
+				}
+				reframe();
+			};
+
+			/**
+			 * Renders the current view offscreen at the requested size, then composites it
+			 * over the chosen background together with the ruler labels and caption.
+			 */
+			exportImage = async (options) => {
+				if (!host) throw new Error('The viewer is not ready yet.');
+				const { width, height, keepsFraming } = exportDimensions(options.size);
+				const saved = {
+					position: camera.position.clone(),
+					target: controls.target.clone(),
+					aspect: camera.aspect,
+					pixelRatio: renderer.getPixelRatio()
+				};
+				cancelAnimationFrame(pending);
+				pending = 0;
+
+				try {
+					renderer.setPixelRatio(1);
+					// updateStyle=false: the on-page canvas keeps its CSS size during export.
+					renderer.setSize(width, height, false);
+					camera.aspect = width / height;
+					camera.updateProjectionMatrix();
+					if (!keepsFraming && options.reframe) {
+						// A different shape needs its own framing from the same viewing angle.
+						const pose = poseFor(camera.position.clone().sub(controls.target));
+						controls.target.copy(pose.target);
+						camera.position.copy(pose.target).addScaledVector(pose.dir, pose.distance);
+					}
+					camera.lookAt(controls.target);
+					camera.updateMatrixWorld();
+
+					// The WebGL fallback presents one render late (see requestRender), so
+					// render, yield a frame, render again and capture in the same task.
+					renderer.render(scene, camera);
+					await new Promise((resolve) => requestAnimationFrame(resolve));
+					renderer.render(scene, camera);
+					const shot = document.createElement('canvas');
+					shot.width = width;
+					shot.height = height;
+					const ctx = shot.getContext('2d')!;
+					if (options.background !== 'transparent' || options.format === 'jpeg') {
+						ctx.fillStyle =
+							options.background === 'white' || options.background === 'transparent'
+								? '#ffffff'
+								: options.background === 'custom'
+									? options.customColor
+									: getComputedStyle(host.parentElement!).backgroundColor;
+						ctx.fillRect(0, 0, width, height);
+					}
+					ctx.drawImage(renderer.domElement, 0, 0, width, height);
+
+					const unit = height / 900; // label size relative to a ~900 px tall view
+					if (options.labels && ruler?.visible) {
+						ctx.font = `${Math.round(13 * unit)}px ui-monospace, "JetBrains Mono", monospace`;
+						ctx.textAlign = 'center';
+						ctx.textBaseline = 'middle';
+						for (const { at } of labelAnchors) {
+							const ndc = at.clone().project(camera);
+							if (ndc.z >= 1) continue;
+							const x = ((ndc.x + 1) / 2) * width, y = ((1 - ndc.y) / 2) * height;
+							const text = at === labelAnchors[0].at ? rulerLabels.width : rulerLabels.depth;
+							const w = ctx.measureText(text).width + 14 * unit, h = 22 * unit;
+							ctx.fillStyle = 'rgba(10, 12, 14, 0.8)';
+							ctx.beginPath();
+							ctx.roundRect(x - w / 2, y - h / 2, w, h, 4 * unit);
+							ctx.fill();
+							ctx.fillStyle = '#f2d27a';
+							ctx.fillText(text, x, y);
+						}
+					}
+					if (options.caption && caption) {
+						const size = Math.round(16 * unit);
+						ctx.font = `600 ${size}px Inter, system-ui, sans-serif`;
+						ctx.textAlign = 'left';
+						ctx.textBaseline = 'alphabetic';
+						const light = options.background === 'white' || (options.background === 'custom' && isLight(options.customColor));
+						ctx.fillStyle = light ? 'rgba(20, 23, 28, 0.75)' : 'rgba(255, 255, 255, 0.8)';
+						ctx.fillText(caption, size * 1.4, height - size * 1.4);
+					}
+
+					const type = `image/${options.format}`;
+					const blob = await new Promise<Blob | null>((resolve) => shot.toBlob(resolve, type, 0.92));
+					if (!blob) throw new Error('The browser could not encode the image.');
+					return blob;
+				} finally {
+					renderer.setPixelRatio(saved.pixelRatio);
+					renderer.setSize(host.clientWidth, host.clientHeight);
+					camera.aspect = saved.aspect;
+					camera.updateProjectionMatrix();
+					camera.position.copy(saved.position);
+					controls.target.copy(saved.target);
+					controls.update();
+					requestAnimationFrame(() => requestRender());
+				}
+			};
+
+			function isLight(hex: string) {
+				const value = parseInt(hex.slice(1), 16);
+				const r = (value >> 16) & 255, g = (value >> 8) & 255, b = value & 255;
+				return 0.299 * r + 0.587 * g + 0.114 * b > 150;
+			}
+
+			/** Up to ~60k vertices, evenly strided; plenty for framing, fast to project. */
+			function samplePoints(roots: import('three/webgpu').Object3D[], origin: import('three/webgpu').Vector3) {
+				const positions: { attribute: import('three/webgpu').BufferAttribute; matrix: import('three/webgpu').Matrix4 }[] = [];
+				let total = 0;
+				for (const root of roots) {
+					root.updateMatrixWorld(true);
+					root.traverse((object) => {
+						const drawable = object as import('three/webgpu').Mesh;
+						if (!(drawable.isMesh || (object as import('three/webgpu').Line).isLine) || !object.visible) return;
+						const attribute = drawable.geometry.getAttribute('position') as import('three/webgpu').BufferAttribute;
+						positions.push({ attribute, matrix: object.matrixWorld });
+						total += attribute.count;
+					});
+				}
 				const stride = Math.max(1, Math.ceil(total / 60000));
 				const out: number[] = [];
-				for (const position of positions) {
-					for (let i = 0; i < position.count; i += stride) {
-						out.push(position.getX(i) - origin.x, position.getY(i) - origin.y, position.getZ(i) - origin.z);
+				const point = new THREE.Vector3();
+				for (const { attribute, matrix } of positions) {
+					for (let i = 0; i < attribute.count; i += stride) {
+						point.fromBufferAttribute(attribute, i).applyMatrix4(matrix);
+						out.push(point.x - origin.x, point.y - origin.y, point.z - origin.z);
 					}
 				}
 				return new Float32Array(out);
@@ -562,29 +983,44 @@
 					const body = meshNames.find((name) => name.endsWith('_PCB'));
 					const board = body ? body.slice(0, -'_PCB'.length) : null;
 					const roles: Record<string, Role> = board
-						? { [`${board}_soldermask`]: 'mask', [`${board}_silkscreen`]: 'silk', [`${board}_pad`]: 'pad' }
+						? { [`${board}_soldermask`]: 'mask', [`${board}_silkscreen`]: 'silk', [`${board}_pad`]: 'pad', [`${board}_PCB`]: 'body' }
 						: {};
+
+					// Footprint nodes are named after their reference; the loader sanitises
+					// node names the same way, and suffixes duplicates with _1, _2, ...
+					const sanitize = (name: string) => name.replace(/\s/g, '_').replace(/[[\].:/]/g, '');
+					const mountByNode = new Map(Object.entries(mounts).map(([ref, mount]) => [sanitize(ref), mount]));
+					const mountOf = (object: import('three/webgpu').Object3D) => {
+						for (let node: import('three/webgpu').Object3D | null = object; node; node = node.parent) {
+							const mount = mountByNode.get(node.name) ?? mountByNode.get(node.name.replace(/_\d+$/, ''));
+							if (mount) return mount;
+						}
+						return 'other';
+					};
 
 					const model = mergeByMaterial(gltf.scene, (mesh) => {
 						const index = gltf.parser.associations.get(mesh)?.meshes;
-						return index === undefined ? null : (roles[meshNames[index]] ?? null);
+						const name = index === undefined ? '' : meshNames[index];
+						if (board && name.startsWith(`${board}_`)) return { role: roles[name] ?? null, category: 'board' };
+						return { role: null, category: mountOf(mesh) };
 					});
+					counts = { smd: categoryMeshes.smd.length, tht: categoryMeshes.tht.length };
 					scene.add(model);
 					drawCalls = model.children.length;
 					recolorable = roleMaterials.mask.length > 0;
 					applyColors();
 
-					bounds.setFromObject(model);
-					bounds.getCenter(centre);
-					fitPoints = samplePoints(model, centre);
-					// KiCad exports in metres: a typical board is ~0.1 units across, so the
-					// radius must not be clamped to a "sensible" minimum like 1.
-					const radius = Math.max(bounds.getSize(new THREE.Vector3()).length() / 2, 1e-4);
-					camera.near = radius / 500;
-					camera.far = radius * 60;
-					camera.updateProjectionMatrix();
-					controls.minDistance = radius * 0.05;
-					controls.maxDistance = radius * 14;
+					modelRoot = model;
+					// The board body gives the true outline for the ruler and placement.
+					boardBounds.makeEmpty();
+					for (const mesh of categoryMeshes.board.filter((m) => roleMaterials.body.includes(m.material as never))) {
+						boardBounds.expandByObject(mesh);
+					}
+					if (boardBounds.isEmpty()) boardBounds.setFromObject(model);
+					ruler = buildRuler();
+					ruler.visible = false;
+					scene.add(ruler);
+					refreshFit();
 					// The renderer skips objects whose shaders are still compiling. With
 					// on-demand rendering nothing would redraw once they are ready, so
 					// compile everything first.
@@ -646,63 +1082,202 @@
 >
 	<div bind:this={host} class="h-full w-full"></div>
 
-	{#if loaded && recolorable}
-		<div class="absolute left-2 top-2 flex flex-col gap-1.5 rounded-md border bg-[var(--surface-1)]/92 px-2 py-1.5 backdrop-blur">
-			<div class="flex items-center gap-1.5" role="radiogroup" aria-label="Soldermask colour">
-				<span class="w-10 text-[0.625rem] uppercase tracking-wide text-[var(--text-muted)]">Mask</span>
-				{#each MASKS as option}
+	{#if loaded}
+		<div class="absolute left-2 top-2 flex flex-col items-start gap-2">
+			{#if recolorable}
+				<div class="flex flex-col gap-1.5 rounded-md border bg-[var(--surface-1)]/92 px-2 py-1.5 backdrop-blur">
+					<div class="flex items-center gap-1.5" role="radiogroup" aria-label="Soldermask colour">
+						<span class="w-10 text-[0.625rem] uppercase tracking-wide text-[var(--text-muted)]">Mask</span>
+						{#each MASKS as option}
+							<button
+								class="swatch"
+								class:active={mask === option.id}
+								style:background={option.color}
+								title="{option.label} soldermask"
+								aria-label="{option.label} soldermask"
+								role="radio"
+								aria-checked={mask === option.id}
+								onclick={() => choose({ mask: option.id })}
+							></button>
+						{/each}
+					</div>
+					<div class="flex items-center gap-1.5" role="radiogroup" aria-label="Silkscreen colour">
+						<span class="w-10 text-[0.625rem] uppercase tracking-wide text-[var(--text-muted)]">Silk</span>
+						{#each SILKS as option}
+							<button
+								class="swatch"
+								class:active={silk === option.id}
+								style:background={option.color}
+								title="{option.label} silkscreen"
+								aria-label="{option.label} silkscreen"
+								role="radio"
+								aria-checked={silk === option.id}
+								onclick={() => choose({ silk: option.id })}
+							></button>
+						{/each}
+					</div>
+					<div class="flex items-center gap-1.5" role="radiogroup" aria-label="Pad finish">
+						<span class="w-10 text-[0.625rem] uppercase tracking-wide text-[var(--text-muted)]">Finish</span>
+						{#each FINISHES as option}
+							<button
+								class="finish"
+								class:active={finish === option.id}
+								style:--metal={option.color}
+								title={option.title}
+								aria-label={option.title}
+								role="radio"
+								aria-checked={finish === option.id}
+								onclick={() => choose({ finish: option.id })}
+							>
+								<span class="metal" aria-hidden="true"></span>{option.label}
+							</button>
+						{/each}
+					</div>
+				</div>
+			{/if}
+
+			<div class="flex flex-col gap-1.5 rounded-md border bg-[var(--surface-1)]/92 px-2 py-1.5 backdrop-blur">
+				<div class="flex items-center gap-1.5">
+					<span class="w-10 text-[0.625rem] uppercase tracking-wide text-[var(--text-muted)]">Show</span>
+					{#if counts.smd}
+						<button
+							class="toggle"
+							aria-pressed={showSmd}
+							title="Surface-mount parts"
+							onclick={() => {
+								showSmd = !showSmd;
+								setShown('smd', showSmd);
+							}}>SMD</button
+						>
+					{/if}
+					{#if counts.tht}
+						<button
+							class="toggle"
+							aria-pressed={showTht}
+							title="Through-hole parts"
+							onclick={() => {
+								showTht = !showTht;
+								setShown('tht', showTht);
+							}}>THT</button
+						>
+					{/if}
 					<button
-						class="swatch"
-						class:active={mask === option.id}
-						style:background={option.color}
-						title="{option.label} soldermask"
-						aria-label="{option.label} soldermask"
-						role="radio"
-						aria-checked={mask === option.id}
-						onclick={() => choose({ mask: option.id })}
-					></button>
-				{/each}
-			</div>
-			<div class="flex items-center gap-1.5" role="radiogroup" aria-label="Silkscreen colour">
-				<span class="w-10 text-[0.625rem] uppercase tracking-wide text-[var(--text-muted)]">Silk</span>
-				{#each SILKS as option}
-					<button
-						class="swatch"
-						class:active={silk === option.id}
-						style:background={option.color}
-						title="{option.label} silkscreen"
-						aria-label="{option.label} silkscreen"
-						role="radio"
-						aria-checked={silk === option.id}
-						onclick={() => choose({ silk: option.id })}
-					></button>
-				{/each}
-			</div>
-			<div class="flex items-center gap-1.5" role="radiogroup" aria-label="Pad finish">
-				<span class="w-10 text-[0.625rem] uppercase tracking-wide text-[var(--text-muted)]">Finish</span>
-				{#each FINISHES as option}
-					<button
-						class="finish"
-						class:active={finish === option.id}
-						style:--metal={option.color}
-						title={option.title}
-						aria-label={option.title}
-						role="radio"
-						aria-checked={finish === option.id}
-						onclick={() => choose({ finish: option.id })}
+						class="toggle"
+						aria-pressed={showRuler}
+						title="Board dimensions"
+						onclick={() => {
+							showRuler = !showRuler;
+							setRuler(showRuler);
+						}}
 					>
-						<span class="metal" aria-hidden="true"></span>{option.label}
+						<Icon name="ruler" size={11} /> Ruler
 					</button>
-				{/each}
+				</div>
+				<div class="flex items-center gap-1.5">
+					<label for="compare-{url}" class="w-10 text-[0.625rem] uppercase tracking-wide text-[var(--text-muted)]">Scale</label>
+					<select
+						id="compare-{url}"
+						class="compare"
+						bind:value={compare}
+						onchange={() => setCompare(compare)}
+					>
+						{#each COMPARISONS as option}<option value={option.id}>{option.label}</option>{/each}
+					</select>
+				</div>
 			</div>
 		</div>
 	{/if}
 
+	{#if exportOpen && loaded}
+		{@const dims = exportDimensions(exportOptions.size)}
+		<div class="export-panel" role="dialog" aria-label="Export image">
+			<div class="mb-2 flex items-center justify-between">
+				<h3 class="text-xs font-semibold">Export image</h3>
+				<button class="viewer-btn !h-6 !w-6" onclick={() => (exportOpen = false)} aria-label="Close"><Icon name="x" size={12} /></button>
+			</div>
+
+			<label class="export-label" for="export-size">Size</label>
+			<select id="export-size" class="compare w-full" bind:value={exportOptions.size}>
+				{#each EXPORT_SIZES as option}
+					{@const d = exportDimensions(option.id)}
+					<option value={option.id}>{option.label}{'scale' in option ? ` — ${d.width} × ${d.height}` : ''}</option>
+				{/each}
+			</select>
+			{#if !dims.keepsFraming}
+				<label class="export-check">
+					<input type="checkbox" bind:checked={exportOptions.reframe} /> Re-frame for this shape
+				</label>
+			{/if}
+
+			<span class="export-label">Background</span>
+			<div class="flex flex-wrap gap-1">
+				{#each [['viewer', 'Viewer'], ['transparent', 'Transparent'], ['white', 'White'], ['custom', 'Custom']] as [value, label]}
+					<button
+						class="toggle"
+						aria-pressed={exportOptions.background === value}
+						disabled={value === 'transparent' && exportOptions.format === 'jpeg'}
+						title={value === 'transparent' && exportOptions.format === 'jpeg' ? 'JPEG has no transparency' : undefined}
+						onclick={() => (exportOptions.background = value as ExportBackground)}>{label}</button
+					>
+				{/each}
+				{#if exportOptions.background === 'custom'}
+					<input type="color" class="h-5 w-8 cursor-pointer rounded border bg-transparent" bind:value={exportOptions.customColor} aria-label="Background colour" />
+				{/if}
+			</div>
+
+			<span class="export-label">Format</span>
+			<div class="flex gap-1">
+				{#each [['png', 'PNG'], ['jpeg', 'JPEG'], ['webp', 'WebP']] as [value, label]}
+					<button
+						class="toggle"
+						aria-pressed={exportOptions.format === value}
+						onclick={() => {
+							exportOptions.format = value as ExportFormat;
+							if (value === 'jpeg' && exportOptions.background === 'transparent') exportOptions.background = 'white';
+						}}>{label}</button
+					>
+				{/each}
+			</div>
+
+			<div class="mt-2 flex flex-col gap-1">
+				{#if showRuler}
+					<label class="export-check"><input type="checkbox" bind:checked={exportOptions.labels} /> Dimension labels</label>
+				{/if}
+				{#if caption}
+					<label class="export-check"><input type="checkbox" bind:checked={exportOptions.caption} /> Caption <span class="truncate text-[var(--text-muted)]">({caption})</span></label>
+				{/if}
+			</div>
+
+			{#if exportError}<p class="mt-2 text-[0.6875rem]" style:color="var(--err)">{exportError}</p>{/if}
+
+			<button class="btn btn-primary btn-sm mt-3 w-full" onclick={runExport} disabled={exporting}>
+				<Icon name="download" size={12} />
+				{exporting ? 'Rendering…' : `Download ${dims.width} × ${dims.height}`}
+			</button>
+		</div>
+	{/if}
+
+	<!-- Ruler labels: HTML, pinned to their 3D anchors on every render. -->
+	<span bind:this={widthLabel} class="dim-label" style:display="none">{rulerLabels.width}</span>
+	<span bind:this={depthLabel} class="dim-label" style:display="none">{rulerLabels.depth}</span>
+
 	<!-- View cube: rotates with the camera; faces, edges and corners are clickable. -->
 	<div class="absolute right-1 top-1 flex items-start" class:invisible={!loaded}>
-		<button class="viewer-btn mt-2 rounded-md border bg-[var(--surface-1)]/92 backdrop-blur" onclick={() => viewFrom(HOME)} title="Home view" aria-label="Home view">
-			<Icon name="home" size={14} />
-		</button>
+		<div class="mt-2 flex flex-col gap-1">
+			<button class="viewer-btn rounded-md border bg-[var(--surface-1)]/92 backdrop-blur" onclick={() => viewFrom(HOME)} title="Home view" aria-label="Home view">
+				<Icon name="home" size={14} />
+			</button>
+			<button
+				class="viewer-btn rounded-md border bg-[var(--surface-1)]/92 backdrop-blur"
+				class:!text-[var(--accent)]={exportOpen}
+				onclick={() => (exportOpen = !exportOpen)}
+				title="Export image"
+				aria-label="Export image"
+				aria-expanded={exportOpen}
+			>
+				<Icon name="camera" size={14} />
+			</button>
+		</div>
 		<!-- svelte-ignore a11y_no_static_element_interactions -->
 		<div
 			class="viewcube-stage"
@@ -839,6 +1414,80 @@
 		background: color-mix(in srgb, var(--accent) 60%, var(--surface-2));
 		color: var(--text-primary);
 		outline: none;
+	}
+	.toggle {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.25rem;
+		padding: 0.1rem 0.45rem;
+		border-radius: 999px;
+		border: 1px solid var(--border-strong);
+		font-size: 0.625rem;
+		font-weight: 600;
+		letter-spacing: 0.03em;
+		color: var(--text-muted);
+		cursor: pointer;
+	}
+	.toggle[aria-pressed='true'] {
+		border-color: var(--accent);
+		background: color-mix(in srgb, var(--accent) 22%, transparent);
+		color: var(--text-primary);
+	}
+	.compare {
+		font-size: 0.6875rem;
+		padding: 0.1rem 0.35rem;
+		border-radius: 0.3rem;
+		border: 1px solid var(--border-strong);
+		background: var(--surface-0);
+		color: var(--text-primary);
+	}
+	.export-panel {
+		position: absolute;
+		right: 3.25rem;
+		top: 2.75rem;
+		z-index: 10;
+		width: 15.5rem;
+		padding: 0.6rem 0.7rem 0.7rem;
+		border-radius: 0.5rem;
+		border: 1px solid var(--border-strong);
+		background: color-mix(in srgb, var(--surface-1) 96%, transparent);
+		backdrop-filter: blur(8px);
+		box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+	}
+	.export-label {
+		display: block;
+		margin: 0.55rem 0 0.25rem;
+		font-size: 0.625rem;
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+		color: var(--text-muted);
+	}
+	.export-check {
+		display: flex;
+		align-items: center;
+		gap: 0.35rem;
+		margin-top: 0.35rem;
+		font-size: 0.6875rem;
+		color: var(--text-secondary);
+		cursor: pointer;
+		min-width: 0;
+	}
+	.toggle:disabled {
+		opacity: 0.4;
+		cursor: not-allowed;
+	}
+	.dim-label {
+		position: absolute;
+		left: 0;
+		top: 0;
+		pointer-events: none;
+		padding: 0.05rem 0.35rem;
+		border-radius: 0.25rem;
+		background: rgba(10, 12, 14, 0.78);
+		color: #f2d27a;
+		font-family: var(--font-mono);
+		font-size: 0.6875rem;
+		white-space: nowrap;
 	}
 	.viewcube-stage {
 		cursor: grab;

@@ -5,6 +5,8 @@ import { collapseRefs, groupBom, parseBomCsv, parseCsv, bomToCsv } from '../src/
 import { parseSexpr, children, prop, descendants } from '../src/lib/server/render/sexpr.ts';
 import { parseDrcReport, parseErcReport, countBySeverity } from '../src/lib/server/render/reports.ts';
 import { renderMarkdown } from '../src/lib/server/markdown.ts';
+import { analyzeBoardText } from '../src/lib/server/render/board.ts';
+import { renderPcb } from '../scripts/fixtures/kicad.ts';
 import { parseViewBox, unionViewBox } from '../src/lib/viewbox.ts';
 import { exportableLayers, layerIdFromFilename, layerStyle } from '../src/lib/layers.ts';
 
@@ -205,4 +207,16 @@ test('KiCad plot filenames use user-facing names; they map back to canonical ids
 	assert.equal(layerIdFromFilename('board-User_Comments.svg', names), 'Cmts.User');
 	assert.equal(layerStyle('Cmts.User').label, 'Comments');
 	assert.ok(exportableLayers(names).includes('Cmts.User'));
+});
+
+test('footprints are classified as SMD or through-hole by reference', () => {
+	const pcb = renderPcb({
+		name: 'mounts', title: 'Mounts', widthMm: 20, heightMm: 20, copperLayers: 2, nets: ['GND'],
+		parts: [
+			{ ref: 'R1', value: '1k', footprint: 'R:R_0603', description: '', x: 105, y: 85 },
+			{ ref: 'J1', value: 'HDR', footprint: 'C:PinHeader', description: '', x: 110, y: 90, smd: false }
+		],
+		readme: '', description: '', tags: [], license: ''
+	});
+	assert.deepEqual(analyzeBoardText(pcb).mounts, { R1: 'smd', J1: 'tht' });
 });

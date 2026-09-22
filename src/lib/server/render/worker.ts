@@ -355,7 +355,7 @@ async function renderBoard(
 	const glbResult = await runKicad(pcbGlbArgs(pcbPath, glb), 600_000);
 	log.push(`glb: ${glbResult.ok ? 'ok' : `failed (${glbResult.code}) ${glbResult.stderr.trim()}`}`);
 	if (glbResult.ok && fs.existsSync(glb)) {
-		await storeArtifact({ commitId, kind: 'pcb_glb', name: 'board.glb', source: glb });
+		await storeArtifact({ commitId, kind: 'pcb_glb', name: 'board.glb', source: glb, meta: { mounts: board?.mounts ?? {} } });
 	}
 
 	// DRC.

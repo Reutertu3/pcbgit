@@ -8,12 +8,16 @@ export interface BoardLayer {
 	copper: boolean;
 }
 
+export type Mount = 'smd' | 'tht' | 'other';
+
 export interface BoardStats {
 	title: string;
 	layers: BoardLayer[];
 	copperLayers: number;
 	netCount: number;
 	footprintCount: number;
+	/** Reference designator -> mounting type, used by the 3D viewer's SMD/THT toggles. */
+	mounts: Record<string, Mount>;
 	padCount: number;
 	viaCount: number;
 	trackCount: number;
@@ -28,7 +32,11 @@ export interface BoardStats {
 const COPPER = /^(F|B|In\d+)\.Cu$/;
 
 export function analyzeBoard(pcbPath: string): BoardStats {
-	const tree = parseSexpr(fs.readFileSync(pcbPath, 'utf8'));
+	return analyzeBoardText(fs.readFileSync(pcbPath, 'utf8'));
+}
+
+export function analyzeBoardText(text: string): BoardStats {
+	const tree = parseSexpr(text);
 	const root = (tree.find((n) => isList(n) && n[0] === 'kicad_pcb') as SNode[]) ?? [];
 
 	const layers: BoardLayer[] = [];
@@ -70,6 +78,7 @@ export function analyzeBoard(pcbPath: string): BoardStats {
 		copperLayers: layers.filter((l) => l.copper).length,
 		netCount: nets.length,
 		footprintCount: footprints.length,
+		mounts: footprintMounts(footprints),
 		padCount,
 		viaCount: children(root, 'via').length,
 		trackCount: children(root, 'segment').length + children(root, 'arc').length,
@@ -121,4 +130,26 @@ function edgeCutsBounds(root: SNode[]) {
 
 	if (!Number.isFinite(minX)) return null;
 	return { minX: round(minX), minY: round(minY), maxX: round(maxX), maxY: round(maxY) };
+}
+
+/** KiCad 8+ stores the reference as a property; older files use fp_text. */
+function footprintReference(fp: SNode[]) {
+	for (const property of children(fp, 'property')) {
+		if (property[1] === 'Reference' && typeof property[2] === 'string') return property[2];
+	}
+	for (const text of children(fp, 'fp_text')) {
+		if (text[1] === 'reference' && typeof text[2] === 'string') return text[2];
+	}
+	return null;
+}
+
+function footprintMounts(footprints: SNode[][]) {
+	const mounts: Record<string, Mount> = {};
+	for (const fp of footprints) {
+		const reference = footprintReference(fp);
+		if (!reference) continue;
+		const flags = (child(fp, 'attr')?.slice(1) ?? []).filter((v): v is string => typeof v === 'string');
+		mounts[reference] = flags.includes('smd') ? 'smd' : flags.includes('through_hole') ? 'tht' : 'other';
+	}
+	return mounts;
 }

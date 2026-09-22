@@ -2,7 +2,7 @@
 	import Icon from '$lib/components/Icon.svelte';
 	import Viewer3D from '$lib/components/Viewer3D.svelte';
 	import EmptyTab from '$lib/components/EmptyTab.svelte';
-	import { formatDimensions } from '$lib/format';
+	import { formatDimensions, shortSha } from '$lib/format';
 
 	let { data } = $props();
 	const size = $derived(formatDimensions(data.commit?.board_width ?? null, data.commit?.board_height ?? null));
@@ -21,7 +21,13 @@
 		/>
 	{:else}
 		{#key data.modelUrl}
-			<Viewer3D url={data.modelUrl} class="h-[calc(100vh-15rem)] min-h-[32rem]" />
+			<Viewer3D
+				url={data.modelUrl}
+				mounts={data.mounts}
+				caption="{data.project.name} · {shortSha(data.commit?.sha)}"
+				fileBase="{data.project.slug}-{shortSha(data.commit?.sha)}"
+				class="h-[calc(100vh-15rem)] min-h-[32rem]"
+			/>
 		{/key}
 		<div class="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs text-[var(--text-muted)]">
 			<span>
