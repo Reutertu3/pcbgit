@@ -12,7 +12,8 @@ export type ArtifactKind =
 	| 'bom_csv'
 	| 'drc_json'
 	| 'erc_json'
-	| 'fab_zip';
+	| 'fab_zip'
+	| 'ibom_html';
 
 export interface ArtifactRow {
 	id: string;

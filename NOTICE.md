@@ -61,6 +61,7 @@ so their licenses do not extend to pcbgit's code.
 | [Node.js](https://nodejs.org) | MIT | Runtime |
 | [librsvg](https://gitlab.gnome.org/GNOME/librsvg) (`rsvg-convert`) | LGPL-2.1-or-later | Card thumbnails |
 | [libwebp](https://chromium.googlesource.com/webm/libwebp) (`cwebp`) | BSD-3-Clause | Card thumbnails |
+| [InteractiveHtmlBom](https://github.com/openscopeproject/InteractiveHtmlBom) | MIT | Interactive BOM pages. The generated pages embed its scripts and theirs: Split.js (MIT), PEP (MIT), lz-string (MIT) |
 | [tini](https://github.com/krallin/tini) | MIT | Process supervisor in the container |
 | [Caddy](https://caddyserver.com) | Apache-2.0 | HTTPS reverse proxy (production setup, separate container) |
 | [Ubuntu](https://ubuntu.com) base image | Various | Operating system of the Docker image |

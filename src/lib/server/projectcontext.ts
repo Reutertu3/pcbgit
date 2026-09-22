@@ -112,6 +112,7 @@ export function artifactSummary(commitId: string) {
 		hasPcb: rows.some((row) => row.kind === 'pcb_layer_svg'),
 		has3d: rows.some((row) => row.kind === 'pcb_glb'),
 		hasFab: rows.some((row) => row.kind === 'fab_zip'),
+		ibom: rows.find((row) => row.kind === 'ibom_html'),
 		previewFront: rows.find((row) => row.kind === 'pcb_preview_svg' && row.name === 'front'),
 		previewBack: rows.find((row) => row.kind === 'pcb_preview_svg' && row.name === 'back'),
 		totalBytes: rows.reduce((sum, row) => sum + row.size_bytes, 0),

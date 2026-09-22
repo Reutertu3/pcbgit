@@ -32,10 +32,27 @@ function kicadEnv() {
  * Exit code 5 means "violations found", which is a successful DRC/ERC run.
  */
 export async function runKicad(args: string[], timeoutMs = 240_000): Promise<RunResult> {
-	const command = `${KICAD_CLI} ${args.join(' ')}`;
+	return runTool(KICAD_CLI, args, timeoutMs);
+}
+
+/** Interactive HTML BOM script; unset (e.g. in development) skips the iBOM step. */
+export const IBOM_SCRIPT = process.env.PCBGIT_IBOM ?? '';
+
+/** Writes `<outDir>/ibom.html` with iBOM, which loads the board through KiCad's Python module. */
+export async function runIbom(pcbPath: string, outDir: string): Promise<RunResult> {
+	return runTool(
+		'python3',
+		[IBOM_SCRIPT, '--no-browser', '--dest-dir', outDir, '--name-format', 'ibom', pcbPath],
+		120_000,
+		{ INTERACTIVE_HTML_BOM_NO_DISPLAY: '1' }
+	);
+}
+
+async function runTool(bin: string, args: string[], timeoutMs: number, env: Record<string, string> = {}): Promise<RunResult> {
+	const command = `${bin} ${args.join(' ')}`;
 	try {
-		const { stdout, stderr } = await exec(KICAD_CLI, args, {
-			env: kicadEnv(),
+		const { stdout, stderr } = await exec(bin, args, {
+			env: { ...kicadEnv(), ...env },
 			timeout: timeoutMs,
 			maxBuffer: 64 * 1024 * 1024
 		});

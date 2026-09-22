@@ -2,6 +2,11 @@
 	import Icon from './Icon.svelte';
 	import { DEFAULT_THEME, THEMES } from '$lib/themes';
 
+	const GROUPS = [
+		{ label: 'Light', themes: THEMES.filter((theme) => !theme.dark) },
+		{ label: 'Dark', themes: THEMES.filter((theme) => theme.dark) }
+	];
+
 	let current = $state<string>(DEFAULT_THEME);
 	let open = $state(false);
 
@@ -46,27 +51,32 @@
 			role="listbox"
 			aria-label="Theme"
 		>
-			{#each THEMES as theme}
-				<li>
-					<button
-						class="menu-item w-full"
-						class:bg-s3={current === theme.id}
-						role="option"
-						aria-selected={current === theme.id}
-						onclick={(event) => {
-							event.stopPropagation();
-							choose(theme.id);
-						}}
-					>
-						<span class="flex overflow-hidden rounded border" aria-hidden="true">
-							{#each theme.swatches as color}
-								<span class="h-4 w-2.5" style:background={color}></span>
-							{/each}
-						</span>
-						<span class="flex-1 text-left">{theme.label}</span>
-						{#if current === theme.id}<Icon name="check" size={13} />{/if}
-					</button>
+			{#each GROUPS as group}
+				<li role="presentation" class="px-2 pb-0.5 pt-1.5 text-[0.625rem] font-semibold tracking-wider text-[var(--text-muted)] uppercase">
+					{group.label}
 				</li>
+				{#each group.themes as theme}
+					<li>
+						<button
+							class="menu-item w-full"
+							class:bg-s3={current === theme.id}
+							role="option"
+							aria-selected={current === theme.id}
+							onclick={(event) => {
+								event.stopPropagation();
+								choose(theme.id);
+							}}
+						>
+							<span class="flex overflow-hidden rounded border" aria-hidden="true">
+								{#each theme.swatches as color}
+									<span class="h-4 w-2.5" style:background={color}></span>
+								{/each}
+							</span>
+							<span class="flex-1 text-left">{theme.label}</span>
+							{#if current === theme.id}<Icon name="check" size={13} />{/if}
+						</button>
+					</li>
+				{/each}
 			{/each}
 		</ul>
 	{/if}

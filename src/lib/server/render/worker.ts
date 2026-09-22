@@ -11,6 +11,7 @@ import { clearArtifacts, listArtifacts, storeArtifact, svgGeometry } from './art
 import { analyzeBoard, type BoardStats } from './board';
 import { bomToCsv, groupBom, parseBomCsv, type BomLine } from './bom';
 import {
+	IBOM_SCRIPT,
 	kicadVersion,
 	pcbCompositeSvgArgs,
 	pcbDrcArgs,
@@ -18,6 +19,7 @@ import {
 	pcbGerberArgs,
 	pcbGlbArgs,
 	pcbLayerSvgArgs,
+	runIbom,
 	runKicad,
 	schBomArgs,
 	schErcArgs,
@@ -355,6 +357,16 @@ async function renderBoard(
 			});
 		}
 		log.push(`preview ${side}: ${result.ok ? 'ok' : `failed (${result.code})`}`);
+	}
+
+	// Interactive BOM: grouped parts with placement highlighting, one self-contained page.
+	if (IBOM_SCRIPT) {
+		const result = await runIbom(pcbPath, outDir);
+		const file = path.join(outDir, 'ibom.html');
+		const stored = result.ok && fs.existsSync(file);
+		// iBOM's stderr is mostly wx debug chatter; its last line holds the error.
+		log.push(`ibom: ${stored ? 'ok' : `failed (${result.code}) ${result.stderr.trim().split('\n').at(-1)}`}`);
+		if (stored) await storeArtifact({ commitId, kind: 'ibom_html', name: 'ibom.html', source: file });
 	}
 
 	// 3D model.

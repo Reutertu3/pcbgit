@@ -4,6 +4,7 @@
 	import Icon from '$lib/components/Icon.svelte';
 	import EmptyTab from '$lib/components/EmptyTab.svelte';
 	import { relativeTime, shortSha } from '$lib/format';
+	import { ibomColorParam } from '$lib/ibomtheme';
 
 	let { data } = $props();
 
@@ -13,6 +14,26 @@
 	let sortBy = $state<Column>('refs');
 	let ascending = $state(true);
 	let hideUnchanged = $state(false);
+	/** The interactive view is the default; comparing versions only exists in the table. */
+	let view = $state<'interactive' | 'table'>(page.url.searchParams.has('compare') ? 'table' : 'interactive');
+	const interactive = $derived(view === 'interactive' && !!data.tabs.ibom);
+
+	// iBOM cannot read pcbgit's theme from inside its sandbox; its mode and colours go
+	// in the URL. Unknown until mounted, so the frame is created once, already themed.
+	let themeQuery = $state<string | null>(null);
+	const dark = $derived(themeQuery?.startsWith('?dark') ?? false);
+	$effect(() => {
+		const read = () => {
+			const style = getComputedStyle(document.documentElement);
+			const colors = ibomColorParam(style);
+			const params = [style.colorScheme === 'dark' && 'dark', colors && `c=${colors}`].filter(Boolean);
+			themeQuery = params.length ? `?${params.join('&')}` : '';
+		};
+		read();
+		const observer = new MutationObserver(read);
+		observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+		return () => observer.disconnect();
+	});
 
 	const base = $derived(`/${data.project.owner_username}/${data.project.slug}`);
 	const versionQuery = $derived(data.isHead ? '' : `?v=${data.commit?.sha}`);
@@ -86,7 +107,41 @@
 <svelte:head><title>BOM · {data.project.name} · {data.site.name}</title></svelte:head>
 
 <div class="mx-auto max-w-[1400px] px-4 py-4">
-	{#if !data.rows.length}
+	{#if data.tabs.ibom}
+		<div class="mb-3 flex items-center gap-2">
+			<div class="segmented" role="group" aria-label="BOM view">
+				<button class:active={view === 'interactive'} aria-pressed={view === 'interactive'} onclick={() => (view = 'interactive')}>
+					<Icon name="board" size={13} /> Interactive
+				</button>
+				<button class:active={view === 'table'} aria-pressed={view === 'table'} onclick={() => (view = 'table')} disabled={!data.rows.length}>
+					<Icon name="list" size={13} /> Table
+				</button>
+			</div>
+			{#if interactive}
+				<span class="text-xs text-[var(--text-muted)]">
+					Click a line or part to highlight it on the board. Ticks reset on reload.
+				</span>
+				<div class="flex-1"></div>
+				<a href="{data.tabs.ibom}{themeQuery ?? ''}" target="_blank" rel="noopener" class="btn btn-sm">
+					<Icon name="external" size={13} /> Full screen
+				</a>
+			{/if}
+		</div>
+	{/if}
+
+	{#if interactive}
+		{#if themeQuery !== null}
+			<iframe
+				src="{data.tabs.ibom}{themeQuery}"
+				title="Interactive BOM"
+				sandbox="allow-scripts"
+				class="ibom rounded-lg border"
+				class:dark
+			></iframe>
+		{:else}
+			<div class="ibom rounded-lg border"></div>
+		{/if}
+	{:else if !data.rows.length}
 		<EmptyTab
 			icon="list"
 			title="No bill of materials in this version"
@@ -239,3 +294,45 @@
 		</div>
 	{/if}
 </div>
+
+<style>
+	.segmented {
+		display: inline-flex;
+		overflow: hidden;
+		border: 1px solid var(--border-strong);
+		border-radius: 0.375rem;
+	}
+	.segmented button {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.35rem;
+		padding: 0.3rem 0.7rem;
+		font-size: 0.8125rem;
+		color: var(--text-secondary);
+	}
+	.segmented button + button {
+		border-left: 1px solid var(--border-strong);
+	}
+	.segmented button.active {
+		background: var(--surface-2);
+		color: var(--text-primary);
+		font-weight: 600;
+	}
+	.segmented button:disabled {
+		opacity: 0.45;
+		cursor: default;
+	}
+	/* iBOM is two columns (list + board): 70% of the viewport, centred on the page, never
+	   narrower than the page. Only the frame widens, so the controls above stay put. */
+	.ibom {
+		width: max(100%, calc(70vw - 2rem));
+		margin-left: 50%;
+		translate: -50%;
+		height: calc(100vh - 13rem);
+		min-height: 32rem;
+		background: #fff;
+	}
+	.ibom.dark {
+		background: #252c30;
+	}
+</style>

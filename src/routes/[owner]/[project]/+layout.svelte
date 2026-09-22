@@ -26,7 +26,7 @@
 		{ href: '/schematic', label: 'Schematic', icon: 'schematic', muted: !data.tabs.schematic },
 		{ href: '/pcb', label: 'PCB', icon: 'board', muted: !data.tabs.pcb },
 		{ href: '/3d', label: '3D', icon: 'cube', muted: !data.tabs.three },
-		{ href: '/bom', label: 'BOM', icon: 'list', badge: data.tabs.bom || undefined, muted: !data.tabs.bom },
+		{ href: '/bom', label: 'BOM', icon: 'list', badge: data.tabs.bom || undefined, muted: !data.tabs.bom && !data.tabs.ibom },
 		{
 			href: '/drc',
 			label: 'Checks',

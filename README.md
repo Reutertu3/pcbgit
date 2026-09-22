@@ -24,7 +24,8 @@ results, all viewable in the browser.
 - **PCB 2D**: stacked layers with per-layer toggles, front/back flip, DRC markers
 - **PCB 3D**: assembled board with components, view cube, soldermask/silkscreen colours,
   HASL/ENIG finish, SMD/THT toggles, ruler, scale objects, image export
-- **BOM**: grouped line items, CSV export, diff between any two versions
+- **BOM**: interactive view with placement highlighting ([iBOM](https://github.com/openscopeproject/InteractiveHtmlBom)),
+  grouped line items, CSV export, diff between any two versions
 - **Checks**: KiCad DRC and ERC, grouped by severity
 - **History**: renders and logs per commit, source ZIP downloads
 
@@ -204,6 +205,7 @@ Set in the image or compose files; rarely changed:
 | `PCBGIT_DATA_DIR` | `/data` | Database, repositories and renders |
 | `PCBGIT_CONTROL_DIR` | `/control` (production) | Folder shared with the host for updates. Unset disables in-app updates. |
 | `PCBGIT_KICAD_CLI` | `kicad-cli` | Path to the KiCad CLI |
+| `PCBGIT_IBOM` | set in the image | iBOM's `generate_interactive_bom.py`. Unset skips the interactive BOM. |
 | `BODY_SIZE_LIMIT` | `210M` | Maximum upload and push size |
 | `PCBGIT_RESTART_ON_RESTORE` | `true` | Restart after staging a restore |
 

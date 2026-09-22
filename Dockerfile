@@ -34,6 +34,12 @@ RUN apt-get update \
  && apt-get install -y --no-install-recommends librsvg2-bin webp \
  && rm -rf /var/lib/apt/lists/*
 
+# Interactive HTML BOM (MIT), run by the render worker with KiCad's Python module.
+# Pinned; bump the tag to update.
+ARG IBOM_VERSION=v2.12.0
+RUN git clone --quiet --depth 1 --branch "$IBOM_VERSION" https://github.com/openscopeproject/InteractiveHtmlBom /opt/ibom \
+ && rm -rf /opt/ibom/.git
+
 # Build stage is Debian Bookworm (glibc 2.36); Ubuntu 24.04 ships 2.39, so the binary runs as-is.
 COPY --from=build /usr/local/bin/node /usr/local/bin/node
 
@@ -55,6 +61,7 @@ ENV NODE_ENV=production \
     PORT=3000 \
     HOST=0.0.0.0 \
     PCBGIT_DATA_DIR=/data \
+    PCBGIT_IBOM=/opt/ibom/InteractiveHtmlBom/generate_interactive_bom.py \
     HOME=/home/pcbgit \
     QT_QPA_PLATFORM=offscreen \
     BODY_SIZE_LIMIT=210M \
