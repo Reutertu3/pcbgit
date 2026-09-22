@@ -817,41 +817,124 @@
 			}
 
 			function banana() {
-				// ~19 cm long, lying on its side; a tube with a tapered, slightly ridged section.
+				// A Cavendish, ~20 cm along the curve, lying on its side: green stalk with a cut
+				// end, a neck widening into a five-ridged body, curved like a C, dark blossom tip.
 				const curve = new THREE.CatmullRomCurve3(
-					[[0, 0], [40, -19], [95, -29], [150, -19], [190, 0]].map(([x, z]) => new THREE.Vector3(x * MM, 0, z * MM))
+					[[0, 12, 0], [18, 8, -6], [45, 3, -20], [95, 0, -30], [145, 2, -22], [180, 6, -6], [192, 8, 2]].map(
+						([x, y, z]) => new THREE.Vector3(x * MM, y * MM, z * MM)
+					),
+					false,
+					'centripetal'
 				);
-				const tubular = 90, radial = 24;
+				const tubular = 180, radial = 40;
 				const frames = curve.computeFrenetFrames(tubular, false);
+				const smooth = (a: number, b: number, x: number) => {
+					const k = Math.min(Math.max((x - a) / (b - a), 0), 1);
+					return k * k * (3 - 2 * k);
+				};
+				/** Radius in mm along the banana, t = 0 at the stalk's cut end. */
+				const radiusAt = (t: number) => {
+					if (t < 0.12) return 5 * (1 + 0.25 * smooth(0.07, 0.12, t));
+					if (t < 0.34) return 6.25 + (17.5 - 6.25) * smooth(0.12, 0.34, t);
+					if (t < 0.82) return 17.5 * (1 + 0.04 * Math.sin((Math.PI * (t - 0.34)) / 0.48));
+					return Math.max(1.4, 17.5 * Math.pow(1 - smooth(0.82, 1, t), 0.6));
+				};
+				const color = (hex: string) => new THREE.Color(hex);
+				const C = {
+					cut: color('#4f3d24'), stalk: color('#5f7c2a'), neck: color('#b3c03c'), yellow: color('#f0c93a'),
+					edge: color('#d4ab28'), spot: color('#7d4f22'), tip: color('#2f2419')
+				};
+				/** Deterministic hash for the sugar spots, so the banana looks the same every time. */
+				const hash = (a: number, b: number) => {
+					const x = Math.sin(a * 127.1 + b * 311.7) * 43758.5453;
+					return x - Math.floor(x);
+				};
+				/**
+				 * Sugar-spot strength at ring i, segment j (0..1). Spots are scattered one per
+				 * few cells with random size; distance is measured in roughly millimetres
+				 * (rings are ~1.1 mm apart, segments ~2.7 mm round the body).
+				 */
+				const SPOT_CELL = [14, 6];
+				const spotAt = (i: number, j: number) => {
+					let strength = 0;
+					const [ci, cj] = [Math.floor(i / SPOT_CELL[0]), Math.floor(j / SPOT_CELL[1])];
+					for (let di = -1; di <= 1; di++) {
+						for (let dj = -1; dj <= 1; dj++) {
+							const [a, b] = [ci + di, (((cj + dj) % (radial / SPOT_CELL[1])) + radial / SPOT_CELL[1]) % (radial / SPOT_CELL[1])];
+							if (hash(a, b) > 0.35) continue;
+							const si = (a + hash(b, a)) * SPOT_CELL[0];
+							const sj = (b + hash(a + 7, b + 3)) * SPOT_CELL[1];
+							const radius = 1.2 + 2.2 * hash(a + 13, b + 29);
+							let dj2 = Math.abs(j - sj);
+							dj2 = Math.min(dj2, radial - dj2);
+							const d = Math.hypot((i - si) * 1.1, dj2 * 2.7);
+							strength = Math.max(strength, 1 - smooth(radius * 0.4, radius, d));
+						}
+					}
+					return strength;
+				};
+				const colorAt = (t: number, lobe: number, i: number, j: number) => {
+					let c: InstanceType<typeof THREE.Color>;
+					if (t < 0.025) c = C.cut.clone();
+					else if (t < 0.14) c = C.stalk.clone();
+					else if (t < 0.3) c = C.stalk.clone().lerp(C.neck, smooth(0.14, 0.3, t));
+					else if (t < 0.4) c = C.neck.clone().lerp(C.yellow, smooth(0.3, 0.4, t));
+					else c = C.yellow.clone();
+					if (t > 0.9) c.lerp(C.tip, smooth(0.9, 0.99, t));
+					// The ridges' edges ripen a shade darker than the faces.
+					if (t > 0.3 && t < 0.92) c.lerp(C.edge, 0.35 * lobe);
+					// A few soft, round sugar spots on the ripe part.
+					if (t > 0.36 && t < 0.88) c.lerp(C.spot, 0.6 * spotAt(i, j));
+					return c;
+				};
+
 				const positions: number[] = [], colors: number[] = [], indices: number[] = [];
-				const yellow = new THREE.Color('#e6c43a'), brown = new THREE.Color('#5b3d1c'), green = new THREE.Color('#a3b23a');
 				for (let i = 0; i <= tubular; i++) {
 					const t = i / tubular;
 					const p = curve.getPointAt(t);
 					const n = frames.normals[i], b = frames.binormals[i];
-					const radius = Math.max(1.6 * MM, 17 * MM * Math.pow(Math.sin(Math.PI * t), 0.55));
-					const tip = t < 0.05 || t > 0.95;
-					const color = tip ? brown : t > 0.85 ? yellow.clone().lerp(green, (t - 0.85) / 0.1) : yellow;
-					for (let j = 0; j <= radial; j++) {
+					const radius = radiusAt(t) * MM;
+					for (let j = 0; j < radial; j++) {
 						const v = (j / radial) * Math.PI * 2;
-						const ridge = 1 + 0.05 * Math.cos(5 * v);
-						const cx = Math.cos(v) * radius * ridge, cy = Math.sin(v) * radius * ridge;
+						// Five ridges with flat-ish faces between them.
+						const lobe = Math.pow((1 + Math.cos(5 * v)) / 2, 3);
+						const r = radius * (0.93 + 0.07 * lobe);
+						const cx = Math.cos(v) * r, cy = Math.sin(v) * r;
 						positions.push(p.x + cx * n.x + cy * b.x, p.y + cx * n.y + cy * b.y, p.z + cx * n.z + cy * b.z);
-						colors.push(color.r, color.g, color.b);
+						const c = colorAt(t, lobe, i, j);
+						colors.push(c.r, c.g, c.b);
 					}
 				}
+				// Rings share their seam vertex (j wraps), so normals stay smooth all round.
 				for (let i = 0; i < tubular; i++) {
 					for (let j = 0; j < radial; j++) {
-						const a = i * (radial + 1) + j, c = a + radial + 1;
-						indices.push(a, c, a + 1, c, c + 1, a + 1);
+						const a = i * radial + j, a1 = i * radial + ((j + 1) % radial);
+						const c = a + radial, c1 = a1 + radial;
+						// Counter-clockwise seen from outside, so the skin faces out.
+						indices.push(a, a1, c, c, a1, c1);
 					}
 				}
+				// Close both ends: the stalk's cut face and the blossom tip.
+				for (const [ring, t, reverse] of [[0, 0, true], [tubular, 1, false]] as const) {
+					const centre = curve.getPointAt(t);
+					const cap = positions.length / 3;
+					positions.push(centre.x, centre.y, centre.z);
+					const c = t === 0 ? C.cut : C.tip;
+					colors.push(c.r, c.g, c.b);
+					for (let j = 0; j < radial; j++) {
+						const a = ring * radial + j, b = ring * radial + ((j + 1) % radial);
+						if (reverse) indices.push(cap, b, a);
+						else indices.push(cap, a, b);
+					}
+				}
+
 				const geometry = new THREE.BufferGeometry();
 				geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
 				geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
 				geometry.setIndex(indices);
 				geometry.computeVertexNormals();
-				return new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.6, side: THREE.DoubleSide }));
+				// Peel has a faint waxy sheen, not a gloss.
+				return new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.5 }));
 			}
 
 			function disposeObject(object: import('three/webgpu').Object3D) {
