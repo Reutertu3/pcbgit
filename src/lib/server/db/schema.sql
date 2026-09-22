@@ -184,6 +184,20 @@ CREATE TABLE IF NOT EXISTS comments (
 CREATE INDEX IF NOT EXISTS idx_comments_project ON comments(project_id, created_at);
 -- idx_comments_parent is created in db/index.ts, after parent_id is migrated in.
 
+-- One row per recipient per comment. Removed with the comment.
+CREATE TABLE IF NOT EXISTS notifications (
+  id         TEXT PRIMARY KEY,
+  user_id    TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  kind       TEXT NOT NULL CHECK (kind IN ('comment','reply')),
+  project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  comment_id TEXT NOT NULL REFERENCES comments(id) ON DELETE CASCADE,
+  actor_id   TEXT REFERENCES users(id) ON DELETE SET NULL,
+  created_at INTEGER NOT NULL,
+  read_at    INTEGER,
+  UNIQUE (user_id, comment_id)
+);
+CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id, read_at, created_at DESC);
+
 CREATE TABLE IF NOT EXISTS audit_log (
   id         TEXT PRIMARY KEY,
   actor_id   TEXT REFERENCES users(id) ON DELETE SET NULL,

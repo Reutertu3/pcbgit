@@ -1,5 +1,6 @@
 import type { LayoutServerLoad } from './$types';
 import { getSetting } from '$lib/server/db';
+import { unreadCount } from '$lib/server/notifications';
 
 export const load: LayoutServerLoad = async ({ locals, url }) => {
 	return {
@@ -17,6 +18,7 @@ export const load: LayoutServerLoad = async ({ locals, url }) => {
 			registrationOpen: getSetting('registration_open', 'true') === 'true'
 		},
 		pathname: url.pathname,
+		unreadNotifications: locals.user ? unreadCount(locals.user.id) : 0,
 		source: sourceLink()
 	};
 };

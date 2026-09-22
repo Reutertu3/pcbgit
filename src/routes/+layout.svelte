@@ -4,6 +4,7 @@
 	import Icon from '$lib/components/Icon.svelte';
 	import Avatar from '$lib/components/Avatar.svelte';
 	import ThemePicker from '$lib/components/ThemePicker.svelte';
+	import NotificationBell from '$lib/components/NotificationBell.svelte';
 
 	let { data, children } = $props();
 
@@ -98,6 +99,7 @@
 				<a href="/new" class="btn btn-primary btn-sm">
 					<Icon name="plus" size={14} /><span class="hidden sm:inline">New board</span>
 				</a>
+				<NotificationBell unread={data.unreadNotifications} />
 				<div class="relative">
 					<button
 						class="btn btn-ghost !px-1"

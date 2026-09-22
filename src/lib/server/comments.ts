@@ -1,5 +1,6 @@
 import { all, get, newId, now, run, tx } from './db';
 import type { CommentThread, CommentView } from '$lib/types';
+import { notifyForComment, removeNotificationsFor } from './notifications';
 
 export const MAX_COMMENT_LENGTH = 4000;
 
@@ -68,6 +69,7 @@ export function addComment(projectId: string, userId: string, body: string, pare
 	}
 
 	let rootId: string | null = null;
+	let threadAuthorId: string | null = null;
 	if (parentId) {
 		const parent = get<{ id: string; parent_id: string | null }>(
 			'SELECT id, parent_id FROM comments WHERE id = ? AND project_id = ?',
@@ -76,6 +78,9 @@ export function addComment(projectId: string, userId: string, body: string, pare
 		);
 		if (!parent) throw new CommentError('The comment you replied to no longer exists.');
 		rootId = parent.parent_id ?? parent.id;
+		// A deleted thread starter no longer hears about replies.
+		threadAuthorId =
+			get<{ user_id: string }>('SELECT user_id FROM comments WHERE id = ? AND deleted_at IS NULL', rootId)?.user_id ?? null;
 	}
 
 	const id = newId();
@@ -88,6 +93,7 @@ export function addComment(projectId: string, userId: string, body: string, pare
 		now(),
 		rootId
 	);
+	notifyForComment({ commentId: id, projectId, actorId: userId, threadAuthorId });
 	return { id, threadId: rootId ?? id };
 }
 
@@ -116,6 +122,8 @@ export function removeComment(
 		const replies = get<{ n: number }>('SELECT COUNT(*) AS n FROM comments WHERE parent_id = ?', comment.id)?.n ?? 0;
 		if (!comment.parent_id && replies > 0) {
 			run("UPDATE comments SET deleted_at = ?, body = '' WHERE id = ?", now(), comment.id);
+			// The row stays as a placeholder, so its notifications are removed by hand.
+			removeNotificationsFor(comment.id);
 			return;
 		}
 		run('DELETE FROM comments WHERE id = ?', comment.id);

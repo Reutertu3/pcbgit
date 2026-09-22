@@ -150,3 +150,16 @@ export interface CommentView {
 export interface CommentThread extends CommentView {
 	replies: CommentView[];
 }
+
+export interface NotificationView {
+	id: string;
+	kind: 'comment' | 'reply';
+	created_at: number;
+	read_at: number | null;
+	comment_id: string;
+	actor: string;
+	project_name: string;
+	project_slug: string;
+	project_owner: string;
+	excerpt: string;
+}
