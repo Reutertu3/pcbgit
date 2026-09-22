@@ -835,5 +835,6 @@
 	"error.notFoundTitle": "Page not found",
 	"error.forbiddenTitle": "Access denied",
 	"error.title": "Something went wrong",
-	"error.home": "Back to the start page"
+	"error.home": "Back to the start page",
+	"error.crossSite": "This form was submitted from a different address than the one it was loaded from, so it was rejected."
 }

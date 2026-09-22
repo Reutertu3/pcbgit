@@ -1,6 +1,7 @@
 <script lang="ts">
 	import Icon from './Icon.svelte';
 	import { t, tParts } from '$lib/i18n/t';
+	import { onThisHost } from '$lib/origin';
 
 	interface Props {
 		url: string;
@@ -11,10 +12,11 @@
 	let copied = $state(false);
 	let tab = $state<'clone' | 'push'>('clone');
 
+	const remote = $derived(onThisHost(url));
 	const pushScript = $derived(
-		`git init -b main\ngit add .\ngit commit -m "Initial commit"\ngit remote add origin ${url}\ngit push -u origin main`
+		`git init -b main\ngit add .\ngit commit -m "Initial commit"\ngit remote add origin ${remote}\ngit push -u origin main`
 	);
-	const text = $derived(tab === 'clone' ? `git clone ${url}` : pushScript);
+	const text = $derived(tab === 'clone' ? `git clone ${remote}` : pushScript);
 
 	async function copy() {
 		try {

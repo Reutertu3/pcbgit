@@ -123,22 +123,17 @@ Create your first board with **New board**, or push one over git — see
 
 ### On a LAN, without a domain
 
-pcbgit needs no domain and no HTTPS: an IP address is fine. Put the address
-colleagues will type into `.env` before starting, because only that one address
-may submit forms:
-
-```sh
-PCBGIT_ORIGIN=http://192.168.1.50:3000   # or http://pcbgit.lan:3000
-docker compose up -d --build
-```
-
-Everyone on the network then uses `http://192.168.1.50:3000`, including on the
-server itself, and pushes to `http://192.168.1.50:3000/git/<user>/<board>.git`.
+pcbgit needs no domain, no HTTPS and no extra configuration for this: it answers
+on every address it is reached at. Start it as above and share the machine's
+address, for example `http://192.168.1.50:3000` or `http://pcbgit.lan:3000`.
+Colleagues sign in, push and clone from phones and laptops; the clone box always
+shows the address that visitor is using.
 
 > [!NOTE]
-> Reading pages and `git clone`/`push` work from any address. Only form posts
-> (sign in, comments, admin actions) are tied to `PCBGIT_ORIGIN`; a mismatch
-> shows "Cross-site POST form submissions are forbidden".
+> A form post must come from the address it was loaded from, which is what stops
+> other sites posting here. Put pcbgit behind a reverse proxy only if it passes
+> the client's `Host` header through — Caddy's `reverse_proxy` does, and the
+> provided production setup sets `PCBGIT_DOMAIN` anyway.
 
 ## Deploying to a server
 
@@ -293,7 +288,7 @@ Set these in `.env`:
 | Variable | Default | Purpose |
 |---|---|---|
 | `PCBGIT_DOMAIN` | — | Public domain (production). Used by Caddy and to set `ORIGIN`. |
-| `PCBGIT_ORIGIN` | `http://localhost:3000` | Exact URL of a local or LAN instance, e.g. `http://192.168.1.50:3000`. Form posts from other addresses are rejected. |
+| `PCBGIT_ORIGIN` | `http://localhost:3000` | Public URL, used for links in server-rendered pages and for the cookie's scheme. Optional on a LAN: any address works. |
 | `PCBGIT_ADMIN_USER` | `admin` | Admin account created when no active admin exists |
 | `PCBGIT_ADMIN_PASSWORD` | — | Password for that account. Required. |
 | `PCBGIT_ADMIN_EMAIL` | `admin@localhost` | Email for that account |
@@ -319,7 +314,7 @@ Set these in `.env`:
 
 | Symptom | Cause and fix |
 |---|---|
-| Pages load, but login and forms fail with "Cross-site POST form submissions are forbidden" | `ORIGIN` does not match the address you typed. `docker compose exec pcbgit printenv ORIGIN` must equal it exactly, including scheme and port. On a server: check `PCBGIT_DOMAIN` is the bare domain and `.env` contains `COMPOSE_FILE`. On a LAN: set `PCBGIT_ORIGIN` to the IP or hostname, e.g. `http://192.168.1.50:3000`. Then `docker compose up -d`. |
+| Pages load, but forms are rejected as submitted from a different address | Something between browser and pcbgit rewrites the `Host` header, or the page was opened at one address and posts to another. Check the reverse proxy passes `Host` through. |
 | 502 from Caddy | pcbgit is starting or has stopped. Check `docker compose logs pcbgit`. |
 | No certificate / HTTPS fails | DNS does not point at the server yet, or ports 80/443 are blocked. Check `docker compose logs caddy`. |
 | A version shows "Render failed" | Open the board's **History** tab and view the render log. |

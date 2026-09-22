@@ -4,6 +4,7 @@ import { ensureDirs } from '$lib/server/paths';
 import { recoverStuckJobs, rerenderAfterRestore } from '$lib/server/render/worker';
 import { bootstrap } from '$lib/server/bootstrap';
 import { detectLocale, LOCALE_COOKIE } from '$lib/i18n';
+import { isCrossSiteFormPost } from '$lib/server/csrf';
 
 export const SESSION_COOKIE = 'pcbgit_session';
 
@@ -23,6 +24,9 @@ recoverStuckJobs();
 rerenderAfterRestore();
 
 export const handle: Handle = async ({ event, resolve }) => {
+	// Replaces SvelteKit's ORIGIN-based check; see $lib/server/csrf.
+	if (isCrossSiteFormPost(event.request)) error(403, 'error.crossSite');
+
 	const sessionId = event.cookies.get(SESSION_COOKIE) ?? null;
 	event.locals.sessionId = sessionId;
 	event.locals.user = getSessionUser(sessionId ?? undefined);

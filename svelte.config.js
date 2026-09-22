@@ -6,6 +6,8 @@ export default {
 	preprocess: vitePreprocess(),
 	kit: {
 		adapter: adapter({ out: 'build' }),
-		csrf: { trustedOrigins: [] }
+		// Our own check runs in hooks.server.ts: it compares a form post's Origin with the
+		// Host it was sent to, so one instance can be reached at several addresses.
+		csrf: { checkOrigin: false }
 	}
 };

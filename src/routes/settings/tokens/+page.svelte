@@ -4,6 +4,7 @@
 	import FormError from '$lib/components/FormError.svelte';
 	import { formatDate, relativeTime } from '$lib/format';
 	import { t } from '$lib/i18n/t';
+	import { onThisHost } from '$lib/origin';
 
 	let { data, form } = $props();
 
@@ -54,7 +55,7 @@
 					{copied ? t('common.copied') : t('common.copy')}
 				</button>
 			</div>
-			<pre class="mono mt-3 overflow-x-auto rounded border bg-[var(--surface-0)] px-2.5 py-2 text-[0.6875rem] leading-relaxed text-[var(--text-secondary)]">git remote add pcbgit {data.gitBase}/&lt;board&gt;.git
+			<pre class="mono mt-3 overflow-x-auto rounded border bg-[var(--surface-0)] px-2.5 py-2 text-[0.6875rem] leading-relaxed text-[var(--text-secondary)]">git remote add pcbgit {onThisHost(data.gitBase)}/&lt;board&gt;.git
 git push pcbgit main</pre>
 		</div>
 	{/if}

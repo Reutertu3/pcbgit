@@ -1,6 +1,7 @@
 <script lang="ts">
 	import Icon from '$lib/components/Icon.svelte';
 	import { t } from '$lib/i18n/t';
+	import { onThisHost } from '$lib/origin';
 
 	let { data } = $props();
 
@@ -86,7 +87,7 @@
 			</div>
 			<div class="flex justify-between gap-3 px-4 py-2.5">
 				<dt class="text-[var(--text-secondary)]">{t('about.git')}</dt>
-				<dd class="mono truncate text-xs">{data.gitBase}/&lt;user&gt;/&lt;board&gt;.git</dd>
+				<dd class="mono truncate text-xs">{onThisHost(data.gitBase)}/&lt;user&gt;/&lt;board&gt;.git</dd>
 			</div>
 		</dl>
 		{#if !data.kicad}
