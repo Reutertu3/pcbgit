@@ -2,17 +2,19 @@
 	import { enhance } from '$app/forms';
 	import { invalidateAll } from '$app/navigation';
 	import { formatDateTime, relativeTime } from '$lib/format';
+	import Changelog from '$lib/components/Changelog.svelte';
 	import Icon from '$lib/components/Icon.svelte';
 	import FormError from '$lib/components/FormError.svelte';
 
 	let { data, form } = $props();
 
 	const busy = $derived(Boolean(data.update?.requested || data.update?.status?.state === 'running'));
+	const checking = $derived(Boolean(data.availability?.checkRequested));
 
 	// While an update runs, poll. The server restarts mid-way, so failed
 	// reloads are expected and simply retried on the next tick.
 	$effect(() => {
-		if (!busy) return;
+		if (!busy && !checking) return;
 		const timer = setInterval(() => invalidateAll().catch(() => {}), 3000);
 		return () => clearInterval(timer);
 	});
@@ -61,7 +63,7 @@
 	</form>
 </section>
 
-<section class="surface mt-4 p-5">
+<section class="surface mt-4 p-5" id="updates">
 	<div class="mb-1 flex flex-wrap items-center justify-between gap-2">
 		<h3 class="text-sm font-semibold">Updates</h3>
 		<span class="mono text-xs text-[var(--text-muted)]">running {data.version}</span>
@@ -77,6 +79,42 @@
 			Pulls from GitHub (fast-forward only) and rebuilds. The site is unavailable for a moment while it
 			restarts.
 		</p>
+
+		{@const available = data.availability}
+		{#if available}
+			<div class="mb-3">
+				{#if checking}
+					<p class="text-xs" style:color="var(--info)">Checking GitHub…</p>
+				{:else if !available.checked}
+					<p class="text-xs text-[var(--text-muted)]">Not checked yet — the server checks hourly, or use Check now.</p>
+				{:else if !available.ok}
+					<p class="text-xs" style:color="var(--err)">
+						The last check could not reach GitHub ({relativeTime(available.checked)}). See
+						<span class="mono">/var/lib/pcbgit-control/check.log</span> on the server.
+					</p>
+				{:else if available.behind > 0}
+					<p class="mb-2 flex flex-wrap items-center gap-2 text-xs">
+						<span class="chip !border-[var(--accent)] !text-[var(--accent)]">
+							{available.behind} update{available.behind === 1 ? '' : 's'} available
+						</span>
+						<span class="mono text-[var(--text-muted)]">{available.current} → {available.latest} on {available.branch}</span>
+						<span class="text-[var(--text-muted)]">· checked {relativeTime(available.checked)}</span>
+					</p>
+					<Changelog commits={available.commits} total={available.behind} />
+				{:else}
+					<p class="flex items-center gap-1.5 text-xs" style:color="var(--ok)">
+						<Icon name="check" size={13} /> Up to date
+						<span class="text-[var(--text-muted)]">· {available.branch} at <span class="mono">{available.current}</span>, checked {relativeTime(available.checked)}</span>
+					</p>
+				{/if}
+				{#if available.ahead > 0}
+					<p class="mt-2 text-xs" style:color="var(--warn)">
+						The server copy has {available.ahead} commit{available.ahead === 1 ? '' : 's'} of its own, so an update will
+						stop instead of merging. Resolve it on the server (for example <span class="mono">git reset --hard origin/{available.branch}</span>).
+					</p>
+				{/if}
+			</div>
+		{/if}
 
 		{#if data.update.requested}
 			<p class="mb-3 text-xs" style:color="var(--info)">Update requested — waiting for the server to pick it up…</p>
@@ -94,6 +132,10 @@
 			<button class="btn btn-primary btn-sm" type="submit" disabled={busy}>
 				<Icon name="download" size={13} />
 				{busy ? 'Updating…' : 'Update from GitHub'}
+			</button>
+			<button class="btn btn-sm" type="submit" formaction="?/check" disabled={checking || busy}>
+				<Icon name="refresh" size={13} />
+				{checking ? 'Checking…' : 'Check now'}
 			</button>
 			<label class="flex cursor-pointer items-center gap-1.5 text-xs text-[var(--text-secondary)]">
 				<input type="checkbox" name="force" /> Rebuild even if nothing changed

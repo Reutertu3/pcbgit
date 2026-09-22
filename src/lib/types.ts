@@ -110,3 +110,28 @@ export interface SheetArtifact {
 	url: string;
 	viewBox: string | null;
 }
+
+/** Pending pcbgit update, as recorded on the host by deploy/update.sh --check. */
+export interface ChangelogEntry {
+	sha: string;
+	short: string;
+	author: string;
+	date: number;
+	subject: string;
+	url: string | null;
+}
+
+export interface Availability {
+	checked: number;
+	ok: boolean;
+	branch: string;
+	current: string;
+	latest: string;
+	/** Commits on GitHub the server does not have yet. */
+	behind: number;
+	/** Commits only on the server; they block a fast-forward update. */
+	ahead: number;
+	repoUrl: string | null;
+	commits: ChangelogEntry[];
+	checkRequested: boolean;
+}

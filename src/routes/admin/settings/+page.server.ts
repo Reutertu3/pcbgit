@@ -2,7 +2,7 @@ import type { Actions, PageServerLoad } from './$types';
 import { audit, getSetting, setSetting } from '$lib/server/db';
 import { fail } from '@sveltejs/kit';
 import { resetKicadVersionCache } from '$lib/server/render/kicad';
-import { requestUpdate, runningVersion, updateState } from '$lib/server/updater';
+import { requestCheck, requestUpdate, runningVersion, updateAvailability, updateState } from '$lib/server/updater';
 
 export const load: PageServerLoad = async () => ({
 	settings: {
@@ -11,7 +11,8 @@ export const load: PageServerLoad = async () => ({
 		registrationOpen: getSetting('registration_open', 'true') === 'true'
 	},
 	version: runningVersion(),
-	update: updateState()
+	update: updateState(),
+	availability: updateAvailability()
 });
 
 export const actions: Actions = {
@@ -34,6 +35,14 @@ export const actions: Actions = {
 		requestUpdate(locals.user!.username, force);
 		audit(locals.user!.id, 'admin.update_request', force ? 'forced rebuild' : 'pull');
 		return { success: true, message: 'Update requested. The server pulls from GitHub and restarts if there is anything new.' };
+	},
+
+	check: async ({ locals }) => {
+		const availability = updateAvailability();
+		if (!availability) return fail(400, { error: 'Updates are not configured on this server.' });
+		if (!availability.checkRequested) requestCheck();
+		audit(locals.user!.id, 'admin.update_check');
+		return { success: true, message: 'Checking GitHub for updates…' };
 	},
 
 	recheckKicad: async () => {

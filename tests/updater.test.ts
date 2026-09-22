@@ -40,3 +40,41 @@ test('status and log written by update.sh are read back', () => {
 	assert.equal(state.log, '== done\n');
 	assert.equal(state.requested, false);
 });
+
+test('GitHub remotes in any form become web URLs; other hosts do not', () => {
+	assert.equal(updater.githubWebUrl('git@github.com:me/pcbgit.git'), 'https://github.com/me/pcbgit');
+	assert.equal(updater.githubWebUrl('https://github.com/me/pcbgit.git'), 'https://github.com/me/pcbgit');
+	assert.equal(updater.githubWebUrl('https://github.com/me/pcbgit'), 'https://github.com/me/pcbgit');
+	assert.equal(updater.githubWebUrl('https://onedev.example.com/pcbgit'), null);
+});
+
+test('availability and the changelog written by update.sh --check are read back', () => {
+	assert.equal(updater.updateAvailability()?.checked, 0, 'never checked');
+
+	fs.writeFileSync(
+		path.join(control, 'update-available.json'),
+		'{"checked":1700000000,"ok":true,"branch":"master","current":"aaa1111","latest":"bbb2222","behind":2,"ahead":0,"remote":"git@github.com:me/pcbgit.git"}\n'
+	);
+	// Same format as: git log --format='%H%x1f%h%x1f%an%x1f%ct%x1f%s'
+	fs.writeFileSync(
+		path.join(control, 'update-commits.txt'),
+		['b'.repeat(40), 'bbb2222', 'Dev Person', '1700000000', 'Say "hi" \\ with emoji 🚀'].join('\u001f') + '\n' +
+			['c'.repeat(40), 'ccc3333', 'Dev Person', '1699990000', 'First change'].join('\u001f') + '\n'
+	);
+
+	const available = updater.updateAvailability()!;
+	assert.equal(available.behind, 2);
+	assert.equal(available.checked, 1_700_000_000_000);
+	assert.equal(available.commits.length, 2);
+	assert.equal(available.commits[0].subject, 'Say "hi" \\ with emoji 🚀');
+	assert.equal(available.commits[0].url, `https://github.com/me/pcbgit/commit/${'b'.repeat(40)}`);
+	assert.equal(available.checkRequested, false);
+
+	updater.requestCheck();
+	assert.equal(updater.updateAvailability()?.checkRequested, true);
+});
+
+test('a failed check is reported as such', () => {
+	fs.writeFileSync(path.join(control, 'update-available.json'), '{"checked":1700000000,"ok":false}\n');
+	assert.equal(updater.updateAvailability()?.ok, false);
+});

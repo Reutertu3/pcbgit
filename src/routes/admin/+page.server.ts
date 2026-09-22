@@ -3,6 +3,7 @@ import { all, count } from '$lib/server/db';
 import { kicadVersion } from '$lib/server/render/kicad';
 import { queueStats } from '$lib/server/render/worker';
 import { DATA_DIR } from '$lib/server/paths';
+import { runningVersion, updateAvailability } from '$lib/server/updater';
 
 interface AuditRow {
 	action: string;
@@ -34,6 +35,8 @@ export const load: PageServerLoad = async () => ({
 	},
 	queue: queueStats(),
 	kicad: await kicadVersion(),
+	version: runningVersion(),
+	availability: updateAvailability(),
 	dataDir: DATA_DIR,
 	recent: all<AuditRow>(
 		`SELECT a.action, a.target, a.detail, a.created_at, u.username

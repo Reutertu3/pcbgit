@@ -1,6 +1,7 @@
 <script lang="ts">
 	import Icon from '$lib/components/Icon.svelte';
 	import { formatBytes, relativeTime, shortSha } from '$lib/format';
+	import Changelog from '$lib/components/Changelog.svelte';
 
 	let { data } = $props();
 
@@ -17,6 +18,25 @@
 <svelte:head><title>Admin · {data.site.name}</title></svelte:head>
 
 <h2 class="mb-4 text-lg font-semibold tracking-tight">Overview</h2>
+
+{#if data.availability && data.availability.behind > 0}
+	<!-- Surfaced here so a pending update is seen without visiting Instance. -->
+	<section
+		class="mb-4 rounded-lg border p-4"
+		style:border-color="color-mix(in srgb, var(--accent) 45%, transparent)"
+		style:background="color-mix(in srgb, var(--accent) 7%, transparent)"
+	>
+		<div class="mb-2.5 flex flex-wrap items-center justify-between gap-2">
+			<h3 class="flex items-center gap-2 text-sm font-semibold">
+				<Icon name="download" size={14} class="text-[var(--accent)]" />
+				Update available: {data.availability.behind} new commit{data.availability.behind === 1 ? '' : 's'}
+				<span class="mono text-xs font-normal text-[var(--text-muted)]">{data.availability.current} → {data.availability.latest}</span>
+			</h3>
+			<a href="/admin/settings#updates" class="btn btn-primary btn-sm">Review and update</a>
+		</div>
+		<Changelog commits={data.availability.commits} limit={5} total={data.availability.behind} />
+	</section>
+{/if}
 
 <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
 	{#each CARDS as card}
@@ -48,7 +68,11 @@
 			</span>
 		</p>
 	{/if}
-	<p class="mono mt-2 text-[0.6875rem] text-[var(--text-muted)]">Data directory: {data.dataDir}</p>
+	<p class="mono mt-2 text-[0.6875rem] text-[var(--text-muted)]">
+		pcbgit {data.version}
+		{#if data.availability?.checked && data.availability.ok && data.availability.behind === 0}· up to date (checked {relativeTime(data.availability.checked)}){/if}
+		· data directory: {data.dataDir}
+	</p>
 </div>
 
 {#if data.failing.length}
