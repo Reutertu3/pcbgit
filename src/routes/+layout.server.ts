@@ -12,7 +12,7 @@ export const load: LayoutServerLoad = async ({ locals, url }) => {
 				}
 			: null,
 		site: {
-			name: getSetting('site_name', 'Kupfergit'),
+			name: getSetting('site_name', 'pcbgit'),
 			tagline: getSetting('site_tagline', 'Self-hosted home for hardware design'),
 			registrationOpen: getSetting('registration_open', 'true') === 'true'
 		},

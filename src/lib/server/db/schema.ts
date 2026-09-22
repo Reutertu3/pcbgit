@@ -1,6 +1,6 @@
 // Generated from schema.sql — do not edit by hand.
 // Edit src/lib/server/db/schema.sql and run: node scripts/gen-schema.js
-export const SCHEMA_SQL = `-- Kupfergit schema. Applied idempotently at every boot by db/index.ts.
+export const SCHEMA_SQL = `-- pcbgit schema. Applied idempotently at every boot by db/index.ts.
 
 PRAGMA journal_mode = WAL;
 PRAGMA foreign_keys = ON;

@@ -2,11 +2,11 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 /** Everything mutable lives under DATA_DIR so a single docker volume covers it. */
-export const DATA_DIR = path.resolve(process.env.KUPFERGIT_DATA_DIR ?? './data');
+export const DATA_DIR = path.resolve(process.env.PCBGIT_DATA_DIR ?? './data');
 export const REPO_DIR = path.join(DATA_DIR, 'repos');
 export const ARTIFACT_DIR = path.join(DATA_DIR, 'artifacts');
 export const TMP_DIR = path.join(DATA_DIR, 'tmp');
-export const DB_PATH = path.join(DATA_DIR, 'kupfergit.db');
+export const DB_PATH = path.join(DATA_DIR, 'pcbgit.db');
 export const BACKUP_DIR = path.join(DATA_DIR, 'backups');
 
 export function ensureDirs() {

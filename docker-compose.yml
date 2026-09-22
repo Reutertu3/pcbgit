@@ -1,21 +1,21 @@
 # Fixed project name: keeps the volume name stable whatever the folder is called.
-name: kupfergit
+name: pcbgit
 
 services:
-  kupfergit:
+  pcbgit:
     build: .
-    image: kupfergit:latest
+    image: pcbgit:latest
     restart: unless-stopped
     ports:
       - "3000:3000"
     environment:
       # Must match the URL users type, or form submissions fail the CSRF check.
-      ORIGIN: ${KUPFERGIT_ORIGIN:-http://localhost:3000}
-      KUPFERGIT_ADMIN_USER: ${KUPFERGIT_ADMIN_USER:-admin}
-      KUPFERGIT_ADMIN_PASSWORD: ${KUPFERGIT_ADMIN_PASSWORD:?set KUPFERGIT_ADMIN_PASSWORD in .env}
-      KUPFERGIT_ADMIN_EMAIL: ${KUPFERGIT_ADMIN_EMAIL:-admin@localhost}
+      ORIGIN: ${PCBGIT_ORIGIN:-http://localhost:3000}
+      PCBGIT_ADMIN_USER: ${PCBGIT_ADMIN_USER:-admin}
+      PCBGIT_ADMIN_PASSWORD: ${PCBGIT_ADMIN_PASSWORD:?set PCBGIT_ADMIN_PASSWORD in .env}
+      PCBGIT_ADMIN_EMAIL: ${PCBGIT_ADMIN_EMAIL:-admin@localhost}
     volumes:
-      - kupfergit-data:/data
+      - pcbgit-data:/data
 
 volumes:
-  kupfergit-data:
+  pcbgit-data:

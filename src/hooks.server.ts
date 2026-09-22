@@ -4,7 +4,7 @@ import { ensureDirs } from '$lib/server/paths';
 import { recoverStuckJobs, rerenderAfterRestore } from '$lib/server/render/worker';
 import { bootstrap } from '$lib/server/bootstrap';
 
-export const SESSION_COOKIE = 'kupfergit_session';
+export const SESSION_COOKIE = 'pcbgit_session';
 
 ensureDirs();
 bootstrap();

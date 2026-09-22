@@ -13,7 +13,7 @@ import { CATEGORY_COLORS, ensureTag } from './projects';
 export function bootstrap() {
 	seedDefaults();
 	// Instances created before the rename still carry the old default name.
-	if (getSetting('site_name') === 'PCBHub') setSetting('site_name', 'Kupfergit');
+	if (['PCBHub', 'Kupfergit'].includes(getSetting('site_name'))) setSetting('site_name', 'pcbgit');
 	backfillTagColors();
 	ensureAdmin();
 }
@@ -28,7 +28,7 @@ function backfillTagColors() {
 function seedDefaults() {
 	if (getSetting('bootstrapped') === 'true') return;
 
-	setSetting('site_name', 'Kupfergit');
+	setSetting('site_name', 'pcbgit');
 	setSetting('site_tagline', 'Self-hosted home for hardware design');
 	setSetting('registration_open', 'true');
 	for (const [name, category] of STARTER_TAGS) ensureTag(name, category);
@@ -39,22 +39,22 @@ function seedDefaults() {
 function ensureAdmin() {
 	if (count("SELECT COUNT(*) FROM users WHERE role = 'admin' AND is_active = 1") > 0) return;
 
-	const preferred = process.env.KUPFERGIT_ADMIN_USER ?? 'admin';
-	const password = process.env.KUPFERGIT_ADMIN_PASSWORD ?? 'changeme';
-	const email = process.env.KUPFERGIT_ADMIN_EMAIL ?? 'admin@localhost';
+	const preferred = process.env.PCBGIT_ADMIN_USER ?? 'admin';
+	const password = process.env.PCBGIT_ADMIN_PASSWORD ?? 'changeme';
+	const email = process.env.PCBGIT_ADMIN_EMAIL ?? 'admin@localhost';
 
 	// If the name is taken by an existing account, promote it rather than fail.
 	const existing = getUserByUsername(preferred);
 	if (existing) {
 		promote(existing.id);
-		console.warn(`[kupfergit] no active administrator found — promoted "${preferred}"`);
+		console.warn(`[pcbgit] no active administrator found — promoted "${preferred}"`);
 		return;
 	}
 
 	createUser({ username: preferred, email, password, role: 'admin', displayName: 'Administrator' });
-	console.log(`[kupfergit] created administrator account "${preferred}"`);
+	console.log(`[pcbgit] created administrator account "${preferred}"`);
 	if (password === 'changeme') {
-		console.warn('[kupfergit] the administrator password is the default — change it at /settings');
+		console.warn('[pcbgit] the administrator password is the default — change it at /settings');
 	}
 }
 

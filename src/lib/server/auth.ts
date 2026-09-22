@@ -132,7 +132,7 @@ function tokenHash(token: string) {
 
 /** Returns the clear-text token once; only its hash is stored. */
 export function createAccessToken(userId: string, name: string) {
-	const token = `kupfergit_${crypto.randomBytes(24).toString('base64url')}`;
+	const token = `pcbgit_${crypto.randomBytes(24).toString('base64url')}`;
 	run(
 		'INSERT INTO access_tokens (id, user_id, name, token_hash, prefix, created_at) VALUES (?,?,?,?,?,?)',
 		newId(),

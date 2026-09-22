@@ -12,10 +12,10 @@ import os from 'node:os';
 import path from 'node:path';
 import test, { after, before } from 'node:test';
 
-const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'kupfergit-test-'));
-process.env.KUPFERGIT_DATA_DIR = dataDir;
+const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'pcbgit-test-'));
+process.env.PCBGIT_DATA_DIR = dataDir;
 // Keep the test instance from creating the default admin with a weak password.
-process.env.KUPFERGIT_ADMIN_PASSWORD = 'test-password-not-used';
+process.env.PCBGIT_ADMIN_PASSWORD = 'test-password-not-used';
 
 const { all, count, get } = await import('../src/lib/server/db/index.ts');
 const { createUser } = await import('../src/lib/server/auth.ts');

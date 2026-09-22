@@ -44,7 +44,7 @@
 			<span>
 				kicad-cli was not found on this server. Versions are still tracked and a BOM is parsed from
 				the schematic, but schematic, board, 3D and DRC output cannot be produced. Run the Docker
-				image, or set <span class="mono">KUPFERGIT_KICAD_CLI</span> to the binary's path.
+				image, or set <span class="mono">PCBGIT_KICAD_CLI</span> to the binary's path.
 			</span>
 		</p>
 	{/if}

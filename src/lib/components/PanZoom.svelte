@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { Snippet } from 'svelte';
+	import { untrack, type Snippet } from 'svelte';
 	import Icon from './Icon.svelte';
 
 	interface Props {
@@ -113,11 +113,13 @@
 		}
 	}
 
-	// Re-fit when the content changes size or the viewport is resized.
+	// Re-fit when the content changes size. fit() reads the current zoom, so it must
+	// run untracked: otherwise every zoom re-triggers this effect and snaps back.
 	$effect(() => {
 		void contentWidth;
 		void contentHeight;
-		fit();
+		void viewport;
+		untrack(() => fit());
 	});
 
 	$effect(() => {
@@ -138,10 +140,10 @@
 				<Icon name="plus" size={13} />
 			</button>
 			<button class="viewer-btn border-l" onclick={() => zoomAt(0.77)} title="Zoom out (−)" aria-label="Zoom out">
-				<span class="block h-[13px] w-[13px] leading-[13px]">–</span>
+				<Icon name="minus" size={13} />
 			</button>
 			<button class="viewer-btn border-l" onclick={() => fit()} title="Fit to view (F)" aria-label="Fit to view">
-				<Icon name="search" size={13} />
+				<Icon name="fit" size={13} />
 			</button>
 		</div>
 	</div>

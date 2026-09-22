@@ -212,7 +212,7 @@ export function renderPcb(spec: BoardSpec) {
 
 	return `(kicad_pcb
   (version 20241229)
-  (generator "kupfergit-fixture")
+  (generator "pcbgit-fixture")
   (generator_version "9.0")
   (general
     (thickness 1.6)
@@ -221,7 +221,7 @@ export function renderPcb(spec: BoardSpec) {
   (paper "A4")
   (title_block
     (title "${escape(spec.title)}")
-    (company "Kupfergit demo")
+    (company "pcbgit demo")
   )
   (layers${spec.copperLayers === 4 ? LAYERS_4 : LAYERS_2}
   )
@@ -405,13 +405,13 @@ export function renderSchematic(spec: BoardSpec) {
 
 	return `(kicad_sch
   (version 20250114)
-  (generator "kupfergit-fixture")
+  (generator "pcbgit-fixture")
   (generator_version "9.0")
   (uuid "00000000-0000-4000-8000-000000000001")
   (paper "A4")
   (title_block
     (title "${escape(spec.title)}")
-    (company "Kupfergit demo")
+    (company "pcbgit demo")
   )
   (lib_symbols
 ${Object.values(LIB_SYMBOLS).join('\n')}

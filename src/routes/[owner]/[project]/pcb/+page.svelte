@@ -64,10 +64,8 @@
 		if (spanX <= 0 || spanY <= 0) return null;
 		const nx = (xMm - bbox.minX) / spanX;
 		const ny = (yMm - bbox.minY) / spanY;
-		return {
-			x: (flipped ? 1 - nx : nx) * box.width,
-			y: ny * box.height
-		};
+		// Markers are drawn inside the flipped container, which mirrors them already.
+		return { x: nx * box.width, y: ny * box.height };
 	}
 
 	function applyPreset(preset: 'front' | 'back' | 'copper' | 'all' | 'none') {
@@ -224,7 +222,7 @@
 									{#if point}
 										{@const color = marker.severity === 'error' ? '#ff5252' : '#ffc046'}
 										{@const radius = box.width * 0.012}
-										<g style:transform={flipped ? `translate(${point.x * 2}px, 0) scaleX(-1)` : 'none'}>
+										<g>
 											<circle cx={point.x} cy={point.y} r={radius} fill="none" stroke={color} stroke-width={radius * 0.28} opacity="0.95" />
 											<circle cx={point.x} cy={point.y} r={radius * 0.22} fill={color} />
 										</g>

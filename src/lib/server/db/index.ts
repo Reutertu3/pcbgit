@@ -39,8 +39,8 @@ function addMissingColumns(database: DatabaseSync) {
 }
 
 // Vite reloads server modules in dev; keep one handle per process so WAL locks stay sane.
-const globalRef = globalThis as unknown as { __kupfergitDb?: DatabaseSync };
-export const db = (globalRef.__kupfergitDb ??= open());
+const globalRef = globalThis as unknown as { __pcbgitDb?: DatabaseSync };
+export const db = (globalRef.__pcbgitDb ??= open());
 
 type Row = Record<string, unknown>;
 

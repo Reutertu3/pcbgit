@@ -229,7 +229,7 @@ async function seed({ reset }: { reset: boolean }) {
 		createUser({
 			username: demo.username,
 			email: `${demo.username}@example.invalid`,
-			password: process.env.KUPFERGIT_SEED_PASSWORD ?? 'demo-password',
+			password: process.env.PCBGIT_SEED_PASSWORD ?? 'demo-password',
 			displayName: demo.displayName
 		});
 		run('UPDATE users SET bio = ? WHERE username = ?', demo.bio, demo.username);

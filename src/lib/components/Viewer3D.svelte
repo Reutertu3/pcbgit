@@ -38,7 +38,7 @@
 	type MaskId = (typeof MASKS)[number]['id'];
 	type SilkId = (typeof SILKS)[number]['id'];
 	type FinishId = (typeof FINISHES)[number]['id'];
-	const COLOR_KEY = 'kupfergit-3d-colors';
+	const COLOR_KEY = 'pcbgit-3d-colors';
 
 	/** Home view: tilted top-down, the angle that fills a landscape viewport best. */
 	const HOME: Vec3 = [0, 1, 0.62];
@@ -460,7 +460,10 @@
 			function poseFor(direction: import('three/webgpu').Vector3, fill = 0.92) {
 				const dir = direction.clone().normalize();
 				// OrbitControls cannot sit exactly on a pole; nudge straight up/down views.
-				if (Math.abs(dir.y) > 0.9999) dir.set(0, Math.sign(dir.y), 1e-4).normalize();
+				// The nudge decides which way is up on screen: toward the board's back edge
+				// in both cases, so the bottom view looks like the board turned over in
+				// your hand (left-right mirrored, bottom silkscreen readable), not upside down.
+				if (Math.abs(dir.y) > 0.9999) dir.set(0, Math.sign(dir.y), Math.sign(dir.y) * 1e-4).normalize();
 
 				const probe = new THREE.PerspectiveCamera(camera.fov, camera.aspect);
 				probe.position.copy(dir);

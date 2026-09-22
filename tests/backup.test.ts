@@ -11,10 +11,10 @@ import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import test, { after } from 'node:test';
 
-const source = fs.mkdtempSync(path.join(os.tmpdir(), 'kupfergit-snap-src-'));
-const target = fs.mkdtempSync(path.join(os.tmpdir(), 'kupfergit-snap-dst-'));
-const scratch = fs.mkdtempSync(path.join(os.tmpdir(), 'kupfergit-snap-bad-'));
-process.env.KUPFERGIT_DATA_DIR = source;
+const source = fs.mkdtempSync(path.join(os.tmpdir(), 'pcbgit-snap-src-'));
+const target = fs.mkdtempSync(path.join(os.tmpdir(), 'pcbgit-snap-dst-'));
+const scratch = fs.mkdtempSync(path.join(os.tmpdir(), 'pcbgit-snap-bad-'));
+process.env.PCBGIT_DATA_DIR = source;
 
 const { count } = await import('../src/lib/server/db/index.ts');
 const { createUser } = await import('../src/lib/server/auth.ts');
@@ -52,7 +52,7 @@ test('a snapshot restores into an empty instance with data and repositories inta
 	const applied = restore.applyPendingRestore(target);
 	assert.ok(applied, 'restore applied');
 
-	const restored = new DatabaseSync(path.join(target, 'kupfergit.db'), { readOnly: true });
+	const restored = new DatabaseSync(path.join(target, 'pcbgit.db'), { readOnly: true });
 	const row = restored.prepare('SELECT COUNT(*) AS n FROM projects WHERE slug = ?').get('kept-board') as { n: number };
 	restored.close();
 	assert.equal(row.n, 1, 'board survived the round trip');
@@ -86,6 +86,20 @@ function makeArchive(name: string, build: (dir: string) => string[]) {
 	return file;
 }
 
+test('snapshots made under the Kupfergit name still restore', () => {
+	const legacy = makeArchive('kupfer.tar.gz', (dir) => {
+		fs.writeFileSync(path.join(dir, 'manifest.json'), JSON.stringify({ format: 'kupfergit-snapshot', version: 1, created_at: 1, includes_artifacts: true, site_name: 'x', counts: {} }));
+		const database = new DatabaseSync(path.join(dir, 'kupfergit.db'));
+		database.exec('CREATE TABLE users (id); CREATE TABLE projects (id); CREATE TABLE commits (id);');
+		database.close();
+		return ['manifest.json', 'kupfergit.db'];
+	});
+	const dest = fs.mkdtempSync(path.join(scratch, 'kupfer-snap-'));
+	restore.stageSnapshot(legacy, dest);
+	restore.applyPendingRestore(dest);
+	assert.ok(fs.existsSync(path.join(dest, 'pcbgit.db')));
+});
+
 test('snapshots made under the old project name still restore', () => {
 	const legacy = makeArchive('legacy.tar.gz', (dir) => {
 		fs.writeFileSync(path.join(dir, 'manifest.json'), JSON.stringify({ format: 'pcbhub-snapshot', version: 1, created_at: 1, includes_artifacts: true, site_name: 'x', counts: {} }));
@@ -97,7 +111,15 @@ test('snapshots made under the old project name still restore', () => {
 	const dest = fs.mkdtempSync(path.join(scratch, 'legacy-'));
 	restore.stageSnapshot(legacy, dest);
 	restore.applyPendingRestore(dest);
-	assert.ok(fs.existsSync(path.join(dest, 'kupfergit.db')), 'legacy database lands under the new name');
+	assert.ok(fs.existsSync(path.join(dest, 'pcbgit.db')), 'legacy database lands under the new name');
+});
+
+test('a data directory from the Kupfergit days keeps its database', () => {
+	const dir = fs.mkdtempSync(path.join(scratch, 'kupfer-'));
+	fs.writeFileSync(path.join(dir, 'kupfergit.db'), 'db');
+	restore.migrateLegacyDatabase(dir);
+	assert.equal(fs.readFileSync(path.join(dir, 'pcbgit.db'), 'utf8'), 'db');
+	assert.ok(!fs.existsSync(path.join(dir, 'kupfergit.db')));
 });
 
 test('a data directory from before the rename keeps its database', () => {
@@ -105,8 +127,8 @@ test('a data directory from before the rename keeps its database', () => {
 	fs.writeFileSync(path.join(dir, 'pcbhub.db'), 'db');
 	fs.writeFileSync(path.join(dir, 'pcbhub.db-wal'), 'wal');
 	restore.migrateLegacyDatabase(dir);
-	assert.equal(fs.readFileSync(path.join(dir, 'kupfergit.db'), 'utf8'), 'db');
-	assert.equal(fs.readFileSync(path.join(dir, 'kupfergit.db-wal'), 'utf8'), 'wal');
+	assert.equal(fs.readFileSync(path.join(dir, 'pcbgit.db'), 'utf8'), 'db');
+	assert.equal(fs.readFileSync(path.join(dir, 'pcbgit.db-wal'), 'utf8'), 'wal');
 	assert.ok(!fs.existsSync(path.join(dir, 'pcbhub.db')));
 });
 
@@ -120,15 +142,15 @@ test('archives that could escape the data directory are refused', () => {
 
 	const linked = makeArchive('link.tar.gz', (dir) => {
 		fs.writeFileSync(path.join(dir, 'manifest.json'), '{}');
-		fs.writeFileSync(path.join(dir, 'kupfergit.db'), '');
+		fs.writeFileSync(path.join(dir, 'pcbgit.db'), '');
 		fs.mkdirSync(path.join(dir, 'repos'));
 		fs.symlinkSync('/etc', path.join(dir, 'repos', 'escape'));
-		return ['manifest.json', 'kupfergit.db', 'repos'];
+		return ['manifest.json', 'pcbgit.db', 'repos'];
 	});
 	assert.throws(() => restore.checkArchive(linked), /links/);
 });
 
-test('archives that are not Kupfergit snapshots are refused', () => {
+test('archives that are not pcbgit snapshots are refused', () => {
 	const stray = makeArchive('stray.tar.gz', (dir) => {
 		fs.writeFileSync(path.join(dir, 'passwd'), 'x');
 		return ['passwd'];
@@ -143,15 +165,15 @@ test('archives that are not Kupfergit snapshots are refused', () => {
 
 	const wrongFormat = makeArchive('wrong.tar.gz', (dir) => {
 		fs.writeFileSync(path.join(dir, 'manifest.json'), JSON.stringify({ format: 'something-else' }));
-		fs.writeFileSync(path.join(dir, 'kupfergit.db'), '');
-		return ['manifest.json', 'kupfergit.db'];
+		fs.writeFileSync(path.join(dir, 'pcbgit.db'), '');
+		return ['manifest.json', 'pcbgit.db'];
 	});
-	assert.throws(() => restore.readManifest(wrongFormat), /Not a Kupfergit snapshot/);
+	assert.throws(() => restore.readManifest(wrongFormat), /Not a pcbgit snapshot/);
 
 	const corruptDb = makeArchive('corrupt.tar.gz', (dir) => {
-		fs.writeFileSync(path.join(dir, 'manifest.json'), JSON.stringify({ format: 'kupfergit-snapshot', version: 1 }));
-		fs.writeFileSync(path.join(dir, 'kupfergit.db'), 'this is not sqlite');
-		return ['manifest.json', 'kupfergit.db'];
+		fs.writeFileSync(path.join(dir, 'manifest.json'), JSON.stringify({ format: 'pcbgit-snapshot', version: 1 }));
+		fs.writeFileSync(path.join(dir, 'pcbgit.db'), 'this is not sqlite');
+		return ['manifest.json', 'pcbgit.db'];
 	});
 	const dest = fs.mkdtempSync(path.join(scratch, 'dest-'));
 	assert.throws(() => restore.stageSnapshot(corruptDb, dest), /Database/);

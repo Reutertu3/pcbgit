@@ -39,7 +39,7 @@ export async function createSnapshot(opts: { includeArtifacts: boolean; actorId:
 	const work = await fsp.mkdtemp(path.join(TMP_DIR, 'snapshot-'));
 	try {
 		// VACUUM INTO gives a transaction-consistent copy while the app keeps running.
-		const dbCopy = path.join(work, 'kupfergit.db');
+		const dbCopy = path.join(work, 'pcbgit.db');
 		db.exec(`VACUUM INTO '${dbCopy.replace(/'/g, "''")}'`);
 
 		const manifest: SnapshotManifest = {
@@ -47,7 +47,7 @@ export async function createSnapshot(opts: { includeArtifacts: boolean; actorId:
 			version: SNAPSHOT_VERSION,
 			created_at: Date.now(),
 			includes_artifacts: opts.includeArtifacts,
-			site_name: getSetting('site_name', 'Kupfergit'),
+			site_name: getSetting('site_name', 'pcbgit'),
 			counts: {
 				users: count('SELECT COUNT(*) FROM users'),
 				projects: count('SELECT COUNT(*) FROM projects'),
@@ -58,12 +58,12 @@ export async function createSnapshot(opts: { includeArtifacts: boolean; actorId:
 		await fsp.writeFile(path.join(work, 'manifest.json'), JSON.stringify(manifest, null, 2));
 
 		const stamp = new Date(manifest.created_at).toISOString().slice(0, 19).replace(/[-:]/g, '').replace('T', '-');
-		const name = uniqueName(`kupfergit-snapshot-${stamp}${opts.includeArtifacts ? '' : '-lite'}.tar.gz`);
+		const name = uniqueName(`pcbgit-snapshot-${stamp}${opts.includeArtifacts ? '' : '-lite'}.tar.gz`);
 		const target = path.join(BACKUP_DIR, name);
 		const partial = `${target}.partial`;
 
 		// Manifest first so reading it back only has to decompress the archive's head.
-		const args = ['-czf', partial, '-C', work, 'manifest.json', 'kupfergit.db', '-C', DATA_DIR, 'repos'];
+		const args = ['-czf', partial, '-C', work, 'manifest.json', 'pcbgit.db', '-C', DATA_DIR, 'repos'];
 		if (opts.includeArtifacts && fs.existsSync(ARTIFACT_DIR)) args.push('artifacts');
 		await exec('tar', args, { maxBuffer: 16 * 1024 * 1024 });
 		await fsp.rename(partial, target);

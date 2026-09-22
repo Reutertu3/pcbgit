@@ -25,32 +25,32 @@ RUN apt-get update \
  && apt-get purge -y software-properties-common gpg-agent \
  && apt-get autoremove -y \
  && rm -rf /var/lib/apt/lists/* \
- && useradd --create-home --uid 10001 kupfergit \
+ && useradd --create-home --uid 10001 pcbgit \
  && kicad-cli --version
 
 # Build stage is Debian Bookworm (glibc 2.36); Ubuntu 24.04 ships 2.39, so the binary runs as-is.
 COPY --from=build /usr/local/bin/node /usr/local/bin/node
 
 WORKDIR /app
-COPY --from=build --chown=kupfergit /app/build ./build
-COPY --from=build --chown=kupfergit /app/node_modules ./node_modules
-COPY --from=build --chown=kupfergit /app/package.json ./package.json
-COPY --from=build --chown=kupfergit /app/scripts ./scripts
-COPY --from=build --chown=kupfergit /app/tests/resolve-hook.mjs ./tests/resolve-hook.mjs
-COPY --from=build --chown=kupfergit /app/src/lib ./src/lib
+COPY --from=build --chown=pcbgit /app/build ./build
+COPY --from=build --chown=pcbgit /app/node_modules ./node_modules
+COPY --from=build --chown=pcbgit /app/package.json ./package.json
+COPY --from=build --chown=pcbgit /app/scripts ./scripts
+COPY --from=build --chown=pcbgit /app/tests/resolve-hook.mjs ./tests/resolve-hook.mjs
+COPY --from=build --chown=pcbgit /app/src/lib ./src/lib
 
-RUN mkdir -p /data && chown kupfergit /data
+RUN mkdir -p /data && chown pcbgit /data
 
 ENV NODE_ENV=production \
     PORT=3000 \
     HOST=0.0.0.0 \
-    KUPFERGIT_DATA_DIR=/data \
-    HOME=/home/kupfergit \
+    PCBGIT_DATA_DIR=/data \
+    HOME=/home/pcbgit \
     QT_QPA_PLATFORM=offscreen \
     BODY_SIZE_LIMIT=210M \
-    KUPFERGIT_RESTART_ON_RESTORE=true
+    PCBGIT_RESTART_ON_RESTORE=true
 
-USER kupfergit
+USER pcbgit
 VOLUME /data
 EXPOSE 3000
 
