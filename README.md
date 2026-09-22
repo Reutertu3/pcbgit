@@ -1,12 +1,38 @@
-# pcbgit
+<p align="center">
+  <img src="docs/images/banner.webp" alt="pcbgit" width="900">
+</p>
 
-Self-hosted git hosting for KiCad projects. Push a board and every commit is
-rendered: schematics, board layers, an assembled 3D model, the BOM and DRC/ERC
-results, all viewable in the browser.
+<p align="center">
+  <b>Self-hosted git hosting for KiCad projects.</b><br>
+  Push a board and every commit is rendered: schematics, board layers, an assembled 3D
+  model, the BOM and DRC/ERC results — all viewable in the browser.
+</p>
 
-**Contents**
+<p align="center">
+  <img alt="License: AGPL-3.0" src="https://img.shields.io/badge/license-AGPL--3.0-2b5748">
+  <img alt="KiCad 10" src="https://img.shields.io/badge/KiCad-10-9cb080">
+  <img alt="Runs in Docker" src="https://img.shields.io/badge/deploy-Docker-618764">
+  <img alt="Built with SvelteKit" src="https://img.shields.io/badge/built%20with-SvelteKit-273338">
+</p>
+
+<p align="center">
+  <a href="#quick-start">Quick start</a> ·
+  <a href="#deploying-to-a-server">Deploy</a> ·
+  <a href="#using-pcbgit">Usage</a> ·
+  <a href="#configuration">Configuration</a> ·
+  <a href="#development">Development</a>
+</p>
+
+---
+
+<p align="center">
+  <img src="docs/images/browse.webp" alt="The board list, with schematic and board thumbnails per board" width="900">
+</p>
+
+## Contents
 
 - [Features](#features)
+- [Screenshots](#screenshots)
 - [Quick start](#quick-start)
 - [Deploying to a server](#deploying-to-a-server)
 - [Updating](#updating)
@@ -18,29 +44,59 @@ results, all viewable in the browser.
 
 ## Features
 
-**Viewers**
+### Viewers
 
-- **Schematic**: every sheet, pan and zoom, light or dark, export as PNG/JPEG up to 600 dpi
-- **PCB 2D**: stacked layers with per-layer toggles, front/back flip, DRC markers
-- **PCB 3D**: assembled board with components, view cube, soldermask/silkscreen colours,
-  HASL/ENIG finish, SMD/THT toggles, ruler, scale objects, image export
-- **BOM**: interactive view with placement highlighting ([iBOM](https://github.com/openscopeproject/InteractiveHtmlBom)),
-  grouped line items, CSV export, diff between any two versions
-- **Checks**: KiCad DRC and ERC, grouped by severity
-- **History**: renders and logs per commit, source ZIP downloads
+| | What you get |
+|---|---|
+| **Schematic** | Every sheet, pan and zoom, light or dark, export as PNG/JPEG up to 600 dpi |
+| **PCB 2D** | Stacked layers with per-layer toggles, front/back flip, DRC markers with zoom-to-error |
+| **PCB 3D** | Assembled board with components, view cube, soldermask/silkscreen colours, HASL/ENIG finish, SMD/THT toggles, ruler, scale objects, image export |
+| **BOM** | Interactive view with placement highlighting ([iBOM]), grouped line items, CSV export, diff between any two versions |
+| **Checks** | KiCad DRC and ERC, grouped by severity, linked to their spot on the board |
+| **History** | Renders and logs per commit, source ZIP downloads |
 
-**Hosting**
+### Hosting
 
-- Push and clone over HTTPS with personal access tokens, or upload a ZIP
-- Public and private boards, stars, comments, colour-coded tags
-- Admin panel: users, boards, tags, render queue, backups, updates
-- Snapshots for backup and moving to a new server
-- One-click updates from GitHub with changelog
+- Push and clone over **HTTPS with personal access tokens**, or upload a ZIP
+- **Public and private boards**, stars, threaded comments with notifications
+- **Admin panel**: users, boards, colour-coded tags, render queue, backups, updates
+- **Snapshots** for backup and moving to a new server
+- **One-click updates** from GitHub with a changelog
+- **English and German** interface, six colour themes
 
-**Stack**
+### Stack
 
 SvelteKit, SQLite (`node:sqlite`), bare git repositories on disk. Rendering uses
-`kicad-cli` from KiCad 10, which the Docker image includes.
+`kicad-cli` from KiCad 10, which the Docker image includes. 3D models are joined
+and compressed at render time, so a 29 MB KiCad export becomes a ~6 MB download.
+
+[iBOM]: https://github.com/openscopeproject/InteractiveHtmlBom
+
+## Screenshots
+
+<table>
+  <tr>
+    <td width="50%"><img src="docs/images/schematic.webp" alt="Schematic viewer"><br><b>Schematic</b> — every sheet, pan and zoom, light or dark.</td>
+    <td width="50%"><img src="docs/images/pcb.webp" alt="Layered board view with DRC markers"><br><b>PCB 2D</b> — layer stack, board flip, DRC markers.</td>
+  </tr>
+  <tr>
+    <td><img src="docs/images/3d.webp" alt="Assembled 3D model"><br><b>PCB 3D</b> — assembled board, mask and finish colours, ruler.</td>
+    <td><img src="docs/images/bom.webp" alt="Interactive bill of materials"><br><b>BOM</b> — interactive placement view, CSV export, version diff.</td>
+  </tr>
+  <tr>
+    <td><img src="docs/images/checks.webp" alt="DRC and ERC results"><br><b>Checks</b> — DRC and ERC by severity, with board coordinates.</td>
+    <td><img src="docs/images/overview.webp" alt="Board overview page"><br><b>Overview</b> — preview, stats, README, discussion.</td>
+  </tr>
+</table>
+
+<details>
+<summary><b>Admin panel</b></summary>
+
+<img src="docs/images/admin.webp" alt="Admin overview with instance statistics">
+
+Users, boards, tags, the render queue, snapshots and in-app updates.
+
+</details>
 
 ## Quick start
 
@@ -53,10 +109,17 @@ cp .env.example .env      # set PCBGIT_ADMIN_PASSWORD
 docker compose up -d --build
 ```
 
-Open <http://localhost:3000> and sign in as `admin`. The first build takes a few
-minutes: it downloads KiCad and its 3D model library.
+Open <http://localhost:3000> and sign in as `admin`.
 
-All data (database, repositories, renders) is stored in the `pcbgit-data` volume.
+> [!TIP]
+> The first build takes a few minutes: it downloads KiCad and its 3D model
+> library. Later builds reuse those layers. To skip the several-GB model library,
+> build with `--build-arg INSTALL_3D_MODELS=false`; the 3D view then shows bare
+> boards without components.
+
+All data (database, repositories, renders) lives in the `pcbgit-data` volume.
+Create your first board with **New board**, or push one over git — see
+[Using pcbgit](#using-pcbgit).
 
 ## Deploying to a server
 
@@ -65,6 +128,11 @@ Let's Encrypt certificate. pcbgit itself is not exposed.
 
 **Requirements:** 2 GB RAM, 8 GB free disk, a domain name. Run the commands below
 as root.
+
+> [!IMPORTANT]
+> Set `PCBGIT_DOMAIN` to the bare domain and give `PCBGIT_ADMIN_PASSWORD` a long
+> random value before the first start. A wrong domain makes every form post fail
+> with a cross-site error, because it decides the app's `ORIGIN`.
 
 ### 1. Install Docker
 
@@ -121,7 +189,8 @@ registration under **Admin → Instance**.
 `install.sh` adds `COMPOSE_FILE` to `.env`, so plain `docker compose` commands
 on the server always use the production setup.
 
-### Moving an existing instance
+<details>
+<summary><b>Moving an existing instance to this server</b></summary>
 
 1. On the old instance, create a snapshot under **Admin → Backups** and download it.
 2. On the new server, run `install.sh` (step 4), but not `update.sh` yet.
@@ -129,6 +198,8 @@ on the server always use the production setup.
 4. Add `PCBGIT_IMPORT_SNAPSHOT=/control/import.tar.gz` to `.env`.
 5. Run `update.sh`. The snapshot is imported on first start.
 6. Sign in with the admin account from the old instance, then delete the file and the `.env` line.
+
+</details>
 
 ## Updating
 
@@ -144,7 +215,9 @@ To update, either:
 Both pull from GitHub, rebuild and restart. The site is down for a few seconds.
 **Check now** runs the GitHub check immediately.
 
-Details:
+<details>
+<summary>How updating works, and what can go wrong</summary>
+
 
 - Only fast-forward pulls are done. If the server copy has its own commits, the
   update stops and the panel says so.
@@ -153,6 +226,8 @@ Details:
 - Each update re-syncs the systemd units. After updating an existing server to this
   version for the first time, run `deploy/install.sh --units-only` once.
 - `systemctl status pcbgit-update.service` shows the last run on the server.
+
+</details>
 
 ## Using pcbgit
 
@@ -172,6 +247,10 @@ Details:
 pcbgit renders the shallowest `.kicad_pro` in the repository together with its
 `.kicad_sch` and `.kicad_pcb`. Public boards can be cloned without a token.
 
+> [!NOTE]
+> Every push renders in the background. Watch it under **History**, which keeps
+> the log of each version, or in **Admin → Render queue**.
+
 ### Backups
 
 Under **Admin → Backups** you can create, download, upload and restore snapshots.
@@ -183,9 +262,14 @@ the rendered output.
 - **Large snapshots** that exceed the upload limit can be copied in directly:
   `docker compose cp snapshot.tar.gz pcbgit:/data/backups/`
 
+> [!WARNING]
+> A restore replaces users, boards, repositories and settings with the snapshot's.
+> The previous data is moved to `backups/pre-restore-<time>/` rather than deleted,
+> so it can be recovered by hand.
+
 ## Configuration
 
-Set these in `.env`.
+Set these in `.env`:
 
 | Variable | Default | Purpose |
 |---|---|---|
@@ -198,7 +282,8 @@ Set these in `.env`.
 | `COMPOSE_FILE` | — | Set by `install.sh` so `docker compose` uses the production setup |
 | `PCBGIT_SOURCE_URL` | `https://github.com/Reutertu3/pcbgit` | Repository linked as "Source" in the footer. Forks must set their own. |
 
-Set in the image or compose files; rarely changed:
+<details>
+<summary>Set in the image or compose files; rarely changed</summary>
 
 | Variable | Default | Purpose |
 |---|---|---|
@@ -209,8 +294,7 @@ Set in the image or compose files; rarely changed:
 | `BODY_SIZE_LIMIT` | `210M` | Maximum upload and push size |
 | `PCBGIT_RESTART_ON_RESTORE` | `true` | Restart after staging a restore |
 
-Build option: `--build-arg INSTALL_3D_MODELS=false` skips the KiCad 3D model
-library (several GB). The 3D view then shows boards without components.
+</details>
 
 ## Troubleshooting
 
@@ -251,7 +335,8 @@ Strings live in `src/lib/i18n/en.json` and `de.json`. To add a language, copy
 `npm test` fails if a file is missing keys or placeholders. KiCad's own DRC/ERC
 messages and render logs stay in English.
 
-### Project layout
+<details>
+<summary><b>Project layout</b></summary>
 
 ```
 src/lib/server/
@@ -260,10 +345,11 @@ src/lib/server/
   git.ts           bare repositories, commits from uploads
   githttp.ts       git smart-HTTP (clone and push)
   projects.ts      boards, tags, stars, commit indexing
-  render/          render queue, kicad-cli wrapper, KiCad/BOM/DRC parsers
+  render/          render queue, kicad-cli wrapper, parsers, GLB optimisation
   backups.ts       snapshots
   restore.ts       snapshot validation and restore
   updater.ts       update requests and status
+src/lib/i18n/      translations (en.json, de.json) and lookup
 src/routes/
   [owner]/[project]/   board pages: overview, schematic, pcb, 3d, bom, drc, files, history
   git/                 git endpoint
@@ -276,6 +362,8 @@ deploy/
 The render worker runs inside the app and processes one job at a time. Jobs
 interrupted by a restart are marked failed at boot and can be retried from
 **Admin → Render queue**.
+
+</details>
 
 ## License
 
