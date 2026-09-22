@@ -1,4 +1,7 @@
 <script lang="ts">
+	// Self-hosted fonts (OFL-1.1), bundled by Vite: no request to Google on every page.
+	import '@fontsource-variable/inter';
+	import '@fontsource-variable/jetbrains-mono';
 	import '../app.css';
 	import { page } from '$app/state';
 	import Icon from '$lib/components/Icon.svelte';
@@ -25,12 +28,6 @@
 <svelte:head>
 	<title>{data.site.name}</title>
 	<meta name="description" content={data.site.tagline ?? t('site.tagline')} />
-	<link rel="preconnect" href="https://fonts.googleapis.com" />
-	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous" />
-	<link
-		rel="stylesheet"
-		href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
-	/>
 </svelte:head>
 
 <svelte:window onclick={() => (menuOpen = false)} />

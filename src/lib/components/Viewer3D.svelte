@@ -337,6 +337,7 @@
 			const THREE = await import('three/webgpu');
 			const { OrbitControls } = await import('three/addons/controls/OrbitControls.js');
 			const { GLTFLoader } = await import('three/addons/loaders/GLTFLoader.js');
+			const { MeshoptDecoder } = await import('three/addons/libs/meshopt_decoder.module.js');
 			const { RoomEnvironment } = await import('three/addons/environments/RoomEnvironment.js');
 			const { mergeGeometries } = await import('three/addons/utils/BufferGeometryUtils.js');
 			if (disposed || !host) return;
@@ -951,7 +952,7 @@
 
 					const unit = height / 900; // label size relative to a ~900 px tall view
 					if (options.labels && ruler?.visible) {
-						ctx.font = `${Math.round(13 * unit)}px ui-monospace, "JetBrains Mono", monospace`;
+						ctx.font = `${Math.round(13 * unit)}px "JetBrains Mono Variable", ui-monospace, monospace`;
 						ctx.textAlign = 'center';
 						ctx.textBaseline = 'middle';
 						for (const { at } of labelAnchors) {
@@ -1026,7 +1027,8 @@
 				return new Float32Array(out);
 			}
 
-			new GLTFLoader().load(
+			// Renders since the GLB optimisation are meshopt-compressed (see render/glb.ts).
+			new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).load(
 				url,
 				async (gltf) => {
 					if (disposed) return;
@@ -1068,6 +1070,9 @@
 						const index = gltf.parser.associations.get(mesh)?.meshes;
 						const name = index === undefined ? '' : meshNames[index];
 						if (board && name.startsWith(`${board}_`)) return { role: roles[name] ?? null, category: 'board' };
+						// Optimised files are already grouped: "pcbgit_smd", "pcbgit_tht", "pcbgit_other".
+						const grouped = /^pcbgit_(smd|tht|other)$/.exec(name);
+						if (grouped) return { role: null, category: grouped[1] as Category };
 						return { role: null, category: mountOf(mesh) };
 					});
 					counts = { smd: categoryMeshes.smd.length, tht: categoryMeshes.tht.length };

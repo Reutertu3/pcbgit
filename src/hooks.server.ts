@@ -47,7 +47,9 @@ export const handle: Handle = async ({ event, resolve }) => {
 	}
 
 	const response = await resolve(event, {
-		preload: ({ type }) => type === 'font' || type === 'css' || type === 'js',
+		// Not fonts: each is split per script (latin, cyrillic, …) and the browser fetches
+		// only the ones a page uses; preloading would download all of them.
+		preload: ({ type }) => type === 'css' || type === 'js',
 		transformPageChunk: ({ html }) => html.replace('%pcbgit.lang%', event.locals.locale)
 	});
 	response.headers.set('X-Content-Type-Options', 'nosniff');

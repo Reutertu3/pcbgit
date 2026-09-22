@@ -27,6 +27,7 @@ import {
 } from './kicad';
 import { discoverKicadFiles, hasKicadContent } from './kicadfiles';
 import { ensureThumbnail } from '../thumbnails';
+import { optimizeBoardGlb } from './glb';
 import { countBySeverity, parseDrcReport, parseErcReport, type Violation } from './reports';
 
 interface JobRow {
@@ -374,7 +375,20 @@ async function renderBoard(
 	const glbResult = await runKicad(pcbGlbArgs(pcbPath, glb), 600_000);
 	log.push(`glb: ${glbResult.ok ? 'ok' : `failed (${glbResult.code}) ${glbResult.stderr.trim()}`}`);
 	if (glbResult.ok && fs.existsSync(glb)) {
-		await storeArtifact({ commitId, kind: 'pcb_glb', name: 'board.glb', source: glb, meta: { mounts: board?.mounts ?? {} } });
+		// Joined by material and meshopt-compressed: a fraction of the size, and the
+		// browser no longer merges tens of thousands of primitives on every load.
+		// A failure here keeps KiCad's file, which the viewer still handles.
+		const optimized = path.join(outDir, 'board-optimized.glb');
+		let source = glb;
+		try {
+			const started = Date.now();
+			const result = await optimizeBoardGlb(glb, optimized, board?.mounts ?? {});
+			source = optimized;
+			log.push(`glb optimized: ${fs.statSync(glb).size} → ${fs.statSync(optimized).size} bytes, ${result.groups} meshes, ${Date.now() - started} ms`);
+		} catch (error) {
+			log.push(`glb optimize: failed, keeping KiCad's file (${(error as Error).message})`);
+		}
+		await storeArtifact({ commitId, kind: 'pcb_glb', name: 'board.glb', source, targetName: 'board.glb', meta: { mounts: board?.mounts ?? {}, optimized: source === optimized } });
 	}
 
 	// DRC.
