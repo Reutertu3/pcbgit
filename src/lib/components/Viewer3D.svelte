@@ -837,7 +837,9 @@
 					if (t < 0.12) return 5 * (1 + 0.25 * smooth(0.07, 0.12, t));
 					if (t < 0.34) return 6.25 + (17.5 - 6.25) * smooth(0.12, 0.34, t);
 					if (t < 0.82) return 17.5 * (1 + 0.04 * Math.sin((Math.PI * (t - 0.34)) / 0.48));
-					return Math.max(1.4, 17.5 * Math.pow(1 - smooth(0.82, 1, t), 0.6));
+					// A blunt blossom end as thick as the neck, closed by a short rounded dome.
+					if (t < 0.975) return 6.25 + (17.5 - 6.25) * (1 - smooth(0.82, 0.975, t));
+					return Math.max(0.3, 6.25 * Math.sqrt(Math.max(0, 1 - ((t - 0.975) / 0.025) ** 2)));
 				};
 				const color = (hex: string) => new THREE.Color(hex);
 				const C = {
@@ -880,7 +882,8 @@
 					else if (t < 0.3) c = C.stalk.clone().lerp(C.neck, smooth(0.14, 0.3, t));
 					else if (t < 0.4) c = C.neck.clone().lerp(C.yellow, smooth(0.3, 0.4, t));
 					else c = C.yellow.clone();
-					if (t > 0.9) c.lerp(C.tip, smooth(0.9, 0.99, t));
+					// Only the dome at the blossom end is dark, like the dried flower remnant.
+					if (t > 0.95) c.lerp(C.tip, smooth(0.955, 0.985, t));
 					// The ridges' edges ripen a shade darker than the faces.
 					if (t > 0.3 && t < 0.92) c.lerp(C.edge, 0.35 * lobe);
 					// A few soft, round sugar spots on the ripe part.
@@ -934,7 +937,84 @@
 				geometry.setIndex(indices);
 				geometry.computeVertexNormals();
 				// Peel has a faint waxy sheen, not a gloss.
-				return new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.5 }));
+				const group = new THREE.Group();
+				group.add(new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.5 })));
+				group.add(bananaSticker(curve, frames, tubular));
+				return group;
+			}
+
+			/**
+			 * The oval produce sticker: a patch hugging the peel on the upward-facing side of
+			 * the body, about 26 × 18 mm, printed from a canvas (no image to download).
+			 */
+			function bananaSticker(
+				curve: InstanceType<typeof THREE.CatmullRomCurve3>,
+				frames: ReturnType<InstanceType<typeof THREE.CatmullRomCurve3>['computeFrenetFrames']>,
+				tubular: number
+			) {
+				const canvas = document.createElement('canvas');
+				canvas.width = 512;
+				canvas.height = 352;
+				const ctx = canvas.getContext('2d')!;
+				const [cx, cy] = [256, 176];
+				const oval = (rx: number, ry: number) => {
+					ctx.beginPath();
+					ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
+				};
+				oval(250, 170);
+				ctx.fillStyle = '#f2c230';
+				ctx.fill();
+				oval(234, 154);
+				ctx.fillStyle = '#1d4f9e';
+				ctx.fill();
+				oval(214, 136);
+				ctx.strokeStyle = 'rgba(255, 255, 255, 0.75)';
+				ctx.lineWidth = 4;
+				ctx.stroke();
+				ctx.fillStyle = '#f2c230';
+				ctx.textAlign = 'center';
+				ctx.textBaseline = 'middle';
+				ctx.font = 'italic 700 104px "Inter Variable", Inter, sans-serif';
+				ctx.fillText('pcbgit', cx, cy - 12);
+				ctx.fillStyle = '#ffffff';
+				ctx.font = '600 34px "Inter Variable", Inter, sans-serif';
+				ctx.fillText('KiCad · 4011', cx, cy + 74);
+				const texture = new THREE.CanvasTexture(canvas);
+				texture.colorSpace = THREE.SRGBColorSpace;
+				texture.anisotropy = 4;
+
+				// Rings 88-112 (~26 mm along the body); 1.03 rad round it (~18 mm).
+				const [first, last, columns, span] = [88, 112, 18, 1.03];
+				const positions: number[] = [], uvs: number[] = [], indices: number[] = [];
+				for (let i = first; i <= last; i++) {
+					const p = curve.getPointAt(i / tubular);
+					const n = frames.normals[i], b = frames.binormals[i];
+					// Straight up on this ring: the angle where the surface normal is most +y.
+					const up = Math.atan2(b.y, n.y);
+					const radius = 17.5 * (1 + 0.04 * Math.sin((Math.PI * (i / tubular - 0.34)) / 0.48)) * MM;
+					for (let k = 0; k <= columns; k++) {
+						const v = up + (k / columns - 0.5) * span;
+						const lobe = Math.pow((1 + Math.cos(5 * v)) / 2, 3);
+						// Just proud of the peel so it never z-fights with it.
+						const r = radius * (0.93 + 0.07 * lobe) + 0.25 * MM;
+						const ox = Math.cos(v) * r, oy = Math.sin(v) * r;
+						positions.push(p.x + ox * n.x + oy * b.x, p.y + ox * n.y + oy * b.y, p.z + ox * n.z + oy * b.z);
+						uvs.push((i - first) / (last - first), 1 - k / columns);
+					}
+				}
+				for (let i = 0; i < last - first; i++) {
+					for (let k = 0; k < columns; k++) {
+						const a = i * (columns + 1) + k, c = a + columns + 1;
+						indices.push(a, a + 1, c, c, a + 1, c + 1);
+					}
+				}
+				const geometry = new THREE.BufferGeometry();
+				geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+				geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+				geometry.setIndex(indices);
+				geometry.computeVertexNormals();
+				// Glossy paper; the oval's outside is cut away by its alpha.
+				return new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({ map: texture, alphaTest: 0.5, roughness: 0.3 }));
 			}
 
 			function disposeObject(object: import('three/webgpu').Object3D) {
@@ -942,7 +1022,10 @@
 					const mesh = child as import('three/webgpu').Mesh;
 					if (!mesh.isMesh && !(child as import('three/webgpu').Line).isLine) return;
 					mesh.geometry.dispose();
-					(Array.isArray(mesh.material) ? mesh.material : [mesh.material]).forEach((m) => m.dispose());
+					(Array.isArray(mesh.material) ? mesh.material : [mesh.material]).forEach((m) => {
+						(m as import('three/webgpu').MeshStandardMaterial).map?.dispose();
+						m.dispose();
+					});
 				});
 			}
 
