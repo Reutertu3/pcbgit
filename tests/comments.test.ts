@@ -44,9 +44,9 @@ test('replies cannot point into another board or at a missing comment', () => {
 
 test('deleting a comment with replies leaves a placeholder; the thread still reads', () => {
 	const [thread] = comments.listThreads(project.id);
-	assert.throws(() => comments.removeComment(project.id, thread.id, bob, owner.id), /own comments/);
+	assert.throws(() => comments.removeComment(project.id, thread.id, bob), /own comments/);
 
-	assert.equal(comments.removeComment(project.id, thread.id, alice, owner.id), true);
+	assert.equal(comments.removeComment(project.id, thread.id, alice), true);
 	const [after] = comments.listThreads(project.id);
 	assert.equal(after.deleted, true);
 	assert.equal(after.body, '');
@@ -57,14 +57,15 @@ test('deleting a comment with replies leaves a placeholder; the thread still rea
 
 test('removing the last reply under a placeholder removes the placeholder too', () => {
 	const [thread] = comments.listThreads(project.id);
-	// The board owner may moderate anyone's comments.
-	for (const reply of thread.replies) comments.removeComment(project.id, reply.id, owner, owner.id);
+	// Board owners cannot delete other people's comments; admins can.
+	assert.throws(() => comments.removeComment(project.id, thread.replies[0].id, owner), /own comments/);
+	for (const reply of thread.replies) comments.removeComment(project.id, reply.id, { id: 'admin-id', role: 'admin' });
 	assert.deepEqual(comments.listThreads(project.id), []);
 	assert.equal(comments.countComments(project.id), 0);
 });
 
 test('a comment without replies is removed outright', () => {
 	const lone = comments.addComment(project.id, bob.id, 'Nice board');
-	comments.removeComment(project.id, lone.id, { id: 'admin-id', role: 'admin' }, owner.id);
+	comments.removeComment(project.id, lone.id, { id: 'admin-id', role: 'admin' });
 	assert.deepEqual(comments.listThreads(project.id), []);
 });

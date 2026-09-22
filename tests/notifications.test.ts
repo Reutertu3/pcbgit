@@ -55,11 +55,11 @@ test('mark one and mark all as read, only for the recipient', () => {
 test('deleting a comment removes its notifications', () => {
 	const [thread] = comments.listThreads(project.id).filter((t) => t.username === 'alice');
 	// Soft delete: the thread keeps a placeholder because it has a reply.
-	comments.removeComment(project.id, thread.id, alice, owner.id);
+	comments.removeComment(project.id, thread.id, alice);
 	assert.deepEqual(kinds(owner.id), [['comment', 'bob']]);
 
 	const reply = thread.replies[0];
-	comments.removeComment(project.id, reply.id, bob, owner.id);
+	comments.removeComment(project.id, reply.id, bob);
 	assert.equal(notifications.listNotifications(owner.id).length, 0);
 	assert.equal(notifications.listNotifications(alice.id).length, 0);
 });

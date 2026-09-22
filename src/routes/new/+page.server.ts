@@ -8,8 +8,7 @@ import {
 	MAX_UPLOAD_BYTES,
 	UploadError,
 	containsKicadProject,
-	filesFromZip,
-	totalBytes
+	filesFromZip
 } from '$lib/server/upload';
 
 export const load: PageServerLoad = async ({ locals, url }) => {
@@ -63,9 +62,6 @@ export const actions: Actions = {
 			} catch (error) {
 				const message = error instanceof UploadError ? error.message : 'Could not read the archive.';
 				return fail(400, { error: message, ...values });
-			}
-			if (totalBytes(files) > MAX_UPLOAD_BYTES) {
-				return fail(413, { error: 'Archive expands to more than 200 MB.', ...values });
 			}
 			if (!containsKicadProject(files)) {
 				return fail(400, {

@@ -49,24 +49,6 @@ export function repoExists(ownerSlug: string, projectSlug: string) {
 	return fs.existsSync(repoPath(ownerSlug, projectSlug));
 }
 
-export async function isEmpty(repo: string) {
-	try {
-		const out = await git(repo, ['rev-list', '--all', '--count']);
-		return out.trim() === '0';
-	} catch {
-		return true;
-	}
-}
-
-export async function listBranches(repo: string) {
-	try {
-		const out = await git(repo, ['for-each-ref', '--format=%(refname:short)', 'refs/heads']);
-		return out.split('\n').map((s) => s.trim()).filter(Boolean);
-	} catch {
-		return [];
-	}
-}
-
 export async function resolveRef(repo: string, ref: string) {
 	try {
 		return (await git(repo, ['rev-parse', '--verify', `${ref}^{commit}`])).trim();
@@ -99,11 +81,6 @@ export async function listCommits(repo: string, ref: string, limit = 100): Promi
 		});
 }
 
-export async function commitMeta(repo: string, sha: string): Promise<GitCommit | null> {
-	const [commit] = await listCommits(repo, sha, 1);
-	return commit ?? null;
-}
-
 /** Flat list of every path in a commit, with blob sizes. */
 export async function listTree(repo: string, sha: string) {
 	// --format already reports size; adding --long makes git refuse the combination.
@@ -120,18 +97,6 @@ export async function listTree(repo: string, sha: string) {
 
 export async function readBlob(repo: string, sha: string, filePath: string) {
 	return git(repo, ['show', `${sha}:${filePath}`]);
-}
-
-/** Paths added/modified/deleted between two commits. */
-export async function diffPaths(repo: string, from: string, to: string) {
-	const out = await git(repo, ['diff', '--name-status', from, to]);
-	return out
-		.split('\n')
-		.filter(Boolean)
-		.map((line) => {
-			const [status, ...rest] = line.split('\t');
-			return { status: status[0], path: rest.join('\t') };
-		});
 }
 
 /** Extracts a commit's tree into a fresh temp directory. Caller removes it. */
@@ -198,15 +163,6 @@ export async function commitFiles(
 		return sha.trim();
 	} finally {
 		await fsp.rm(work, { recursive: true, force: true });
-	}
-}
-
-export async function gitAvailable() {
-	try {
-		await exec('git', ['--version']);
-		return true;
-	} catch {
-		return false;
 	}
 }
 

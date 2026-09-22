@@ -236,10 +236,6 @@ export function updateProject(
 	);
 }
 
-export function touchProject(id: string) {
-	run('UPDATE projects SET updated_at = ? WHERE id = ?', now(), id);
-}
-
 /**
  * Reconciles the commit table with what is actually in the repo and queues
  * renders for anything new. Called after every push and every web upload.
@@ -304,16 +300,6 @@ export function listProjectCommits(projectId: string, limit = 100) {
 		 FROM commits c WHERE c.project_id = ? ORDER BY c.committed_at DESC, c.rowid DESC LIMIT ?`,
 		projectId,
 		limit
-	);
-}
-
-export function getCommit(projectId: string, shaOrId: string) {
-	return get(
-		'SELECT * FROM commits WHERE project_id = ? AND (id = ? OR sha = ? OR sha LIKE ?)',
-		projectId,
-		shaOrId,
-		shaOrId,
-		`${shaOrId}%`
 	);
 }
 

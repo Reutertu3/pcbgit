@@ -34,6 +34,11 @@ export function filesFromZip(buffer: Buffer): UploadFile[] {
 	if (entries.length > MAX_FILES) {
 		throw new UploadError(`Archive contains too many files (limit ${MAX_FILES}).`);
 	}
+	// Check the declared sizes before inflating anything: a small archive can expand to
+	// gigabytes. adm-zip inflates into a buffer of exactly the declared size, so it can't lie.
+	if (entries.reduce((sum, entry) => sum + entry.header.size, 0) > MAX_UPLOAD_BYTES) {
+		throw new UploadError('Archive expands to more than 200 MB.');
+	}
 
 	const raw = entries.map((entry) => ({
 		path: normalize(entry.entryName),
@@ -44,14 +49,6 @@ export function filesFromZip(buffer: Buffer): UploadFile[] {
 	if (!kept.length) throw new UploadError('The archive contained no usable files.');
 
 	// Archives usually wrap everything in one folder; drop it so paths stay short.
-	return stripCommonPrefix(kept);
-}
-
-export function filesFromUploads(uploads: { name: string; data: Buffer }[]): UploadFile[] {
-	const kept = uploads
-		.map((upload) => ({ path: normalize(upload.name), data: upload.data }))
-		.filter((file) => file.path && !IGNORED.some((pattern) => pattern.test(file.path)));
-	if (!kept.length) throw new UploadError('No usable files were uploaded.');
 	return stripCommonPrefix(kept);
 }
 
@@ -73,10 +70,6 @@ function stripCommonPrefix(files: UploadFile[]): UploadFile[] {
 	const prefix = first[0];
 	const shared = files.every((file) => file.path.startsWith(`${prefix}/`));
 	return shared ? files.map((file) => ({ ...file, path: file.path.slice(prefix.length + 1) })) : files;
-}
-
-export function totalBytes(files: UploadFile[]) {
-	return files.reduce((sum, file) => sum + file.data.length, 0);
 }
 
 /** True when the upload looks like a KiCad project, so we can warn early. */

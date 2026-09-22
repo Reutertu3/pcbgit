@@ -17,8 +17,7 @@ import {
 	MAX_UPLOAD_BYTES,
 	UploadError,
 	containsKicadProject,
-	filesFromZip,
-	totalBytes
+	filesFromZip
 } from '$lib/server/upload';
 
 function requireEditable(owner: string, slug: string, user: App.Locals['user']) {
@@ -84,9 +83,6 @@ export const actions: Actions = {
 			return fail(400, {
 				error: thrown instanceof UploadError ? thrown.message : 'Could not read the archive.'
 			});
-		}
-		if (totalBytes(files) > MAX_UPLOAD_BYTES) {
-			return fail(413, { error: 'Archive expands to more than 200 MB.' });
 		}
 		if (!containsKicadProject(files)) {
 			return fail(400, { error: 'No .kicad_pcb or .kicad_sch file found in that archive.' });

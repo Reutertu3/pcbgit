@@ -66,12 +66,6 @@ export function prop(node: SNode[], key: string): string | undefined {
 	return typeof value === 'string' ? value : undefined;
 }
 
-export function propNumber(node: SNode[], key: string): number | undefined {
-	const raw = prop(node, key);
-	const value = raw === undefined ? NaN : Number(raw);
-	return Number.isFinite(value) ? value : undefined;
-}
-
 /** Every descendant list whose head symbol is `key`, at any depth. */
 export function descendants(node: SNode[], key: string): SNode[][] {
 	const out: SNode[][] = [];
