@@ -1,4 +1,7 @@
-/** Single-path 24x24 stroke icons (Lucide-style geometry), kept inline to avoid a font or sprite. */
+/**
+ * 24x24 stroke icons, kept inline to avoid a font or sprite. Several are derived
+ * from Feather (MIT, Cole Bemis) and Lucide (ISC, Lucide Contributors); see NOTICE.md.
+ */
 export const ICONS = {
 	board: 'M3 3h18v18H3z M7 3v4 M17 3v4 M3 7h4 M3 17h4 M17 21v-4 M21 7h-4 M21 17h-4 M7 21v-4',
 	schematic: 'M3 12h4 M7 9v6 M7 12h4 M11 8h6 M14 8v8 M11 16h3 M17 5v14 M17 12h4',

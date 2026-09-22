@@ -272,4 +272,4 @@ pcbgit is © 2026 Michael Reuter and licensed under the
 You can use, modify and host pcbgit, including commercially. If you run a
 modified version for others over a network, you must offer them its source code.
 The author attribution in the page footer must be kept. See [NOTICE.md](NOTICE.md)
-for the exact terms.
+for the exact terms and for the licenses of third-party software pcbgit uses.
