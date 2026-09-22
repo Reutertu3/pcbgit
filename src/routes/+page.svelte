@@ -1,4 +1,5 @@
 <script lang="ts">
+	import HeroBoard from '$lib/components/HeroBoard.svelte';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import Icon from '$lib/components/Icon.svelte';
@@ -47,8 +48,9 @@
 
 <div class="mx-auto max-w-[1400px] px-4 py-6">
 	{#if !data.filters.q && !activeFilterCount && data.page === 1}
-		<section class="surface traces mb-6 overflow-hidden p-6 sm:p-8">
-			<div class="max-w-2xl">
+		<section class="surface relative mb-6 overflow-hidden p-6 sm:p-8">
+			<HeroBoard />
+			<div class="relative max-w-2xl">
 				<h1 class="text-2xl font-bold tracking-tight sm:text-3xl">{data.site.tagline}</h1>
 				<p class="mt-2 text-sm leading-relaxed text-[var(--text-secondary)]">
 					Push a KiCad project with <span class="mono">git</span>, and get schematics, a layered board
