@@ -186,10 +186,8 @@
 		<div
 			class="mx-auto flex max-w-[1400px] flex-col items-center justify-between gap-3 px-4 text-xs text-[var(--text-muted)] sm:flex-row"
 		>
-			<!-- Author attribution required by AGPL-3.0 section 7(b); see NOTICE.md. -->
 			<span class="flex flex-wrap items-center justify-center gap-x-1.5">
 				{#if data.site.name !== 'pcbgit'}<span>{data.site.name} ·</span>{/if}
-				<span>pcbgit © Michael Reuter ·</span>
 				<a href="https://pcbgit.com" class="hover:text-[var(--text-primary)]">pcbgit.com</a>
 				<span>·</span>
 				<a href="https://www.gnu.org/licenses/agpl-3.0.html" class="hover:text-[var(--text-primary)]" rel="license">AGPL-3.0</a>

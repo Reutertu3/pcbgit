@@ -15,14 +15,16 @@ PARTICULAR PURPOSE. See the GNU Affero General Public License for more details.
 
 ## Additional terms (AGPL-3.0 section 7(b))
 
-The web interface of pcbgit displays the following author attribution as part of
-its Appropriate Legal Notices:
+The web interface of pcbgit credits the original project as part of its
+Appropriate Legal Notices: the footer names pcbgit and links to it.
 
-> pcbgit © Michael Reuter · pcbgit.com
+> pcbgit.com — https://github.com/Reutertu3/pcbgit
 
-You must preserve this attribution, legibly and in a location where users of the
-web interface can see it (the page footer in the original), in all copies and
-modified versions of the program. You may add your own notices next to it.
+You must preserve a credit of this kind: the name "pcbgit" and a link to the
+original project (either address), legibly and where users of the web interface
+can see it. You may rename your fork, restyle the footer and add your own
+notices; you may not drop the credit. It is separate from the "Source" link,
+which points at your own source code (see below).
 
 ## Source for network users (AGPL-3.0 section 13)
 
