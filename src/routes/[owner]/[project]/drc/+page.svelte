@@ -179,7 +179,7 @@
 										</button>
 									{/if}
 									{#if violation.x_mm !== null && violation.source !== 'erc'}
-										<a class="btn btn-ghost btn-sm !px-1.5" href="{base}/pcb{versionQuery}" title={t('checks.showOnBoard')}>
+										<a class="btn btn-ghost btn-sm !px-1.5" href="{base}/pcb{versionQuery ? `${versionQuery}&` : '?'}marker={violation.id}" title={t('checks.showOnBoard')}>
 											<Icon name="board" size={12} />
 										</a>
 									{/if}

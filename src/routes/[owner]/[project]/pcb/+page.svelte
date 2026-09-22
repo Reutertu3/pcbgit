@@ -13,13 +13,36 @@
 	/** Layer visibility, seeded from each layer's sensible default. */
 	let visible = $state<Record<string, boolean>>({});
 	let flipped = $state(false);
-	let showMarkers = $state(true);
+	// Off unless the Checks tab sent us here to look at one.
+	let showMarkers = $state(false);
+	let panZoom = $state<ReturnType<typeof PanZoom> | null>(null);
 	let panelOpen = $state(true);
 
 	$effect(() => {
 		const next: Record<string, boolean> = {};
 		for (const layer of data.layers) next[layer.name] = layer.style.defaultOn;
 		visible = next;
+	});
+
+	// Arriving from "Show on the board": markers on, the violation's side facing up,
+	// zoomed in on it. Keyed by id, so picking another violation refocuses.
+	let focusedId = $state<string | null>(null);
+	$effect(() => {
+		const focus = data.focus;
+		if (!focus || focus.id === focusedId || !panZoom) return;
+		const point = toContent(focus.x_mm ?? 0, focus.y_mm ?? 0);
+		if (!point) return;
+		focusedId = focus.id;
+		showMarkers = true;
+		// A back-side problem needs the back layers, seen from the back.
+		if (focus.layer?.startsWith('B.')) applyPreset('back');
+		else flipped = false;
+		// Markers are mirrored with the board, so the screen position mirrors too.
+		const x = flipped ? box.width - point.x : point.x;
+		// About 15 mm of board across the view, whatever the board size.
+		const zoom = bbox ? Math.min(Math.max((bbox.maxX - bbox.minX) / 15, 2), 20) : 4;
+		// After PanZoom's own first fit, which runs once it has measured the viewport.
+		requestAnimationFrame(() => panZoom?.focus(x, point.y, zoom));
 	});
 
 	// Copper reads correctly only when the side you are looking at is on top.
@@ -90,12 +113,18 @@
 						? layer.style.group === 'outline'
 						: preset === 'copper'
 							? layer.style.group === 'copper' || layer.style.group === 'outline'
-							: side === preset || side === 'both';
+							: // Inner copper is stored as "both" sides but belongs to neither view.
+								side === preset || (side === 'both' && layer.style.group !== 'copper');
 		}
 		visible = next;
 		if (preset === 'back') flipped = true;
 		if (preset === 'front') flipped = false;
 	}
+
+	/** The focused violation is drawn even when it is outside the capped marker list. */
+	const drawnMarkers = $derived(
+		data.focus && !data.markers.some((marker) => marker.id === data.focus!.id) ? [...data.markers, data.focus] : data.markers
+	);
 
 	const visibleCount = $derived(Object.values(visible).filter(Boolean).length);
 	const markerCount = $derived(data.markers.length);
@@ -187,6 +216,7 @@
 			<!-- Board -->
 			<div class="min-w-0 flex-1">
 				<PanZoom
+					bind:this={panZoom}
 					contentWidth={box.width}
 					contentHeight={box.height}
 					class="h-[calc(100vh-15rem)] min-h-[32rem]"
@@ -228,7 +258,7 @@
 								preserveAspectRatio="none"
 								aria-hidden="true"
 							>
-								{#each data.markers as marker}
+								{#each drawnMarkers as marker}
 									{@const point = toContent(marker.x_mm ?? 0, marker.y_mm ?? 0)}
 									{#if point}
 										{@const color = marker.severity === 'error' ? '#ff5252' : '#ffc046'}
@@ -236,6 +266,9 @@
 										<g>
 											<circle cx={point.x} cy={point.y} r={radius} fill="none" stroke={color} stroke-width={radius * 0.28} opacity="0.95" />
 											<circle cx={point.x} cy={point.y} r={radius * 0.22} fill={color} />
+											{#if marker.id === focusedId}
+												<circle cx={point.x} cy={point.y} r={radius * 1.9} fill="none" stroke={color} stroke-width={radius * 0.16} stroke-dasharray="{radius * 0.5} {radius * 0.35}" />
+											{/if}
 										</g>
 									{/if}
 								{/each}

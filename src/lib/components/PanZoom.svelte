@@ -63,6 +63,19 @@
 		ready = true;
 	}
 
+	/**
+	 * Fits, then zooms by `zoom` (relative to the fit) with the content point (x, y)
+	 * in the centre of the viewport.
+	 */
+	export function focus(x: number, y: number, zoom: number) {
+		fit();
+		if (!viewport) return;
+		const box = viewport.getBoundingClientRect();
+		scale = clamp(scale * zoom);
+		tx = box.width / 2 - x * scale;
+		ty = box.height / 2 - y * scale;
+	}
+
 	/** Zooms around a viewport-relative point so the cursor stays put. */
 	function zoomAt(factor: number, clientX?: number, clientY?: number) {
 		if (!viewport) return;
