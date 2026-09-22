@@ -11,6 +11,7 @@
 		{ href: '/admin/projects', label: 'Boards', icon: 'board', badge: 'projects' },
 		{ href: '/admin/tags', label: 'Tags', icon: 'tag', badge: 'tags' },
 		{ href: '/admin/jobs', label: 'Render queue', icon: 'refresh', badge: 'jobs' },
+		{ href: '/admin/backups', label: 'Backups', icon: 'folder' },
 		{ href: '/admin/settings', label: 'Instance', icon: 'settings' }
 	];
 </script>

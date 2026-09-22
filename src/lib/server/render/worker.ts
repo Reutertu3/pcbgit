@@ -5,7 +5,8 @@ import path from 'node:path';
 import { exportableLayers, layerIdFromFilename, layerStyle, previewLayers } from '$lib/layers';
 import { all, get, newId, now, run, tx } from '../db';
 import { exportTree } from '../git';
-import { TMP_DIR, repoPath } from '../paths';
+import { DATA_DIR, TMP_DIR, repoPath } from '../paths';
+import { rerenderFlag } from '../restore';
 import { clearArtifacts, listArtifacts, storeArtifact, svgGeometry } from './artifacts';
 import { analyzeBoard, type BoardStats } from './board';
 import { bomToCsv, groupBom, parseBomCsv, type BomLine } from './bom';
@@ -90,6 +91,16 @@ export function kick() {
 			running = false;
 		}
 	});
+}
+
+/** After restoring a snapshot without rendered output, queue every version once. */
+export function rerenderAfterRestore() {
+	const flag = rerenderFlag(DATA_DIR);
+	if (!fs.existsSync(flag)) return;
+	const commits = all<{ id: string; project_id: string }>('SELECT id, project_id FROM commits ORDER BY committed_at DESC');
+	for (const commit of commits) enqueueRender(commit.project_id, commit.id);
+	fs.rmSync(flag, { force: true });
+	console.log(`[render] queued ${commits.length} version(s) after restore`);
 }
 
 /** Marks jobs abandoned by a crash as failed so they never wedge the queue. */

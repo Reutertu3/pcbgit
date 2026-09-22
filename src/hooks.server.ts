@@ -1,7 +1,7 @@
 import { error, redirect, type Handle } from '@sveltejs/kit';
 import { getSessionUser, purgeExpiredSessions } from '$lib/server/auth';
 import { ensureDirs } from '$lib/server/paths';
-import { recoverStuckJobs } from '$lib/server/render/worker';
+import { recoverStuckJobs, rerenderAfterRestore } from '$lib/server/render/worker';
 import { bootstrap } from '$lib/server/bootstrap';
 
 export const SESSION_COOKIE = 'pcbhub_session';
@@ -10,6 +10,7 @@ ensureDirs();
 bootstrap();
 purgeExpiredSessions();
 recoverStuckJobs();
+rerenderAfterRestore();
 
 export const handle: Handle = async ({ event, resolve }) => {
 	const sessionId = event.cookies.get(SESSION_COOKIE) ?? null;

@@ -34,6 +34,29 @@ The image is `ubuntu:24.04` with KiCad 10 installed from the official
 for a smaller image build with `--build-arg INSTALL_3D_MODELS=false`, and the
 3D view then shows bare boards.
 
+## Backups and fast deployment
+
+**Admin → Backups** creates a snapshot: one `.tar.gz` with the database, every
+git repository and, optionally, the rendered output. Snapshots can be downloaded,
+uploaded (checked before anything changes) and restored. A restore moves the
+current data aside into `backups/pre-restore-<time>/` instead of deleting it, and
+under Docker the server restarts to apply it.
+
+To stand up a new server from a snapshot, mount the file and point
+`PCBHUB_IMPORT_SNAPSHOT` at it. It is imported on first boot of an empty
+volume and ignored once the instance has data:
+
+```sh
+docker run -d -p 3000:3000 -v pcbhub-data:/data \
+  -v ./pcbhub-snapshot.tar.gz:/import/snap.tar.gz:ro \
+  -e PCBHUB_IMPORT_SNAPSHOT=/import/snap.tar.gz \
+  -e ORIGIN=https://pcb.example.com pcbhub:latest
+```
+
+The imported instance keeps the snapshot's accounts, so sign in with the admin
+password from the old server. Snapshots larger than the upload limit can be
+copied into `/data/backups/` directly, and they then appear in the list.
+
 ## Pushing a board
 
 1. Create a board at **New board**. It starts as an empty repository.
@@ -58,6 +81,8 @@ renders its matching `.kicad_sch` and `.kicad_pcb`.
 | `PCBHUB_KICAD_CLI` | `kicad-cli` | Path to the KiCad CLI |
 | `ORIGIN` | — | Public URL (CSRF and clone URLs) |
 | `BODY_SIZE_LIMIT` | `210M` in Docker | Maximum upload and push size |
+| `PCBHUB_IMPORT_SNAPSHOT` | — | Snapshot to import on first boot of an empty instance |
+| `PCBHUB_RESTART_ON_RESTORE` | `true` in Docker | Exit after staging a restore so the restart policy applies it |
 
 Without `kicad-cli`, versions are still tracked, and board statistics and a BOM are
 parsed directly from the KiCad files. Schematic, layer, 3D and DRC output needs

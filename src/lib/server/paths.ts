@@ -7,9 +7,10 @@ export const REPO_DIR = path.join(DATA_DIR, 'repos');
 export const ARTIFACT_DIR = path.join(DATA_DIR, 'artifacts');
 export const TMP_DIR = path.join(DATA_DIR, 'tmp');
 export const DB_PATH = path.join(DATA_DIR, 'pcbhub.db');
+export const BACKUP_DIR = path.join(DATA_DIR, 'backups');
 
 export function ensureDirs() {
-	for (const dir of [DATA_DIR, REPO_DIR, ARTIFACT_DIR, TMP_DIR]) {
+	for (const dir of [DATA_DIR, REPO_DIR, ARTIFACT_DIR, TMP_DIR, BACKUP_DIR]) {
 		fs.mkdirSync(dir, { recursive: true });
 	}
 }

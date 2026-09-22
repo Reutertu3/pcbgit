@@ -1,8 +1,13 @@
 import { DatabaseSync, type StatementSync } from 'node:sqlite';
-import { DB_PATH, ensureDirs } from '../paths';
+import { DATA_DIR, DB_PATH, ensureDirs } from '../paths';
+import { applyPendingRestore, importOnFirstBoot } from '../restore';
 import { SCHEMA_SQL } from './schema';
 
 function open() {
+	ensureDirs();
+	// Restores are swapped in here, before any handle to the old database exists.
+	importOnFirstBoot(DATA_DIR);
+	applyPendingRestore(DATA_DIR);
 	ensureDirs();
 	const database = new DatabaseSync(DB_PATH);
 	database.exec('PRAGMA journal_mode = WAL');

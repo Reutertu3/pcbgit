@@ -47,7 +47,8 @@ ENV NODE_ENV=production \
     PCBHUB_DATA_DIR=/data \
     HOME=/home/pcbhub \
     QT_QPA_PLATFORM=offscreen \
-    BODY_SIZE_LIMIT=210M
+    BODY_SIZE_LIMIT=210M \
+    PCBHUB_RESTART_ON_RESTORE=true
 
 USER pcbhub
 VOLUME /data
