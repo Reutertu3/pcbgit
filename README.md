@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  <b><a href="https://pcbgit.com">Live demo at pcbgit.com</a></b> — browse real boards without an account.<br>
+  <b><a href="https://pcbgit.com">Live demo at pcbgit.com</a></b><br>
   <sub>Sign-ups are disabled there; run your own instance to push boards.</sub>
 </p>
 
