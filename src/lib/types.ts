@@ -135,3 +135,18 @@ export interface Availability {
 	commits: ChangelogEntry[];
 	checkRequested: boolean;
 }
+
+export interface CommentView {
+	id: string;
+	body: string;
+	created_at: number;
+	/** A deleted comment kept as a placeholder because it has replies. */
+	deleted: boolean;
+	user_id: string;
+	username: string;
+	display_name: string;
+}
+
+export interface CommentThread extends CommentView {
+	replies: CommentView[];
+}

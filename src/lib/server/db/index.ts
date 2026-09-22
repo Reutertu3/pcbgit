@@ -18,6 +18,7 @@ function open() {
 	// The schema is written to be idempotent, so replaying it on every boot is the migration.
 	database.exec(SCHEMA_SQL);
 	addMissingColumns(database);
+	database.exec(POST_MIGRATION_SQL);
 	return database;
 }
 
@@ -26,8 +27,18 @@ function open() {
  * exists, so columns introduced after a release are applied here.
  */
 const ADDED_COLUMNS: [table: string, column: string, definition: string][] = [
-	['commits', 'board_bbox', "TEXT NOT NULL DEFAULT ''"]
+	['commits', 'board_bbox', "TEXT NOT NULL DEFAULT ''"],
+	['comments', 'parent_id', 'TEXT REFERENCES comments(id) ON DELETE CASCADE'],
+	['comments', 'deleted_at', 'INTEGER']
 ];
+
+/**
+ * Indexes on migrated columns. They cannot live in schema.sql: that runs first,
+ * and on an existing database the column does not exist yet at that point.
+ */
+const POST_MIGRATION_SQL = `
+CREATE INDEX IF NOT EXISTS idx_comments_parent ON comments(parent_id);
+`;
 
 function addMissingColumns(database: DatabaseSync) {
 	for (const [table, column, definition] of ADDED_COLUMNS) {

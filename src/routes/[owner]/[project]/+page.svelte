@@ -6,8 +6,28 @@
 	import CloneBox from '$lib/components/CloneBox.svelte';
 	import StatGrid from '$lib/components/StatGrid.svelte';
 	import { formatBytes, formatDate, formatDimensions, relativeTime, shortSha } from '$lib/format';
+	import type { CommentView } from '$lib/types';
 
 	let { data, form } = $props();
+
+	/** Thread the reply box is open under; one at a time. */
+	let replyingTo = $state<string | null>(null);
+	let replyText = $state('');
+
+	/** Replying to a reply stays in the same thread and addresses its author. */
+	function startReply(threadId: string, mention: string | null) {
+		replyingTo = threadId;
+		replyText = mention ? `@${mention} ` : '';
+	}
+
+	/** Splits text into plain parts and @mentions, rendered as profile links. */
+	function withMentions(text: string) {
+		return text.split(/(@[A-Za-z0-9-]{3,32})/g).map((part) =>
+			part.startsWith('@') && /^@[A-Za-z0-9-]{3,32}$/.test(part)
+				? { text: part, mention: part.slice(1) }
+				: { text: part, mention: null }
+		);
+	}
 
 	const base = $derived(`/${data.project.owner_username}/${data.project.slug}`);
 	const query = $derived(data.isHead ? '' : `?v=${data.commit?.sha}`);
@@ -111,41 +131,108 @@
 					</article>
 				{/if}
 
-				<!-- Discussion -->
+				<!-- Discussion: top-level comments with one level of replies. -->
 				<section class="surface mt-4 p-5">
 					<h2 class="mb-3 flex items-center gap-2 text-sm font-semibold">
 						<Icon name="message" size={14} /> Discussion
-						{#if data.comments.length}<span class="chip">{data.comments.length}</span>{/if}
+						{#if data.commentCount}<span class="chip">{data.commentCount}</span>{/if}
 					</h2>
 
-					{#if data.comments.length === 0}
+					{#snippet comment(item: CommentView, threadId: string, isReply: boolean)}
+						<div id="comment-{item.id}" class="comment flex gap-2.5 rounded-md">
+							{#if item.deleted}
+								<div class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-s3">
+									<Icon name="trash" size={11} class="text-[var(--text-muted)]" />
+								</div>
+								<p class="py-1 text-sm italic text-[var(--text-muted)]">This comment was deleted.</p>
+							{:else}
+								<Avatar name={item.display_name || item.username} size={isReply ? 24 : 28} />
+								<div class="min-w-0 flex-1">
+									<div class="flex flex-wrap items-baseline gap-x-2">
+										<a href="/{item.username}" class="text-sm font-medium hover:text-[var(--accent)]">{item.username}</a>
+										<!-- The timestamp is the comment's permalink. -->
+										<a href="#comment-{item.id}" class="text-[0.6875rem] text-[var(--text-muted)] hover:underline" title={new Date(item.created_at).toLocaleString()}>
+											{relativeTime(item.created_at)}
+										</a>
+									</div>
+									<p class="mt-0.5 whitespace-pre-wrap break-words text-sm leading-relaxed text-[var(--text-secondary)]">
+										{#each withMentions(item.body) as part}
+											{#if part.mention}<a href="/{part.mention}" class="text-[var(--accent)] hover:underline">{part.text}</a>{:else}{part.text}{/if}
+										{/each}
+									</p>
+									<div class="mt-1 flex items-center gap-3 text-[0.6875rem]">
+										{#if data.user}
+											<button class="text-[var(--text-muted)] hover:text-[var(--accent)]" onclick={() => startReply(threadId, isReply ? item.username : null)}>
+												Reply
+											</button>
+										{/if}
+										{#if data.user && (data.user.id === data.project.owner_id || data.user.role === 'admin' || data.user.id === item.user_id)}
+											<form
+												method="POST"
+												action="?/deleteComment"
+												use:enhance={({ cancel }) => {
+													if (!confirm('Delete this comment?')) cancel();
+												}}
+											>
+												<input type="hidden" name="id" value={item.id} />
+												<button class="text-[var(--text-muted)] hover:text-[var(--err)]">Delete</button>
+											</form>
+										{/if}
+									</div>
+								</div>
+							{/if}
+						</div>
+					{/snippet}
+
+					{#if data.threads.length === 0}
 						<p class="text-sm text-[var(--text-muted)]">No comments yet.</p>
 					{:else}
-						<ul class="flex flex-col gap-3">
-							{#each data.comments as comment (comment.id)}
-								<li class="flex gap-2.5">
-									<Avatar name={comment.display_name || comment.username} size={28} />
-									<div class="min-w-0 flex-1">
-										<div class="flex items-baseline gap-2">
-											<a href="/{comment.username}" class="text-sm font-medium hover:text-[var(--accent)]">
-												{comment.username}
-											</a>
-											<span class="text-[0.6875rem] text-[var(--text-muted)]">
-												{relativeTime(comment.created_at)}
-											</span>
-											{#if data.user && (data.user.id === data.project.owner_id || data.user.role === 'admin' || data.user.username === comment.username)}
-												<form method="POST" action="?/deleteComment" use:enhance class="ml-auto">
-													<input type="hidden" name="id" value={comment.id} />
-													<button class="btn btn-ghost btn-sm !px-1" title="Delete comment">
-														<Icon name="trash" size={11} />
-													</button>
-												</form>
+						<ul class="flex flex-col gap-4">
+							{#each data.threads as thread (thread.id)}
+								<li>
+									{@render comment(thread, thread.id, false)}
+
+									{#if thread.replies.length || replyingTo === thread.id}
+										<ul class="ml-3.5 mt-2 flex flex-col gap-2.5 border-l pl-5">
+											{#each thread.replies as reply (reply.id)}
+												<li>{@render comment(reply, thread.id, true)}</li>
+											{/each}
+
+											{#if replyingTo === thread.id}
+												<li>
+													<form
+														method="POST"
+														action="?/comment"
+														use:enhance={() => async ({ result, update }) => {
+															await update({ reset: false });
+															if (result.type === 'success') {
+																replyingTo = null;
+																replyText = '';
+															}
+														}}
+													>
+														<input type="hidden" name="parent_id" value={thread.id} />
+														{#if form?.error && form.parentId === thread.id}
+															<p class="mb-2 text-xs" style:color="var(--err)">{form.error}</p>
+														{/if}
+														<!-- svelte-ignore a11y_autofocus -->
+														<textarea
+															class="textarea !min-h-16 text-sm"
+															name="body"
+															bind:value={replyText}
+															placeholder="Write a reply…"
+															maxlength="4000"
+															autofocus
+														></textarea>
+														<div class="mt-2 flex gap-2">
+															<button class="btn btn-primary btn-sm" type="submit">Reply</button>
+															<button class="btn btn-ghost btn-sm" type="button" onclick={() => (replyingTo = null)}>Cancel</button>
+														</div>
+													</form>
+												</li>
 											{/if}
-										</div>
-										<p class="mt-0.5 whitespace-pre-wrap text-sm leading-relaxed text-[var(--text-secondary)]">
-											{comment.body}
-										</p>
-									</div>
+										</ul>
+									{/if}
 								</li>
 							{/each}
 						</ul>
@@ -153,7 +240,7 @@
 
 					{#if data.user}
 						<form method="POST" action="?/comment" use:enhance class="mt-4 border-t pt-4">
-							{#if form?.error}<p class="mb-2 text-xs" style:color="var(--err)">{form.error}</p>{/if}
+							{#if form?.error && !form.parentId}<p class="mb-2 text-xs" style:color="var(--err)">{form.error}</p>{/if}
 							<textarea
 								class="textarea !min-h-20"
 								name="body"
@@ -266,6 +353,10 @@
 </div>
 
 <style>
+	.comment:target {
+		outline: 2px solid var(--accent);
+		outline-offset: 4px;
+	}
 	/* Scoped README typography: markdown output is trusted-but-plain HTML. */
 	:global(.prose-pcb) {
 		font-size: 0.875rem;

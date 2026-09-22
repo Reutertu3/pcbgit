@@ -61,7 +61,7 @@ const CARD_SELECT = `
 	  u.username AS owner_username,
 	  u.display_name AS owner_display_name,
 	  (SELECT COUNT(*) FROM stars s WHERE s.project_id = p.id) AS star_count,
-	  (SELECT COUNT(*) FROM comments c WHERE c.project_id = p.id) AS comment_count,
+	  (SELECT COUNT(*) FROM comments c WHERE c.project_id = p.id AND c.deleted_at IS NULL) AS comment_count,
 	  (SELECT COUNT(*) FROM commits c WHERE c.project_id = p.id) AS commit_count,
 	  hc.sha AS head_sha,
 	  hc.render_status AS head_status,

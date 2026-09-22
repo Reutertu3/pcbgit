@@ -177,9 +177,14 @@ CREATE TABLE IF NOT EXISTS comments (
   project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
   user_id    TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   body       TEXT NOT NULL,
-  created_at INTEGER NOT NULL
+  created_at INTEGER NOT NULL,
+  -- Replies point at the top-level comment of their thread (one level deep).
+  parent_id  TEXT REFERENCES comments(id) ON DELETE CASCADE,
+  -- A deleted comment that still has replies keeps its row as a placeholder.
+  deleted_at INTEGER
 );
 CREATE INDEX IF NOT EXISTS idx_comments_project ON comments(project_id, created_at);
+-- idx_comments_parent is created in db/index.ts, after parent_id is migrated in.
 
 CREATE TABLE IF NOT EXISTS audit_log (
   id         TEXT PRIMARY KEY,

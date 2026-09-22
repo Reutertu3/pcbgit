@@ -1,11 +1,12 @@
-import { error, fail, redirect } from '@sveltejs/kit';
+import { error, fail } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
-import { all, newId, now, run } from '$lib/server/db';
+import { all } from '$lib/server/db';
 import { listTree, readBlob } from '$lib/server/git';
 import { renderMarkdown } from '$lib/server/markdown';
 import { repoPath } from '$lib/server/paths';
 import { artifactSummary, artifactUrl, loadProjectContext } from '$lib/server/projectcontext';
 import { canView, getProject } from '$lib/server/projects';
+import { CommentError, addComment, countComments, listThreads, removeComment } from '$lib/server/comments';
 
 const README = /^readme(\.(md|markdown|txt))?$/i;
 
@@ -18,13 +19,6 @@ interface RecentCommit {
 	render_status: string;
 }
 
-interface CommentRow {
-	id: string;
-	body: string;
-	created_at: number;
-	username: string;
-	display_name: string;
-}
 
 export const load: PageServerLoad = async ({ params, locals, url, parent }) => {
 	const { project, commit } = await parent();
@@ -64,52 +58,42 @@ export const load: PageServerLoad = async ({ params, locals, url, parent }) => {
 			 FROM commits WHERE project_id = ? ORDER BY committed_at DESC, rowid DESC LIMIT 5`,
 			project.id
 		),
-		comments: all<CommentRow>(
-			`SELECT c.id, c.body, c.created_at, u.username, u.display_name
-			 FROM comments c JOIN users u ON u.id = c.user_id
-			 WHERE c.project_id = ? ORDER BY c.created_at ASC LIMIT 200`,
-			project.id
-		),
+		threads: listThreads(project.id),
+		commentCount: countComments(project.id),
 		cloneUrl: `${url.origin}/git/${project.owner_username}/${project.slug}.git`
 	};
 };
 
 export const actions: Actions = {
 	comment: async ({ request, params, locals }) => {
-		if (!locals.user) return fail(401, { error: 'Sign in to comment.' });
+		if (!locals.user) return fail(401, { error: 'Sign in to comment.', parentId: '' });
 
 		const project = getProject(params.owner, params.project);
 		if (!project || !canView(project, locals.user)) error(404, 'Board not found');
 
-		const body = String((await request.formData()).get('body') ?? '').trim();
-		if (!body) return fail(400, { error: 'Write something first.' });
-		if (body.length > 4000) return fail(400, { error: 'Comment is too long (4000 characters max).' });
-
-		run(
-			'INSERT INTO comments (id, project_id, user_id, body, created_at) VALUES (?,?,?,?,?)',
-			newId(),
-			project.id,
-			locals.user.id,
-			body,
-			now()
-		);
-		return { success: true };
+		const form = await request.formData();
+		const parentId = String(form.get('parent_id') ?? '') || null;
+		try {
+			const { id } = addComment(project.id, locals.user.id, String(form.get('body') ?? ''), parentId);
+			return { success: true, commentId: id };
+		} catch (thrown) {
+			if (thrown instanceof CommentError) return fail(400, { error: thrown.message, parentId: parentId ?? '' });
+			throw thrown;
+		}
 	},
 
 	deleteComment: async ({ request, params, locals }) => {
-		if (!locals.user) return fail(401, { error: 'Sign in first.' });
+		if (!locals.user) return fail(401, { error: 'Sign in first.', parentId: '' });
 		const project = getProject(params.owner, params.project);
 		if (!project) error(404, 'Board not found');
 
 		const id = String((await request.formData()).get('id') ?? '');
-		// Comment authors, the board owner and admins can remove a comment.
-		const canModerate = locals.user.role === 'admin' || locals.user.id === project.owner_id;
-		run(
-			canModerate
-				? 'DELETE FROM comments WHERE id = ? AND project_id = ?'
-				: 'DELETE FROM comments WHERE id = ? AND project_id = ? AND user_id = ?',
-			...(canModerate ? [id, project.id] : [id, project.id, locals.user.id])
-		);
-		return { success: true };
+		try {
+			removeComment(project.id, id, locals.user, project.owner_id);
+			return { success: true };
+		} catch (thrown) {
+			if (thrown instanceof CommentError) return fail(403, { error: thrown.message, parentId: '' });
+			throw thrown;
+		}
 	}
 };
