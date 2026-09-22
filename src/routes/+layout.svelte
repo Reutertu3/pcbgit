@@ -195,6 +195,15 @@
 				<a href={data.source} class="hover:text-[var(--text-primary)]">{t('footer.source')}</a>
 			</span>
 			<span class="flex items-center gap-4">
+				{#if data.version.href}
+					<a class="mono hover:text-[var(--text-primary)]" href={data.version.href} title={t('footer.version')}>
+						{#if data.version.tag}{data.version.tag} · {/if}{data.version.sha}
+					</a>
+				{:else}
+					<span class="mono" title={t('footer.version')}>
+						{#if data.version.tag}{data.version.tag} · {/if}{data.version.sha}
+					</span>
+				{/if}
 				<a href="/about" class="hover:text-[var(--text-primary)]">{t('footer.about')}</a>
 				<a href="/tags" class="hover:text-[var(--text-primary)]">{t('nav.tags')}</a>
 				<span class="mono">KiCad-native</span>

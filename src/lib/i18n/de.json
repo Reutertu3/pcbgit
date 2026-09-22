@@ -836,5 +836,6 @@
 	"error.forbiddenTitle": "Zugriff verweigert",
 	"error.title": "Etwas ist schiefgelaufen",
 	"error.home": "Zur Startseite",
-	"error.crossSite": "Dieses Formular wurde von einer anderen Adresse abgeschickt als der, von der es geladen wurde, und daher abgelehnt."
+	"error.crossSite": "Dieses Formular wurde von einer anderen Adresse abgeschickt als der, von der es geladen wurde, und daher abgelehnt.",
+	"footer.version": "Laufende Version"
 }

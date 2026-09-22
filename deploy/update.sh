@@ -129,6 +129,8 @@ write_status running "Building $to"
 {
 	echo "== building $to"
 	export PCBGIT_GIT_SHA="$to"
+	# A release tag on exactly this commit is shown in the footer next to the commit.
+	export PCBGIT_GIT_TAG="$(git_ describe --tags --exact-match "$to" 2>/dev/null || true)"
 	compose up -d --build --remove-orphans
 	docker image prune -f
 	echo "== $(date -Is) done"

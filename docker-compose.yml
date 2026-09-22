@@ -8,6 +8,7 @@ services:
       args:
         # Set by deploy/update.sh so the admin panel can show the running commit.
         PCBGIT_VERSION: ${PCBGIT_GIT_SHA:-dev}
+        PCBGIT_TAG: ${PCBGIT_GIT_TAG:-}
     image: pcbgit:latest
     restart: unless-stopped
     ports:

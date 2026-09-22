@@ -56,6 +56,9 @@ RUN mkdir -p /data && chown pcbgit /data
 # Declared this late so a new commit only rebuilds the last layers.
 ARG PCBGIT_VERSION=dev
 ENV PCBGIT_VERSION=${PCBGIT_VERSION}
+# Release tag of that commit, when it has one.
+ARG PCBGIT_TAG=
+ENV PCBGIT_TAG=${PCBGIT_TAG}
 
 ENV NODE_ENV=production \
     PORT=3000 \

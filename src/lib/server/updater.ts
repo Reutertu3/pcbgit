@@ -29,6 +29,11 @@ export function runningVersion() {
 	return process.env.PCBGIT_VERSION ?? 'dev';
 }
 
+/** Release tag of the running commit, when it was built from one. */
+export function runningTag() {
+	return process.env.PCBGIT_TAG?.trim() || null;
+}
+
 export function updateState() {
 	if (!updaterEnabled()) return null;
 	let status: UpdateStatus | null = null;

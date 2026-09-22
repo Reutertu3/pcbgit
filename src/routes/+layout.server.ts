@@ -1,6 +1,7 @@
 import type { LayoutServerLoad } from './$types';
 import { getSetting } from '$lib/server/db';
 import { unreadCount } from '$lib/server/notifications';
+import { runningTag, runningVersion } from '$lib/server/updater';
 
 const DEFAULT_TAGLINE = 'Self-hosted home for hardware design';
 
@@ -24,9 +25,28 @@ export const load: LayoutServerLoad = async ({ locals, url }) => {
 		},
 		pathname: url.pathname,
 		unreadNotifications: locals.user ? unreadCount(locals.user.id) : 0,
-		source: sourceLink()
+		source: sourceLink(),
+		version: version()
 	};
 };
+
+/** What the footer shows: the running commit, and its release tag when it has one. */
+function version() {
+	const sha = runningVersion();
+	const tag = runningTag();
+	const repo = repoUrl();
+	const onGitHub = repo.includes('github.com');
+	const commit = /^[0-9a-f]{7,40}$/.test(sha);
+	return {
+		sha: commit ? sha.slice(0, 7) : sha,
+		tag,
+		href: onGitHub ? (tag ? `${repo}/releases/tag/${tag}` : commit ? `${repo}/commit/${sha}` : null) : null
+	};
+}
+
+function repoUrl() {
+	return (process.env.PCBGIT_SOURCE_URL || 'https://github.com/Reutertu3/pcbgit').replace(/\/+$/, '');
+}
 
 /**
  * AGPL-3.0 section 13: users of a network service get a link to its source.
@@ -34,8 +54,8 @@ export const load: LayoutServerLoad = async ({ locals, url }) => {
  * On GitHub, link the exact commit this image was built from.
  */
 function sourceLink() {
-	const repo = (process.env.PCBGIT_SOURCE_URL || 'https://github.com/Reutertu3/pcbgit').replace(/\/+$/, '');
-	const version = process.env.PCBGIT_VERSION ?? 'dev';
+	const repo = repoUrl();
+	const version = runningVersion();
 	const exact = /^[0-9a-f]{7,40}$/.test(version) && repo.includes('github.com');
 	return exact ? `${repo}/tree/${version}` : repo;
 }
