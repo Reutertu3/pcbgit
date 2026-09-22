@@ -344,6 +344,29 @@
 		white-space: nowrap;
 	}
 
+	/* Toolbar buttons overlaid on the schematic, board and 3D viewers. */
+	.viewer-btn {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		width: 1.85rem;
+		height: 1.85rem;
+		color: var(--text-secondary);
+		background: transparent;
+		border: none;
+		cursor: pointer;
+		font-size: 0.9rem;
+		white-space: nowrap;
+	}
+	.viewer-btn:hover:not(:disabled) {
+		background: var(--surface-3);
+		color: var(--text-primary);
+	}
+	.viewer-btn:disabled {
+		opacity: 0.5;
+		cursor: default;
+	}
+
 	.mono {
 		font-family: var(--font-mono);
 		font-size: 0.8125em;

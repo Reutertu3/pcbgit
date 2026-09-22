@@ -19,7 +19,9 @@ export const handle: Handle = async ({ event, resolve }) => {
 
 	// Guard the whole admin area here, not in a load function: SvelteKit runs
 	// form actions before loads, so a load-only check leaves every action open.
-	if (event.url.pathname === '/admin' || event.url.pathname.startsWith('/admin/')) {
+	// Match the route, not the URL: boards of a user named "admin" live at
+	// /admin/<board> and must stay public.
+	if (event.route.id === '/admin' || event.route.id?.startsWith('/admin/')) {
 		if (!event.locals.user) {
 			redirect(303, `/login?next=${encodeURIComponent(event.url.pathname)}`);
 		}

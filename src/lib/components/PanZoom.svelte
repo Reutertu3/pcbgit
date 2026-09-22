@@ -184,22 +184,3 @@
 		{#if overlay}{@render overlay({ scale, tx, ty })}{/if}
 	</div>
 </div>
-
-<style>
-	:global(.viewer-btn) {
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		width: 1.85rem;
-		height: 1.85rem;
-		color: var(--text-secondary);
-		background: transparent;
-		border: none;
-		cursor: pointer;
-		font-size: 0.9rem;
-	}
-	:global(.viewer-btn:hover) {
-		background: var(--surface-3);
-		color: var(--text-primary);
-	}
-</style>
