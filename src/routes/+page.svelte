@@ -15,11 +15,6 @@
 		{ value: 'name', label: 'Name' }
 	];
 
-	const HAS = [
-		{ value: 'schematic', label: 'Schematic', icon: 'schematic' as const },
-		{ value: 'pcb', label: 'PCB', icon: 'board' as const },
-		{ value: 'bom', label: 'BOM', icon: 'list' as const }
-	];
 
 	/** Every filter is a URL parameter, so any view is linkable and shareable. */
 	function withParam(mutate: (params: URLSearchParams) => void) {
@@ -41,7 +36,6 @@
 
 	const activeFilterCount = $derived(
 		data.filters.tags.length +
-			data.filters.has.length +
 			(data.filters.license ? 1 : 0) +
 			(data.filters.q ? 1 : 0)
 	);
@@ -74,25 +68,6 @@
 		<!-- Filters -->
 		<aside class="lg:w-56 lg:shrink-0">
 			<div class="lg:sticky lg:top-20 flex flex-col gap-5">
-				<div>
-					<h2 class="label !mb-2">Contents</h2>
-					<div class="flex flex-wrap gap-1.5 lg:flex-col lg:items-start">
-						{#each HAS as option}
-							{@const active = data.filters.has.includes(option.value as never)}
-							<a
-								href={toggleMulti('has', option.value)}
-								class="chip !py-1 hover:border-[var(--border-strong)]"
-								class:!border-[var(--accent)]={active}
-								class:!text-[var(--accent)]={active}
-								class:!bg-[var(--accent-soft)]={active}
-							>
-								<Icon name={option.icon} size={11} />
-								{option.label}
-							</a>
-						{/each}
-					</div>
-				</div>
-
 				{#if data.tags.length}
 					<div>
 						<h2 class="label !mb-2">Tags</h2>

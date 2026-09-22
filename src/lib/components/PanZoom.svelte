@@ -30,6 +30,16 @@
 
 	let viewport = $state<HTMLDivElement | null>(null);
 	let scale = $state(1);
+	/**
+	 * Zoom the content is laid out (and so rasterised) at. CSS scaling alone keeps
+	 * the SVG at its tiny intrinsic size (a KiCad sheet is 297 x 210 "px") and blows
+	 * the pixels up, which is blurry. Zooming animates with CSS scale, then this
+	 * catches up once the zoom settles and the browser redraws the SVG sharply.
+	 */
+	let rasterScale = $state(1);
+	/** Browsers cap image size; past this, stay at this raster size and scale up. */
+	const MAX_RASTER_EDGE = 16384;
+	const maxRasterScale = $derived(MAX_RASTER_EDGE / Math.max(contentWidth, contentHeight, 1));
 	let tx = $state(0);
 	let ty = $state(0);
 	let dragging = $state(false);
@@ -46,6 +56,7 @@
 		const box = viewport.getBoundingClientRect();
 		if (!box.width || !box.height) return;
 		scale = clamp(Math.min(box.width / contentWidth, box.height / contentHeight) * padding);
+		rasterScale = Math.min(scale, maxRasterScale);
 		tx = (box.width - contentWidth * scale) / 2;
 		ty = (box.height - contentHeight * scale) / 2;
 		ready = true;
@@ -122,6 +133,13 @@
 		untrack(() => fit());
 	});
 
+	// Re-rasterise at the settled zoom.
+	$effect(() => {
+		const target = Math.min(scale, maxRasterScale);
+		const timer = setTimeout(() => (rasterScale = target), 160);
+		return () => clearTimeout(timer);
+	});
+
 	$effect(() => {
 		if (!viewport) return;
 		const observer = new ResizeObserver(() => {
@@ -176,9 +194,9 @@
 	>
 		<div
 			class="absolute left-0 top-0 origin-top-left"
-			style:transform="translate3d({tx}px, {ty}px, 0) scale({scale})"
-			style:width="{contentWidth}px"
-			style:height="{contentHeight}px"
+			style:transform="translate3d({tx}px, {ty}px, 0) scale({scale / rasterScale})"
+			style:width="{contentWidth * rasterScale}px"
+			style:height="{contentHeight * rasterScale}px"
 			style:will-change="transform"
 		>
 			{@render children()}

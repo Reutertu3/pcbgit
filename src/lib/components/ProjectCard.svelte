@@ -14,10 +14,10 @@
 	const href = $derived(`/${project.owner_username}/${project.slug}`);
 	const dimensions = $derived(formatDimensions(project.board_width, project.board_height));
 	const previewSrc = $derived(
-		project.head_commit_id ? `/artifacts/${project.head_commit_id}/preview-front.svg` : null
+		project.head_commit_id ? `/artifacts/${project.head_commit_id}/thumb/preview-front` : null
 	);
 	const schematicSrc = $derived(
-		project.head_commit_id ? `/artifacts/${project.head_commit_id}/sheet-0.svg` : null
+		project.head_commit_id ? `/artifacts/${project.head_commit_id}/thumb/sheet-0` : null
 	);
 </script>
 

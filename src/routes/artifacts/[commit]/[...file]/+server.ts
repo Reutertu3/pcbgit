@@ -2,9 +2,8 @@ import { error } from '@sveltejs/kit';
 import fs from 'node:fs';
 import path from 'node:path';
 import type { RequestHandler } from './$types';
-import { get } from '$lib/server/db';
+import { artifactAccess, artifactCacheControl } from '$lib/server/artifactaccess';
 import { ARTIFACT_DIR } from '$lib/server/paths';
-import { canView } from '$lib/server/projects';
 
 const TYPES: Record<string, string> = {
 	'.svg': 'image/svg+xml',
@@ -24,12 +23,8 @@ export const GET: RequestHandler = async ({ params, locals, setHeaders }) => {
 	const target = path.resolve(base, relative);
 	if (target !== base && !target.startsWith(base + path.sep)) error(400, 'Bad path');
 
-	const owning = get<{ visibility: 'public' | 'private'; owner_id: string }>(
-		`SELECT p.visibility, p.owner_id FROM commits c JOIN projects p ON p.id = c.project_id WHERE c.id = ?`,
-		commitId
-	);
-	if (!owning) error(404, 'Not found');
-	if (!canView(owning, locals.user)) error(404, 'Not found');
+	const visibility = artifactAccess(commitId, locals.user);
+	if (!visibility) error(404, 'Not found');
 
 	let stat: fs.Stats;
 	try {
@@ -43,7 +38,7 @@ export const GET: RequestHandler = async ({ params, locals, setHeaders }) => {
 	setHeaders({
 		'Content-Type': TYPES[path.extname(target).toLowerCase()] ?? 'application/octet-stream',
 		'Content-Length': String(stat.size),
-		'Cache-Control': owning.visibility === 'public' ? 'public, max-age=31536000, immutable' : 'private, max-age=600'
+		'Cache-Control': artifactCacheControl(visibility)
 	});
 
 	return new Response(fs.createReadStream(target) as unknown as ReadableStream);

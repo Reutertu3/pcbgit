@@ -80,7 +80,6 @@ export interface BrowseQuery {
 	tags?: string[];
 	owner?: string;
 	license?: string;
-	has?: ('schematic' | 'pcb' | 'bom')[];
 	sort?: 'recent' | 'stars' | 'name' | 'created';
 	starredBy?: string;
 	page?: number;
@@ -126,16 +125,6 @@ export function browseProjects(query: BrowseQuery) {
 			'EXISTS (SELECT 1 FROM project_tags pt JOIN tags t ON t.id = pt.tag_id WHERE pt.project_id = p.id AND t.slug = ?)'
 		);
 		params.push(tag);
-	}
-	for (const kind of query.has ?? []) {
-		if (kind === 'bom') {
-			where.push('EXISTS (SELECT 1 FROM bom_items b WHERE b.commit_id = p.head_commit_id)');
-		} else {
-			where.push(
-				"EXISTS (SELECT 1 FROM artifacts a WHERE a.commit_id = p.head_commit_id AND a.kind = ?)"
-			);
-			params.push(kind === 'pcb' ? 'pcb_layer_svg' : 'schematic_svg');
-		}
 	}
 
 	const whereSql = `WHERE ${where.join(' AND ')}`;

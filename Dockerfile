@@ -28,6 +28,12 @@ RUN apt-get update \
  && useradd --create-home --uid 10001 pcbgit \
  && kicad-cli --version
 
+# Card thumbnails (rsvg-convert, cwebp). A separate layer, so adding tools here
+# never re-downloads KiCad and its 3D models.
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends librsvg2-bin webp \
+ && rm -rf /var/lib/apt/lists/*
+
 # Build stage is Debian Bookworm (glibc 2.36); Ubuntu 24.04 ships 2.39, so the binary runs as-is.
 COPY --from=build /usr/local/bin/node /usr/local/bin/node
 

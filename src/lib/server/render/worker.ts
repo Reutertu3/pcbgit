@@ -24,6 +24,7 @@ import {
 	schSvgArgs
 } from './kicad';
 import { discoverKicadFiles, hasKicadContent } from './kicadfiles';
+import { ensureThumbnail } from '../thumbnails';
 import { countBySeverity, parseDrcReport, parseErcReport, type Violation } from './reports';
 
 interface JobRow {
@@ -197,6 +198,12 @@ async function renderCommit(job: JobRow, log: string[]) {
 		}
 
 		persistResults(commit.id, board, bom, violations, files.rootSch ? path.basename(files.rootSch, '.kicad_sch') : project.slug);
+
+		// Warm the card thumbnails so the first visitor does not wait for them.
+		for (const name of ['sheet-0', 'preview-front']) {
+			const thumbnail = await ensureThumbnail(commit.id, name);
+			if (thumbnail) log.push(`thumbnail ${name}: ${path.extname(thumbnail.file).slice(1)}`);
+		}
 
 		// Partial output is kept above, but a file KiCad could not open must not
 		// read as a successful render.
