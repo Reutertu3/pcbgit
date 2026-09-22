@@ -240,6 +240,17 @@ After editing `src/lib/server/db/schema.sql`, run `npm run schema`. Columns adde
 to existing tables also need an entry in `ADDED_COLUMNS` in
 `src/lib/server/db/index.ts`.
 
+### Translations
+
+The interface is available in English and German; the globe button in the header
+switches, and the choice is saved in a cookie. First-time visitors get their
+browser's language.
+
+Strings live in `src/lib/i18n/en.json` and `de.json`. To add a language, copy
+`en.json`, translate it, and register it in `LOCALES` in `src/lib/i18n/index.ts`.
+`npm test` fails if a file is missing keys or placeholders. KiCad's own DRC/ERC
+messages and render logs stay in English.
+
 ### Project layout
 
 ```
