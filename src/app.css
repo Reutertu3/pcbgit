@@ -33,6 +33,8 @@
  *
  * --viewer-bg stays dark in every theme: board layers are composited with
  * screen blending, which needs a dark backdrop to read correctly.
+ * --preview-bg sits behind thumbnails and the 3D view, which need no blending;
+ * light themes use a dark grey there so the previews do not punch black holes.
  */
 :root {
 	--surface-0: #1f292d;
@@ -53,6 +55,7 @@
 	--err: #e57f72;
 	--info: #82b4c8;
 	--viewer-bg: #182124;
+	--preview-bg: var(--viewer-bg);
 	color-scheme: dark;
 }
 
@@ -95,6 +98,7 @@
 	--err: #9d0006;
 	--info: #076678;
 	--viewer-bg: #282828;
+	--preview-bg: #665c54;
 	color-scheme: light;
 }
 
@@ -137,6 +141,7 @@
 	--err: #c94040;
 	--info: #2d6fc4;
 	--viewer-bg: #1a1d22;
+	--preview-bg: #5c636e;
 	color-scheme: light;
 }
 

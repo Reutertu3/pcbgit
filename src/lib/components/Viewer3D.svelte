@@ -1119,7 +1119,7 @@
 
 <div
 	class="relative overflow-hidden rounded-lg border {className}"
-	style:background="var(--viewer-bg)"
+	style:background="var(--preview-bg)"
 	data-backend={backend}
 	data-draw-calls={drawCalls || undefined}
 	data-fps={fps ?? 'idle'}

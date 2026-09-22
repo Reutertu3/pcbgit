@@ -27,7 +27,7 @@
 	<a {href} class="relative block" aria-label={project.name}>
 		<div class="grid h-40 grid-cols-2 gap-px bg-[var(--border-subtle)]">
 			<!-- Schematic and board previews sit side by side, the way you compare them on a bench. -->
-			<figure class="relative m-0 overflow-hidden bg-[var(--viewer-bg)]">
+			<figure class="relative m-0 overflow-hidden bg-[var(--preview-bg)]">
 				{#if project.has_schematic && schematicSrc}
 					<img
 						src={schematicSrc}
@@ -48,7 +48,7 @@
 				</figcaption>
 			</figure>
 
-			<figure class="relative m-0 overflow-hidden bg-[var(--viewer-bg)]">
+			<figure class="relative m-0 overflow-hidden bg-[var(--preview-bg)]">
 				{#if project.has_pcb && previewSrc}
 					<img
 						src={previewSrc}

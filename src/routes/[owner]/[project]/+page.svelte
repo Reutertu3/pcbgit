@@ -95,7 +95,7 @@
 							</a>
 						</div>
 					</div>
-					<div class="flex min-h-64 items-center justify-center bg-[var(--viewer-bg)] p-5">
+					<div class="flex min-h-64 items-center justify-center bg-[var(--preview-bg)] p-5">
 						{#if preview}
 							<img
 								src={preview}
