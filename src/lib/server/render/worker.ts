@@ -2,7 +2,8 @@ import AdmZip from 'adm-zip';
 import fs from 'node:fs';
 import fsp from 'node:fs/promises';
 import path from 'node:path';
-import { exportableLayers, layerIdFromFilename, layerStyle, previewLayers } from '$lib/layers';
+import { FAB_PROFILES, type FabProfile } from '$lib/fab';
+import { exportableLayers, fabricationLayers, layerIdFromFilename, layerStyle, previewLayers } from '$lib/layers';
 import { all, get, newId, now, run, tx } from '../db';
 import { exportTree } from '../git';
 import { DATA_DIR, RENDER_DIR, repoPath } from '../paths';
@@ -407,29 +408,48 @@ async function renderBoard(
 		await storeArtifact({ commitId, kind: 'drc_json', name: 'drc.json', source: drcPath });
 	}
 
-	// Fabrication bundle: gerbers + drill, zipped for download.
-	await buildFabZip(pcbPath, outDir, commitId, log);
+	// Fabrication bundles: gerbers + drill, one ZIP per board house.
+	const fabLayers = fabricationLayers(layerNames);
+	for (const profile of FAB_PROFILES) await buildFabZip(pcbPath, fabLayers, userNames, profile, outDir, commitId, log);
 }
 
-async function buildFabZip(pcbPath: string, outDir: string, commitId: string, log: string[]) {
-	const fabDir = path.join(outDir, 'fab');
+async function buildFabZip(
+	pcbPath: string,
+	layers: string[],
+	userNames: Record<string, string>,
+	profile: FabProfile,
+	outDir: string,
+	commitId: string,
+	log: string[]
+) {
+	const fabDir = path.join(outDir, `fab-${profile.id}`);
 	await fsp.mkdir(fabDir, { recursive: true });
 
-	const gerbers = await runKicad(pcbGerberArgs(pcbPath, fabDir));
-	const drill = await runKicad(pcbDrillArgs(pcbPath, fabDir));
-	log.push(`gerbers: ${gerbers.ok ? 'ok' : `failed (${gerbers.code})`}, drill: ${drill.ok ? 'ok' : `failed (${drill.code})`}`);
+	const gerbers = await runKicad(pcbGerberArgs(pcbPath, fabDir, layers, profile));
+	const drill = await runKicad(pcbDrillArgs(pcbPath, fabDir, profile.drillUnits));
+	log.push(`gerbers ${profile.id}: ${gerbers.ok ? 'ok' : `failed (${gerbers.code})`}, drill: ${drill.ok ? 'ok' : `failed (${drill.code})`}`);
 
 	const entries = (await fsp.readdir(fabDir)).filter((f) => !f.startsWith('.'));
 	if (!entries.length) return;
 
+	const board = path.basename(pcbPath, '.kicad_pcb');
 	const zip = new AdmZip();
 	for (const entry of entries) {
 		const full = path.join(fabDir, entry);
-		if ((await fsp.stat(full)).isFile()) zip.addLocalFile(full);
+		if (!(await fsp.stat(full)).isFile()) continue;
+		if (!profile.fileName) {
+			zip.addLocalFile(full);
+			continue;
+		}
+		// Board houses with their own naming: find what each file holds first.
+		const drillPart = /-(N?PTH)\.drl$/i.exec(entry)?.[1]?.toUpperCase();
+		const part = drillPart ?? layerIdFromFilename(entry.replace(/\.[^.]+$/, ''), layers, userNames);
+		const name = part ? profile.fileName(board, part) : null;
+		if (name) zip.addLocalFile(full, '', name);
 	}
-	const zipPath = path.join(outDir, 'fabrication.zip');
+	const zipPath = path.join(outDir, `fabrication-${profile.id}.zip`);
 	zip.writeZip(zipPath);
-	await storeArtifact({ commitId, kind: 'fab_zip', name: 'fabrication.zip', source: zipPath });
+	await storeArtifact({ commitId, kind: 'fab_zip', name: profile.id, source: zipPath });
 }
 
 function persistResults(

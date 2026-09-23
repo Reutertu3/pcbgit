@@ -77,6 +77,19 @@ export function exportableLayers(boardLayerNames: string[]) {
 		.sort((a, b) => layerStyle(a).order - layerStyle(b).order);
 }
 
+/**
+ * Layers a board house makes the board from: copper (inner layers in stack order),
+ * paste, silkscreen, mask and the outline. Courtyard, fab and user layers stay out.
+ */
+export function fabricationLayers(boardLayerNames: string[]) {
+	const inner = boardLayerNames
+		.filter((name) => /^In\d+\.Cu$/.test(name))
+		.sort((a, b) => Number(a.slice(2, -3)) - Number(b.slice(2, -3)));
+	return ['F.Cu', ...inner, 'B.Cu', 'F.Paste', 'B.Paste', 'F.SilkS', 'B.SilkS', 'F.Mask', 'B.Mask', 'Edge.Cuts'].filter((name) =>
+		boardLayerNames.includes(name)
+	);
+}
+
 /** Layer set for the composite board preview image. */
 export function previewLayers(boardLayerNames: string[], side: 'front' | 'back') {
 	const prefix = side === 'front' ? 'F' : 'B';

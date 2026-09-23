@@ -4,6 +4,7 @@ import { artifactMeta, listArtifacts, type ArtifactRow } from './render/artifact
 import { canEdit, canView, getProject, isStarred, type ProjectCard } from './projects';
 import type { CommitSummary, LayerArtifact, SheetArtifact } from '$lib/types';
 import type { User } from './auth';
+import { FAB_PROFILES } from '$lib/fab';
 
 export interface ProjectContext {
 	project: ProjectCard;
@@ -105,6 +106,12 @@ export function firstArtifactUrl(commitId: string, kind: Parameters<typeof listA
 	return row ? artifactUrl(row) : null;
 }
 
+/** Board houses in the order $lib/fab lists them; unknown names (older renders) last. */
+function fabOrder(profile: string) {
+	const index = FAB_PROFILES.findIndex((p) => p.id === profile);
+	return index === -1 ? FAB_PROFILES.length : index;
+}
+
 export function artifactSummary(commitId: string) {
 	const rows = listArtifacts(commitId);
 	return {
@@ -112,6 +119,11 @@ export function artifactSummary(commitId: string) {
 		hasPcb: rows.some((row) => row.kind === 'pcb_layer_svg'),
 		has3d: rows.some((row) => row.kind === 'pcb_glb'),
 		hasFab: rows.some((row) => row.kind === 'fab_zip'),
+		// One per board house ($lib/fab); renders before profiles have a single "fabrication.zip".
+		fabZips: rows
+			.filter((row) => row.kind === 'fab_zip')
+			.map((row) => ({ profile: row.name, url: artifactUrl(row) }))
+			.sort((a, b) => fabOrder(a.profile) - fabOrder(b.profile)),
 		ibom: rows.find((row) => row.kind === 'ibom_html'),
 		previewFront: rows.find((row) => row.kind === 'pcb_preview_svg' && row.name === 'front'),
 		previewBack: rows.find((row) => row.kind === 'pcb_preview_svg' && row.name === 'back'),

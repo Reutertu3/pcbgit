@@ -8,6 +8,8 @@
 	import { formatBytes, formatDate, formatDimensions, relativeTime, shortSha } from '$lib/format';
 	import type { CommentView } from '$lib/types';
 	import { t, tParts } from '$lib/i18n/t';
+	import { DEFAULT_FAB, fabProfile } from '$lib/fab';
+	import { onMount } from 'svelte';
 
 	let { data, form } = $props();
 
@@ -33,6 +35,26 @@
 	const base = $derived(`/${data.project.owner_username}/${data.project.slug}`);
 	const query = $derived(data.isHead ? '' : `?v=${data.commit?.sha}`);
 	let side = $state<'front' | 'back'>('front');
+
+	/* ---- fabrication ZIP: one per board house, the visitor's last pick remembered ---- */
+	const FAB_KEY = 'pcbgit-fab';
+	let fab = $state(DEFAULT_FAB);
+	onMount(() => {
+		try {
+			fab = localStorage.getItem(FAB_KEY) ?? fab;
+		} catch {
+			// Storage blocked: the default board house it is.
+		}
+	});
+	function pickFab(id: string) {
+		fab = id;
+		try {
+			localStorage.setItem(FAB_KEY, id);
+		} catch {
+			// Remembering is a convenience only.
+		}
+	}
+	const fabZip = $derived(data.fabZips.find((zip) => zip.profile === fab) ?? data.fabZips[0]);
 
 	const preview = $derived(side === 'front' ? data.previews.front : data.previews.back);
 	const stats = $derived([
@@ -307,11 +329,6 @@
 								<Icon name="download" size={13} /> {t('overview.dlBom')}
 							</a>
 						{/if}
-						{#if data.hasFab}
-							<a href="/artifacts/{data.commit.id}/fabrication.zip" class="btn btn-sm justify-start">
-								<Icon name="download" size={13} /> {t('overview.dlFab')}
-							</a>
-						{/if}
 						{#if data.tabs.three}
 							<a href="/artifacts/{data.commit.id}/board.glb" class="btn btn-sm justify-start">
 								<Icon name="download" size={13} /> {t('overview.dlGlb')}
@@ -322,6 +339,38 @@
 						</a>
 					</div>
 				</div>
+
+				{#if fabZip}
+					<div class="surface p-4">
+						<h3 class="mb-2.5 text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">
+							{t('overview.gerbers')}
+						</h3>
+						<div class="flex flex-col gap-1.5">
+							<!-- Renders before board-house profiles have one generic ZIP: no choice to offer. -->
+							{#if data.fabZips.some((zip) => fabProfile(zip.profile))}
+								<select
+									class="select !py-1 text-xs"
+									value={fabZip.profile}
+									onchange={(event) => pickFab(event.currentTarget.value)}
+									aria-label={t('overview.fabFor')}
+									title={t('overview.fabFor')}
+								>
+									{#each data.fabZips as zip (zip.profile)}
+										{@const profile = fabProfile(zip.profile)}
+										{#if profile}<option value={zip.profile}>{t(profile.labelKey)}</option>{/if}
+									{/each}
+								</select>
+							{/if}
+							<a
+								href={fabZip.url}
+								download="{data.project.slug}-{shortSha(data.commit.sha)}-gerbers{fabProfile(fabZip.profile) ? `-${fabZip.profile}` : ''}.zip"
+								class="btn btn-sm justify-start"
+							>
+								<Icon name="download" size={13} /> {t('overview.dlFab')}
+							</a>
+						</div>
+					</div>
+				{/if}
 
 				{#if data.project.source_url}
 					<a href={data.project.source_url} class="btn btn-sm justify-start" rel="nofollow noopener" target="_blank">

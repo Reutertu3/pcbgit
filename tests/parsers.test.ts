@@ -8,8 +8,9 @@ import { renderMarkdown } from '../src/lib/server/markdown.ts';
 import { analyzeBoardText } from '../src/lib/server/render/board.ts';
 import { renderPcb } from '../scripts/fixtures/kicad.ts';
 import { parseViewBox, unionViewBox } from '../src/lib/viewbox.ts';
-import { exportableLayers, layerIdFromFilename, layerStyle } from '../src/lib/layers.ts';
-import { orderSchematicSheets } from '../src/lib/server/render/kicad.ts';
+import { exportableLayers, fabricationLayers, layerIdFromFilename, layerStyle } from '../src/lib/layers.ts';
+import { DEFAULT_FAB, FAB_PROFILES, fabProfile } from '../src/lib/fab.ts';
+import { orderSchematicSheets, pcbDrillArgs, pcbGerberArgs } from '../src/lib/server/render/kicad.ts';
 import { darkSchematicSvg, isSchematicSheet } from '../src/lib/server/render/schematictheme.ts';
 
 test('s-expression parser handles nesting, quotes and escapes', () => {
@@ -265,6 +266,35 @@ test('layers renamed in the board setup map back from file names and DRC reports
 		parseDrcReport(report, { 'B.Cu': 'Back', 'F.Cu': 'Top Copper' }).map((v) => v.layer),
 		['B.Cu', 'F.Cu', 'F.Mask']
 	);
+});
+
+test('fabrication ZIPs carry only manufacturing layers, named per board house', () => {
+	const board = ['F.Cu', 'In2.Cu', 'In10.Cu', 'In1.Cu', 'B.Cu', 'F.CrtYd', 'F.Fab', 'Margin', 'F.SilkS', 'B.Mask', 'F.Mask', 'Edge.Cuts', 'User.1'];
+	assert.deepEqual(fabricationLayers(board), ['F.Cu', 'In1.Cu', 'In2.Cu', 'In10.Cu', 'B.Cu', 'F.SilkS', 'F.Mask', 'B.Mask', 'Edge.Cuts']);
+
+	const jlc = pcbGerberArgs('/w/b.kicad_pcb', '/w/fab', ['F.Cu', 'B.Cu'], fabProfile('jlcpcb')!);
+	assert.ok(jlc.includes('--subtract-soldermask') && jlc.includes('--check-zones'));
+	assert.ok(!jlc.includes('--no-protel-ext'), 'JLCPCB gets Protel extensions (.gtl, .gbl)');
+	assert.deepEqual(jlc.slice(jlc.indexOf('--layers'), jlc.indexOf('--layers') + 2), ['--layers', 'F.Cu,B.Cu']);
+
+	const generic = pcbGerberArgs('/w/b.kicad_pcb', '/w/fab', ['F.Cu'], fabProfile('generic')!);
+	assert.ok(generic.includes('--no-protel-ext') && !generic.includes('--subtract-soldermask') && generic.includes('--check-zones'));
+	assert.ok(pcbDrillArgs('/w/b.kicad_pcb', '/w/fab').includes('--excellon-separate-th'));
+	assert.equal(FAB_PROFILES[0].id, DEFAULT_FAB);
+
+	// AISLER: its documented file names, drill data in inches.
+	const aisler = fabProfile('aisler')!;
+	assert.equal(aisler.drillUnits, 'in');
+	const drill = pcbDrillArgs('/w/b.kicad_pcb', '/w/fab', aisler.drillUnits);
+	assert.equal(drill[drill.indexOf('--excellon-units') + 1], 'in');
+	assert.equal(aisler.fileName!('Board', 'F.Cu'), 'Board.toplayer.ger');
+	assert.equal(aisler.fileName!('Board', 'B.Cu'), 'Board.bottomlayer.ger');
+	assert.equal(aisler.fileName!('Board', 'In2.Cu'), 'Board.internalplane2.ger');
+	assert.equal(aisler.fileName!('Board', 'Edge.Cuts'), 'Board.boardoutline.ger');
+	assert.equal(aisler.fileName!('Board', 'F.SilkS'), 'Board.topsilkscreen.ger');
+	assert.equal(aisler.fileName!('Board', 'PTH'), 'Board.drills_pth.xln');
+	assert.equal(aisler.fileName!('Board', 'NPTH'), 'Board.holes_npth.xln');
+	assert.equal(aisler.fileName!('Board', 'F.Fab'), null);
 });
 
 test('footprints are classified as SMD or through-hole by reference', () => {

@@ -52,7 +52,7 @@ export const load: PageServerLoad = async ({ params, locals, url, parent }) => {
 			front: artifacts?.previewFront ? artifactUrl(artifacts.previewFront) : null,
 			back: artifacts?.previewBack ? artifactUrl(artifacts.previewBack) : null
 		},
-		hasFab: artifacts?.hasFab ?? false,
+		fabZips: artifacts?.fabZips ?? [],
 		artifactBytes: artifacts?.totalBytes ?? 0,
 		recentCommits: all<RecentCommit>(
 			`SELECT id, sha, message, author_name, committed_at, render_status

@@ -250,10 +250,29 @@ export function pcbDrcArgs(pcbPath: string, outFile: string) {
 	];
 }
 
-export function pcbGerberArgs(pcbPath: string, outDir: string) {
-	return ['pcb', 'export', 'gerbers', '--output', outDir, '--no-protel-ext', pcbPath];
+/**
+ * Gerbers for a board house: only the given layers, zones refilled first (a board
+ * saved with unfilled zones would otherwise lose its copper pours), and the file
+ * naming and silkscreen handling of the chosen fab profile ($lib/fab).
+ */
+export function pcbGerberArgs(
+	pcbPath: string,
+	outDir: string,
+	layers: string[],
+	options: { protelExtensions: boolean; subtractSoldermask: boolean }
+) {
+	return [
+		'pcb', 'export', 'gerbers',
+		'--output', outDir,
+		...(layers.length ? ['--layers', layers.join(',')] : []),
+		...(options.protelExtensions ? [] : ['--no-protel-ext']),
+		...(options.subtractSoldermask ? ['--subtract-soldermask'] : []),
+		'--check-zones',
+		pcbPath
+	];
 }
 
-export function pcbDrillArgs(pcbPath: string, outDir: string) {
-	return ['pcb', 'export', 'drill', '--output', outDir, '--format', 'excellon', '--excellon-units', 'mm', '--generate-map', '--map-format', 'gerberx2', pcbPath];
+/** Excellon, plated and non-plated holes in separate files, as fabs expect. Inches come out in 2:4 precision. */
+export function pcbDrillArgs(pcbPath: string, outDir: string, units: 'mm' | 'in' = 'mm') {
+	return ['pcb', 'export', 'drill', '--output', outDir, '--format', 'excellon', '--excellon-units', units, '--excellon-separate-th', pcbPath];
 }
