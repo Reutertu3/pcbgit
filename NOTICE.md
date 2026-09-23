@@ -46,6 +46,7 @@ Bundled into the application or shipped in the Docker image's `node_modules`.
 | [three.js](https://threejs.org) | MIT | three.js authors |
 | [adm-zip](https://github.com/cthackers/adm-zip) | MIT | Another-D-Mention Software and contributors |
 | [glTF Transform](https://gltf-transform.dev) (`@gltf-transform/core`, `@gltf-transform/extensions`) | MIT | Don McCurdy |
+| [ktx-parse](https://github.com/donmccurdy/KTX-Parse) and [property-graph](https://github.com/donmccurdy/property-graph), dependencies of glTF Transform | MIT | Don McCurdy |
 | [meshoptimizer](https://github.com/zeux/meshoptimizer) | MIT | Arseny Kapoulkine |
 | [devalue](https://github.com/sveltejs/devalue) | MIT | devalue contributors |
 | [esm-env](https://github.com/benmccann/esm-env) | MIT | Benjamin McCann |
@@ -53,6 +54,7 @@ Bundled into the application or shipped in the Docker image's `node_modules`.
 | [Inter](https://rsms.me/inter/) font, via Fontsource | OFL-1.1 | The Inter Project Authors |
 | [JetBrains Mono](https://www.jetbrains.com/lp/mono/) font, via Fontsource | OFL-1.1 | The JetBrains Mono Project Authors |
 | Icons in `src/lib/icons.ts`, several derived from [Feather](https://feathericons.com) and [Lucide](https://lucide.dev) | MIT (Feather), ISC (Lucide) | Cole Bemis (Feather); Lucide Contributors |
+| [Gruvbox](https://github.com/morhetz/gruvbox) colour palette, used by the Gruvbox themes and the dark schematic view | MIT | Pavel Pertsev |
 
 ### Run alongside pcbgit
 
