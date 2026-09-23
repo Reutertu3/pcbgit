@@ -4,11 +4,30 @@ import { count } from '$lib/server/db';
 
 const SORTS = ['name', 'recent', 'created', 'stars'] as const;
 type Sort = (typeof SORTS)[number];
+const isSort = (value: string | null | undefined): value is Sort => SORTS.includes(value as Sort);
 
-export const load: PageServerLoad = async ({ url, locals }) => {
+/** The visitor's last sort choice, so the list comes back the way they left it. */
+const SORT_COOKIE = 'pcbgit_sort';
+
+export const load: PageServerLoad = async ({ url, locals, cookies }) => {
 	const params = url.searchParams;
-	const requested = params.get('sort') as Sort | null;
-	const sort: Sort = requested && SORTS.includes(requested) ? requested : 'name';
+	const requested = params.get('sort');
+	// A choice in the URL (the select, or a shared link) wins and is remembered;
+	// without one, the remembered choice, and Name for a first visit.
+	let sort: Sort = 'name';
+	if (isSort(requested)) {
+		sort = requested;
+		cookies.set(SORT_COOKIE, sort, {
+			path: '/',
+			maxAge: 60 * 60 * 24 * 365,
+			httpOnly: true,
+			sameSite: 'lax',
+			secure: url.protocol === 'https:'
+		});
+	} else {
+		const remembered = cookies.get(SORT_COOKIE);
+		if (isSort(remembered)) sort = remembered;
+	}
 	const author = params.get('author') ?? '';
 
 	const result = browseProjects({
