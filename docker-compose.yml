@@ -12,10 +12,11 @@ services:
     image: pcbgit:latest
     restart: unless-stopped
     ports:
-      - "3000:3000"
+      # Host port from .env; the app always listens on 3000 inside the container.
+      - "${PCBGIT_PORT:-3000}:3000"
     environment:
-      # Must match the URL users type, or form submissions fail the CSRF check.
-      ORIGIN: ${PCBGIT_ORIGIN:-http://localhost:3000}
+      # Public URL for links in server-rendered pages and the cookie's scheme.
+      ORIGIN: ${PCBGIT_ORIGIN:-http://localhost:${PCBGIT_PORT:-3000}}
       PCBGIT_ADMIN_USER: ${PCBGIT_ADMIN_USER:-admin}
       PCBGIT_ADMIN_PASSWORD: ${PCBGIT_ADMIN_PASSWORD:?set PCBGIT_ADMIN_PASSWORD in .env}
       PCBGIT_ADMIN_EMAIL: ${PCBGIT_ADMIN_EMAIL:-admin@localhost}
