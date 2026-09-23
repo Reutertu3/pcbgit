@@ -18,6 +18,19 @@ async function findBackend() {
 	return candidate;
 }
 
+/**
+ * Git checks every pushed object before storing it, for every repository without
+ * touching its config: malformed objects are rejected, among them tree entries
+ * named "..", ".git" or containing "/", which would otherwise reach the render
+ * checkout (git archive | tar). Warnings, like old zero-padded file modes, still
+ * pass. Config through the environment needs git 2.31+.
+ */
+export const PUSH_CHECKS = {
+	GIT_CONFIG_COUNT: '1',
+	GIT_CONFIG_KEY_0: 'receive.fsckObjects',
+	GIT_CONFIG_VALUE_0: 'true'
+};
+
 export interface BackendRequest {
 	repoDir: string;
 	/** Path below the repository, e.g. "info/refs" or "git-receive-pack". */
@@ -52,7 +65,8 @@ export async function runGitBackend(request: BackendRequest): Promise<Response> 
 		GIT_PROTOCOL: request.headers.get('git-protocol') ?? '',
 		HTTP_USER_AGENT: request.headers.get('user-agent') ?? 'git',
 		GIT_COMMITTER_NAME: request.remoteUser || 'pcbgit',
-		GIT_COMMITTER_EMAIL: `${request.remoteUser || 'pcbgit'}@pcbgit.local`
+		GIT_COMMITTER_EMAIL: `${request.remoteUser || 'pcbgit'}@pcbgit.local`,
+		...PUSH_CHECKS
 	};
 
 	const contentLength = request.headers.get('content-length');

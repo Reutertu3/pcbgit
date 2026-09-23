@@ -110,7 +110,22 @@ export async function exportTree(repo: string, sha: string, parentDir: string, l
 	await fsp.writeFile(tarPath, archive.stdout as unknown as Buffer);
 	await exec('tar', ['-xf', tarPath, '-C', dir]);
 	await fsp.rm(tarPath, { force: true });
+	await removeEscapingLinks(dir);
 	return dir;
+}
+
+/**
+ * A commit can hold symlinks, and tar recreates them, absolute ones included.
+ * KiCad follows them when a schematic names a sub-sheet by path, so any that point
+ * outside the checkout are removed; links within the project keep working.
+ */
+async function removeEscapingLinks(root: string) {
+	for (const entry of await fsp.readdir(root, { recursive: true, withFileTypes: true })) {
+		if (!entry.isSymbolicLink()) continue;
+		const link = path.join(entry.parentPath, entry.name);
+		const target = path.resolve(entry.parentPath, await fsp.readlink(link));
+		if (target !== root && !target.startsWith(root + path.sep)) await fsp.rm(link, { force: true });
+	}
 }
 
 export interface UploadFile {
