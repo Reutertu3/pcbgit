@@ -2,7 +2,7 @@ import { error } from '@sveltejs/kit';
 import fs from 'node:fs';
 import path from 'node:path';
 import type { RequestHandler } from './$types';
-import { artifactAccess, artifactCacheControl } from '$lib/server/artifactaccess';
+import { SVG_POLICY, artifactAccess, artifactCacheControl } from '$lib/server/artifactaccess';
 import { ARTIFACT_DIR } from '$lib/server/paths';
 import { ibomThemeCss } from '$lib/ibomtheme';
 import { darkSchematicSvg, isSchematicSheet } from '$lib/server/render/schematictheme';
@@ -58,6 +58,8 @@ export const GET: RequestHandler = async ({ params, locals, setHeaders, url }) =
 		'Cache-Control': artifactCacheControl(visibility),
 		'X-Content-Type-Options': 'nosniff'
 	});
+
+	if (extension === '.svg') setHeaders({ 'Content-Security-Policy': SVG_POLICY });
 
 	if (extension === '.html') {
 		setHeaders({ 'Content-Security-Policy': PAGE_POLICY });

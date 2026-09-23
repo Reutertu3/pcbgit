@@ -99,9 +99,9 @@ export async function readBlob(repo: string, sha: string, filePath: string) {
 	return git(repo, ['show', `${sha}:${filePath}`]);
 }
 
-/** Extracts a commit's tree into a fresh temp directory. Caller removes it. */
-export async function exportTree(repo: string, sha: string, label = 'work') {
-	const dir = await fsp.mkdtemp(path.join(TMP_DIR, `${label}-`));
+/** Extracts a commit's tree into a fresh directory under `parentDir`. Caller removes it. */
+export async function exportTree(repo: string, sha: string, parentDir: string, label = 'work') {
+	const dir = await fsp.mkdtemp(path.join(parentDir, `${label}-`));
 	const archive = await exec('git', ['--git-dir', repo, 'archive', '--format=tar', sha], {
 		encoding: 'buffer',
 		maxBuffer: 512 * 1024 * 1024

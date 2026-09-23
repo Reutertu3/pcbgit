@@ -2,7 +2,7 @@ import { error } from '@sveltejs/kit';
 import fs from 'node:fs';
 import path from 'node:path';
 import type { RequestHandler } from './$types';
-import { artifactAccess, artifactCacheControl } from '$lib/server/artifactaccess';
+import { SVG_POLICY, artifactAccess, artifactCacheControl } from '$lib/server/artifactaccess';
 import { artifactDir } from '$lib/server/paths';
 import { ensureThumbnail, isThumbnailName } from '$lib/server/thumbnails';
 
@@ -21,7 +21,8 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 		headers: {
 			'Content-Type': thumbnail?.type ?? 'image/svg+xml',
 			'Content-Length': String(fs.statSync(file).size),
-			'Cache-Control': artifactCacheControl(visibility)
+			'Cache-Control': artifactCacheControl(visibility),
+			...(thumbnail ? {} : { 'Content-Security-Policy': SVG_POLICY })
 		}
 	});
 };

@@ -24,8 +24,47 @@ services:
       # AGPL-3.0: the footer links users to the source of the running code.
       # Forks running modified code must point this at their own repository.
       PCBGIT_SOURCE_URL: ${PCBGIT_SOURCE_URL:-https://github.com/Reutertu3/pcbgit}
+      # Render tools run in the renderer service below, reached through this socket.
+      PCBGIT_RENDER_DIR: /work
+      PCBGIT_RENDER_SOCKET: /work/runner.sock
     volumes:
       - pcbgit-data:/data
+      - pcbgit-render:/work
+    depends_on:
+      - renderer
+
+  # kicad-cli, iBOM and the thumbnail rasterisers parse uploaded boards. They run
+  # here, with the current job's files as their only data: no database, no
+  # repositories, no network, and a read-only system.
+  renderer:
+    image: pcbgit:latest
+    # Built by the pcbgit service; never pulled.
+    pull_policy: never
+    command: ["node", "scripts/render-runner.ts"]
+    restart: unless-stopped
+    environment:
+      PCBGIT_RENDER_DIR: /work
+      PCBGIT_RENDER_SOCKET: /work/runner.sock
+    volumes:
+      - pcbgit-render:/work
+    network_mode: none
+    read_only: true
+    tmpfs:
+      - /tmp
+      # kicad-cli writes its config and caches to HOME.
+      - /home/pcbgit:uid=10001,gid=10001,mode=0700
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    # Big boards need memory for the 3D export; raise it if renders get killed.
+    mem_limit: 4g
+    cpus: 2
+    pids_limit: 512
+    # The image's check fetches the web app, which does not run here.
+    healthcheck:
+      test: ["CMD", "test", "-S", "/work/runner.sock"]
+      interval: 30s
+      timeout: 5s
 
 volumes:
   pcbgit-data:
+  pcbgit-render:

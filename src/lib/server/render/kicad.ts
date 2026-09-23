@@ -1,4 +1,5 @@
 import { execFile } from 'node:child_process';
+import net from 'node:net';
 import { promisify } from 'node:util';
 
 const exec = promisify(execFile);
@@ -48,11 +49,44 @@ export async function runIbom(pcbPath: string, outDir: string): Promise<RunResul
 	);
 }
 
-async function runTool(bin: string, args: string[], timeoutMs: number, env: Record<string, string> = {}): Promise<RunResult> {
+/** What crosses the socket to a sandboxed renderer: one JSON line each way. */
+export interface RunnerRequest {
+	bin: string;
+	args: string[];
+	timeoutMs: number;
+	/** Tool-specific variables only. The app's own environment holds secrets. */
+	env: Record<string, string>;
+}
+export interface RunnerResponse {
+	code: number;
+	stdout: string;
+	stderr: string;
+}
+
+/**
+ * Runs a render tool, locally or, with PCBGIT_RENDER_SOCKET set, in the renderer
+ * container that only sees RENDER_DIR. The parsers of untrusted boards (kicad-cli,
+ * iBOM) never run next to the database then.
+ */
+export async function runTool(bin: string, args: string[], timeoutMs: number, env: Record<string, string> = {}): Promise<RunResult> {
+	const socket = process.env.PCBGIT_RENDER_SOCKET;
+	if (socket) return runInRenderer(socket, { bin, args, timeoutMs, env });
+	return runLocalTool(bin, args, timeoutMs, env);
+}
+
+/** Runs a tool in this process's environment. Also what the renderer's runner uses. */
+export async function runLocalTool(
+	bin: string,
+	args: string[],
+	timeoutMs: number,
+	env: Record<string, string> = {},
+	cwd?: string
+): Promise<RunResult> {
 	const command = `${bin} ${args.join(' ')}`;
 	try {
 		const { stdout, stderr } = await exec(bin, args, {
 			env: { ...kicadEnv(), ...env },
+			cwd,
 			timeout: timeoutMs,
 			maxBuffer: 64 * 1024 * 1024
 		});
@@ -70,13 +104,51 @@ async function runTool(bin: string, args: string[], timeoutMs: number, env: Reco
 	}
 }
 
-let versionCache: string | null | undefined;
+function runInRenderer(socketPath: string, request: RunnerRequest): Promise<RunResult> {
+	const command = `${request.bin} ${request.args.join(' ')}`;
+	return new Promise((resolve) => {
+		let settled = false;
+		const finish = (response: RunnerResponse) => {
+			if (settled) return;
+			settled = true;
+			connection.destroy();
+			// Same rule as a local run: 5 is kicad-cli's "violations found".
+			resolve({ ok: response.code === 0 || response.code === 5, ...response, command });
+		};
+		const fail = (message: string) => finish({ code: -1, stdout: '', stderr: message });
 
-/** Returns the kicad-cli version string, or null when the binary is missing. */
+		let buffered = '';
+		const connection = net.createConnection(socketPath, () => connection.write(`${JSON.stringify(request)}\n`));
+		connection.setEncoding('utf8');
+		connection.on('data', (chunk: string) => {
+			buffered += chunk;
+			const end = buffered.indexOf('\n');
+			if (end === -1) return;
+			try {
+				finish(JSON.parse(buffered.slice(0, end)) as RunnerResponse);
+			} catch {
+				fail('renderer sent an unreadable response');
+			}
+		});
+		connection.on('error', (error) => fail(`renderer unavailable: ${error.message}`));
+		connection.on('close', () => fail('renderer closed the connection without a response'));
+		// The renderer enforces the timeout; this only covers a renderer that hangs itself.
+		connection.setTimeout(request.timeoutMs + 30_000, () => fail('renderer did not respond'));
+	});
+}
+
+let versionCache: string | undefined;
+
+/**
+ * Returns the kicad-cli version string, or null when it cannot be run. Only a
+ * success is cached: a renderer that starts after the app must not leave every
+ * later render metadata-only.
+ */
 export async function kicadVersion(): Promise<string | null> {
 	if (versionCache !== undefined) return versionCache;
 	const result = await runKicad(['--version'], 15_000);
-	versionCache = result.ok ? result.stdout.trim().split('\n')[0] : null;
+	if (!result.ok) return null;
+	versionCache = result.stdout.trim().split('\n')[0];
 	return versionCache;
 }
 

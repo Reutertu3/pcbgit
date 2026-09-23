@@ -27,6 +27,16 @@ one job at a time: `renderCommit()` → kicad-cli exports → `storeArtifact()` 
 each output to `DATA_DIR/artifacts/<commitId>/` and records a row in `artifacts`;
 parsed BOM/DRC/board stats go to SQLite in `persistResults()`.
 
+**Render isolation:** the job's checkout and output live in `RENDER_DIR` (`/work`
+in Docker, a volume shared with the `renderer` service). Every external tool
+(kicad-cli, iBOM, rsvg-convert, cwebp) goes through `runTool()` in
+`render/kicad.ts`: with `PCBGIT_RENDER_SOCKET` set it is sent to
+`scripts/render-runner.ts` in the renderer container (no `/data`, no network,
+read-only, limited), otherwise it runs locally (`npm run dev`). The runner only
+accepts those tools and paths inside `RENDER_DIR`. New tools must be added to
+its allowlist, and must only be given paths under `RENDER_DIR`: copy inputs in,
+copy results out (see `thumbnails.ts`).
+
 ## Conventions
 
 - **Translations:** every user-facing string goes in both `src/lib/i18n/en.json` and
@@ -64,6 +74,12 @@ parsed BOM/DRC/board stats go to SQLite in `persistResults()`.
 - **`syncCommits()`** only looks at the newest 200 commits of the branch.
 - Uploads replace the whole tree: files missing from a new ZIP are deleted in that
   version.
+- **`RENDER_DIR` holds the renderer's socket.** Anything that cleans it must only
+  remove job directories (`checkout-`, `out-`, `thumb-`).
+- **SVG artifacts** are served with a CSP that blocks script (`SVG_POLICY`), in
+  case a compromised renderer writes one.
+- `docker compose exec` reads stdin: in scripts, give it `</dev/null`, or it
+  swallows the rest of the script.
 - **Sign-in limits** (`loginguard.ts`) count failures per client address and per
   account, in memory. Behind a proxy the address comes from `ADDRESS_HEADER` /
   `XFF_DEPTH` (set in `deploy/docker-compose.prod.yml`); without them every visitor

@@ -51,7 +51,9 @@ COPY --from=build --chown=pcbgit /app/scripts ./scripts
 COPY --from=build --chown=pcbgit /app/tests/resolve-hook.mjs ./tests/resolve-hook.mjs
 COPY --from=build --chown=pcbgit /app/src/lib ./src/lib
 
-RUN mkdir -p /data && chown pcbgit /data
+# /work: the render directory shared with the renderer container. A new named
+# volume takes this ownership, so the non-root user can write to it.
+RUN mkdir -p /data /work && chown pcbgit /data /work
 
 # Declared this late so a new commit only rebuilds the last layers.
 ARG PCBGIT_VERSION=dev

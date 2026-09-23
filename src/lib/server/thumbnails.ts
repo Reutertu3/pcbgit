@@ -1,11 +1,8 @@
-import { execFile } from 'node:child_process';
 import fs from 'node:fs';
 import fsp from 'node:fs/promises';
 import path from 'node:path';
-import { promisify } from 'node:util';
-import { artifactDir } from './paths';
-
-const exec = promisify(execFile);
+import { RENDER_DIR, artifactDir } from './paths';
+import { runTool } from './render/kicad';
 
 /**
  * Raster thumbnails of rendered SVGs for the board cards. A real schematic SVG
@@ -47,21 +44,29 @@ async function generate(commitId: string, name: string): Promise<Thumbnail | nul
 	if (fs.existsSync(png)) return { file: png, type: 'image/png' };
 	if (!fs.existsSync(source)) return null;
 
+	// The rasterisers decode images embedded in schematics, so they run where the
+	// render tools do: on a copy in RENDER_DIR, never on the artifact directory.
 	await fsp.mkdir(thumbs, { recursive: true });
-	const temp = path.join(thumbs, `.${name}.${process.pid}.png`);
+	const work = await fsp.mkdtemp(path.join(RENDER_DIR, 'thumb-'));
 	try {
-		await exec('rsvg-convert', ['-w', String(WIDTH), '-f', 'png', '-o', temp, source], { timeout: 60_000 });
-	} catch {
-		await fsp.rm(temp, { force: true });
-		return null; // rsvg-convert missing or failed: callers fall back to the SVG
-	}
-	try {
-		await exec('cwebp', ['-quiet', '-q', '80', '-alpha_q', '90', temp, '-o', webp], { timeout: 60_000 });
-		await fsp.rm(temp, { force: true });
-		return { file: webp, type: 'image/webp' };
-	} catch {
+		const svg = path.join(work, 'source.svg');
+		const rendered = path.join(work, 'thumb.png');
+		const encoded = path.join(work, 'thumb.webp');
+		await fsp.copyFile(source, svg);
+
+		const raster = await runTool('rsvg-convert', ['-w', String(WIDTH), '-f', 'png', '-o', rendered, svg], 60_000);
+		// rsvg-convert missing or failed: callers fall back to the SVG.
+		if (!raster.ok || !fs.existsSync(rendered)) return null;
+
+		const webpResult = await runTool('cwebp', ['-quiet', '-q', '80', '-alpha_q', '90', rendered, '-o', encoded], 60_000);
+		if (webpResult.ok && fs.existsSync(encoded)) {
+			await fsp.copyFile(encoded, webp);
+			return { file: webp, type: 'image/webp' };
+		}
 		// No WebP encoder: a PNG is still far smaller than the SVG.
-		await fsp.rename(temp, png);
+		await fsp.copyFile(rendered, png);
 		return { file: png, type: 'image/png' };
+	} finally {
+		await fsp.rm(work, { recursive: true, force: true });
 	}
 }

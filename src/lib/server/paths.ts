@@ -6,11 +6,16 @@ export const DATA_DIR = path.resolve(process.env.PCBGIT_DATA_DIR ?? './data');
 export const REPO_DIR = path.join(DATA_DIR, 'repos');
 export const ARTIFACT_DIR = path.join(DATA_DIR, 'artifacts');
 export const TMP_DIR = path.join(DATA_DIR, 'tmp');
+/**
+ * The render job's checkout and output, and nothing else: this is all a sandboxed
+ * renderer gets to see, so uploads and snapshots keep using TMP_DIR.
+ */
+export const RENDER_DIR = path.resolve(process.env.PCBGIT_RENDER_DIR ?? path.join(DATA_DIR, 'render'));
 export const DB_PATH = path.join(DATA_DIR, 'pcbgit.db');
 export const BACKUP_DIR = path.join(DATA_DIR, 'backups');
 
 export function ensureDirs() {
-	for (const dir of [DATA_DIR, REPO_DIR, ARTIFACT_DIR, TMP_DIR, BACKUP_DIR]) {
+	for (const dir of [DATA_DIR, REPO_DIR, ARTIFACT_DIR, TMP_DIR, RENDER_DIR, BACKUP_DIR]) {
 		fs.mkdirSync(dir, { recursive: true });
 	}
 }

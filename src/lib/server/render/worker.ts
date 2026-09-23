@@ -5,7 +5,7 @@ import path from 'node:path';
 import { exportableLayers, layerIdFromFilename, layerStyle, previewLayers } from '$lib/layers';
 import { all, get, newId, now, run, tx } from '../db';
 import { exportTree } from '../git';
-import { DATA_DIR, TMP_DIR, repoPath } from '../paths';
+import { DATA_DIR, RENDER_DIR, repoPath } from '../paths';
 import { rerenderFlag } from '../restore';
 import { clearArtifacts, listArtifacts, storeArtifact, svgGeometry } from './artifacts';
 import { analyzeBoard, type BoardStats } from './board';
@@ -120,6 +120,10 @@ export function recoverStuckJobs() {
 		 WHERE render_status = 'running'`
 	);
 	if (stuck.changes) console.warn(`[render] reset ${stuck.changes} interrupted job(s)`);
+	// Checkouts left by those jobs. Only job directories: the renderer's socket lives here too.
+	for (const entry of fs.readdirSync(RENDER_DIR)) {
+		if (/^(checkout|out|thumb)-/.test(entry)) fs.rmSync(path.join(RENDER_DIR, entry), { recursive: true, force: true });
+	}
 	kick();
 }
 
@@ -178,8 +182,8 @@ async function renderCommit(job: JobRow, log: string[]) {
 	const version = await kicadVersion();
 	log.push(version ? `kicad-cli: ${version}` : 'kicad-cli: NOT FOUND — metadata-only render');
 
-	const checkout = await exportTree(repoPath(project.owner_username, project.slug), commit.sha, 'render');
-	const outDir = await fsp.mkdtemp(path.join(TMP_DIR, 'out-'));
+	const checkout = await exportTree(repoPath(project.owner_username, project.slug), commit.sha, RENDER_DIR, 'checkout');
+	const outDir = await fsp.mkdtemp(path.join(RENDER_DIR, 'out-'));
 
 	try {
 		const files = discoverKicadFiles(checkout);
