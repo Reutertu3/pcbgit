@@ -5,7 +5,7 @@
 <p align="center">
   <b>Self-hosted git hosting for KiCad projects.</b><br>
   Push a board and every commit is rendered: schematics, board layers, an assembled 3D
-  model, the BOM and DRC/ERC results — all viewable in the browser.
+  model, the BOM, DRC/ERC results and fabrication files — all in the browser.
 </p>
 
 <p align="center">
@@ -21,11 +21,13 @@
 </p>
 
 <p align="center">
-  <a href="https://pcbgit.com">Demo</a> ·
+  <a href="#features">Features</a> ·
   <a href="#quick-start">Quick start</a> ·
   <a href="#deploying-to-a-server">Deploy</a> ·
+  <a href="#updating">Updating</a> ·
   <a href="#using-pcbgit">Usage</a> ·
   <a href="#configuration">Configuration</a> ·
+  <a href="#troubleshooting">Troubleshooting</a> ·
   <a href="#development">Development</a>
 </p>
 
@@ -35,30 +37,18 @@
   <img src="docs/images/browse.webp" alt="The board list, with schematic and board thumbnails per board" width="900">
 </p>
 
-## Contents
-
-- [Features](#features)
-- [Screenshots](#screenshots)
-- [Quick start](#quick-start)
-- [Deploying to a server](#deploying-to-a-server)
-- [Updating](#updating)
-- [Using pcbgit](#using-pcbgit)
-- [Configuration](#configuration)
-- [Troubleshooting](#troubleshooting)
-- [Development](#development)
-- [License](#license)
-
 ## Features
 
 ### Viewers
 
 | | What you get |
 |---|---|
-| **Schematic** | Every sheet, pan and zoom, light or dark, export as PNG/JPEG up to 600 dpi |
+| **Schematic** | Every sheet, pan and zoom, light or dark, PNG/JPEG export up to 600 dpi, all sheets as one PDF |
 | **PCB 2D** | Stacked layers with per-layer toggles, front/back flip, DRC markers with zoom-to-error |
 | **PCB 3D** | Assembled board with components, view cube, soldermask/silkscreen colours, HASL/ENIG finish, SMD/THT toggles, ruler, scale objects, image export |
 | **BOM** | Interactive view with placement highlighting ([iBOM]), grouped line items, CSV export, diff between any two versions |
 | **Checks** | KiCad DRC and ERC, grouped by severity, linked to their spot on the board |
+| **Fabrication** *(experimental)* | Gerbers and drill files ready for a board house: **JLCPCB**, **AISLER** or generic KiCad names |
 | **History** | Renders and logs per commit, source ZIP downloads |
 
 ### Hosting
@@ -73,7 +63,8 @@
 ### Stack
 
 SvelteKit, SQLite (`node:sqlite`), bare git repositories on disk. Rendering uses
-`kicad-cli` from KiCad 10, which the Docker image includes. 3D models are joined
+`kicad-cli` from KiCad 10, which the Docker image includes, in a separate sandboxed
+container without access to the database or the network. 3D models are joined
 and compressed at render time, so a 29 MB KiCad export becomes a ~6 MB download.
 
 [iBOM]: https://github.com/openscopeproject/InteractiveHtmlBom
@@ -82,16 +73,16 @@ and compressed at render time, so a 29 MB KiCad export becomes a ~6 MB download.
 
 <table>
   <tr>
-    <td width="50%"><img src="docs/images/schematic.webp" alt="Schematic viewer"><br><b>Schematic</b> — every sheet, pan and zoom, light or dark.</td>
-    <td width="50%"><img src="docs/images/pcb.webp" alt="Layered board view with DRC markers"><br><b>PCB 2D</b> — layer stack, board flip, DRC markers.</td>
+    <td width="50%"><img src="docs/images/schematic.webp" alt="Schematic viewer"><br><b>Schematic</b></td>
+    <td width="50%"><img src="docs/images/pcb.webp" alt="Layered board view with DRC markers"><br><b>PCB 2D</b></td>
   </tr>
   <tr>
-    <td><img src="docs/images/3d.webp" alt="Assembled 3D model"><br><b>PCB 3D</b> — assembled board, mask and finish colours, ruler.</td>
-    <td><img src="docs/images/bom.webp" alt="Interactive bill of materials"><br><b>BOM</b> — interactive placement view, CSV export, version diff.</td>
+    <td><img src="docs/images/3d.webp" alt="Assembled 3D model"><br><b>PCB 3D</b></td>
+    <td><img src="docs/images/bom.webp" alt="Interactive bill of materials"><br><b>BOM</b></td>
   </tr>
   <tr>
-    <td><img src="docs/images/checks.webp" alt="DRC and ERC results"><br><b>Checks</b> — DRC and ERC by severity, with board coordinates.</td>
-    <td><img src="docs/images/overview.webp" alt="Board overview page"><br><b>Overview</b> — preview, stats, README, discussion.</td>
+    <td><img src="docs/images/checks.webp" alt="DRC and ERC results"><br><b>Checks</b></td>
+    <td><img src="docs/images/overview.webp" alt="Board overview page"><br><b>Overview</b> — preview, stats, README, downloads, discussion</td>
   </tr>
 </table>
 
@@ -99,8 +90,6 @@ and compressed at render time, so a 29 MB KiCad export becomes a ~6 MB download.
 <summary><b>Admin panel</b></summary>
 
 <img src="docs/images/admin.webp" alt="Admin overview with instance statistics">
-
-Users, boards, tags, the render queue, snapshots and in-app updates.
 
 </details>
 
@@ -133,13 +122,8 @@ pcbgit needs no domain, no HTTPS and no extra configuration for this: it answers
 on every address it is reached at. Start it as above and share the machine's
 address, for example `http://192.168.1.50:3000` or `http://pcbgit.lan:3000`.
 Colleagues sign in, push and clone from phones and laptops; the clone box always
-shows the address that visitor is using.
-
-> [!NOTE]
-> A form post must come from the address it was loaded from, which is what stops
-> other sites posting here. Put pcbgit behind a reverse proxy only if it passes
-> the client's `Host` header through — Caddy's `reverse_proxy` does, and the
-> provided production setup sets `PCBGIT_DOMAIN` anyway.
+shows the address that visitor is using. A reverse proxy in front must pass the
+client's `Host` header through (Caddy's `reverse_proxy` does).
 
 ## Deploying to a server
 
@@ -238,14 +222,14 @@ Both pull from GitHub, rebuild and restart. The site is down for a few seconds.
 <details>
 <summary>How updating works, and what can go wrong</summary>
 
-
 - Only fast-forward pulls are done. If the server copy has its own commits, the
   update stops and the panel says so.
 - The container cannot run commands on the host. The button writes a request file
   to `/var/lib/pcbgit-control`; a systemd unit on the host picks it up.
-- Each update re-syncs the systemd units. After updating an existing server to this
-  version for the first time, run `deploy/install.sh --units-only` once.
+- Each update re-syncs the systemd units and restarts Caddy when its config changed.
 - `systemctl status pcbgit-update.service` shows the last run on the server.
+- After an update that changes rendering, **Admin → Boards → Re-render all**
+  brings existing versions up to date.
 
 </details>
 
@@ -266,26 +250,29 @@ Both pull from GitHub, rebuild and restart. The site is down for a few seconds.
 
 pcbgit renders the shallowest `.kicad_pro` in the repository together with its
 `.kicad_sch` and `.kicad_pcb`. Public boards can be cloned without a token.
+Every push renders in the background; **History** keeps the log of each version,
+and **Admin → Render queue** shows what is running.
 
-> [!NOTE]
-> Every push renders in the background. Watch it under **History**, which keeps
-> the log of each version, or in **Admin → Render queue**.
+### Downloads
+
+A board's overview offers the BOM (CSV), the schematic as one PDF, the 3D model
+(GLB), the source as ZIP and, under **Production Gerbers**, a fabrication ZIP for
+the board house picked in the dropdown. Each follows that fab's conventions (file
+names, drill units) and holds only the manufacturing layers, with zones refilled
+before export. The Gerber export is experimental: check the fab's preview before
+ordering.
 
 ### Backups
 
 Under **Admin → Backups** you can create, download, upload and restore snapshots.
 A snapshot is one `.tar.gz` with the database, all repositories and, optionally,
-the rendered output.
-
-- **Restore** moves the current data to `backups/pre-restore-<time>/` instead of
-  deleting it, then restarts pcbgit.
-- **Large snapshots** that exceed the upload limit can be copied in directly:
-  `docker compose cp snapshot.tar.gz pcbgit:/data/backups/`
+the rendered output. Snapshots too large to upload can be copied in directly:
+`docker compose cp snapshot.tar.gz pcbgit:/data/backups/`
 
 > [!WARNING]
-> A restore replaces users, boards, repositories and settings with the snapshot's.
-> The previous data is moved to `backups/pre-restore-<time>/` rather than deleted,
-> so it can be recovered by hand.
+> A restore replaces users, boards, repositories and settings with the snapshot's,
+> then restarts pcbgit. The previous data is moved to `backups/pre-restore-<time>/`
+> rather than deleted, so it can be recovered by hand.
 
 ## Configuration
 
@@ -313,6 +300,9 @@ Set these in `.env`:
 | `PCBGIT_IBOM` | set in the image | iBOM's `generate_interactive_bom.py`. Unset skips the interactive BOM. |
 | `BODY_SIZE_LIMIT` | `210M` | Maximum upload and push size |
 | `PCBGIT_RESTART_ON_RESTORE` | `true` | Restart after staging a restore |
+| `PCBGIT_RENDER_DIR` | `/work` | Render checkouts and output, shared with the `renderer` container |
+| `PCBGIT_RENDER_SOCKET` | `/work/runner.sock` | Where the app reaches the renderer. Unset runs the render tools in the app itself. |
+| `ADDRESS_HEADER`, `XFF_DEPTH` | set in production | Client address behind the proxy, for the sign-in rate limit. Required behind any reverse proxy. |
 
 </details>
 
@@ -324,6 +314,7 @@ Set these in `.env`:
 | 502 from Caddy | pcbgit is starting or has stopped. Check `docker compose logs pcbgit`. |
 | No certificate / HTTPS fails | DNS does not point at the server yet, or ports 80/443 are blocked. Check `docker compose logs caddy`. |
 | A version shows "Render failed" | Open the board's **History** tab and view the render log. |
+| Render log says "renderer unavailable" | The `renderer` container is not running. Check `docker compose ps` and `docker compose logs renderer`. |
 | Update fails | The log is shown under **Admin → Instance**. A diverged server copy is the usual cause: `git reset --hard origin/<branch>` in `/opt/pcbgit`. |
 
 ## Development
@@ -369,19 +360,22 @@ src/lib/server/
   backups.ts       snapshots
   restore.ts       snapshot validation and restore
   updater.ts       update requests and status
+src/lib/fab.ts     board-house profiles for the fabrication ZIPs
 src/lib/i18n/      translations (en.json, de.json) and lookup
 src/routes/
   [owner]/[project]/   board pages: overview, schematic, pcb, 3d, bom, drc, files, history
   git/                 git endpoint
   admin/               admin panel
+scripts/render-runner.ts   the renderer container's entry point
 deploy/
   docker-compose.prod.yml, Caddyfile   production setup
   install.sh, update.sh                server setup and updates
 ```
 
-The render worker runs inside the app and processes one job at a time. Jobs
-interrupted by a restart are marked failed at boot and can be retried from
-**Admin → Render queue**.
+The render queue runs in the app, one job at a time. The tools it calls (kicad-cli,
+iBOM, the thumbnail rasterisers) run in the `renderer` container, reached through
+a socket on the shared render volume. Jobs interrupted by a restart are marked
+failed at boot and can be retried from **Admin → Render queue**.
 
 </details>
 
