@@ -157,6 +157,7 @@
 	"viewer3d.idle": "Ruhe",
 	"viewer3d.downloadGlb": "Stattdessen GLB herunterladen",
 	"viewer3d.loading": "3D-Modell wird geladen… {progress} %",
+	"viewer3d.loadingUnknown": "3D-Modell wird geladen…",
 	"tabs.overview": "Übersicht",
 	"tabs.schematic": "Schaltplan",
 	"tabs.pcb": "Platine",

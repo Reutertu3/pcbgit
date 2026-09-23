@@ -157,6 +157,7 @@
 	"viewer3d.idle": "idle",
 	"viewer3d.downloadGlb": "Download the GLB instead",
 	"viewer3d.loading": "Loading 3D model… {progress}%",
+	"viewer3d.loadingUnknown": "Loading 3D model…",
 	"tabs.overview": "Overview",
 	"tabs.schematic": "Schematic",
 	"tabs.pcb": "PCB",

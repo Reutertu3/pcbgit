@@ -50,7 +50,8 @@
 
 	let host = $state<HTMLDivElement | null>(null);
 	let cube = $state<HTMLDivElement | null>(null);
-	let progress = $state(0);
+	/** Download progress in percent; null while the size is unknown (a compressed response). */
+	let progress = $state<number | null>(null);
 	let error = $state<string | null>(null);
 	let loaded = $state(false);
 	let backend = $state('');
@@ -332,14 +333,25 @@
 		let disposed = false;
 		let cleanup: (() => void) | undefined;
 
+		const download = new AbortController();
+
 		(async () => {
-			// three.js is heavy and only this tab needs it, so it is imported lazily.
-			const THREE = await import('three/webgpu');
-			const { OrbitControls } = await import('three/addons/controls/OrbitControls.js');
-			const { GLTFLoader } = await import('three/addons/loaders/GLTFLoader.js');
-			const { MeshoptDecoder } = await import('three/addons/libs/meshopt_decoder.module.js');
-			const { RoomEnvironment } = await import('three/addons/environments/RoomEnvironment.js');
-			const { mergeGeometries } = await import('three/addons/utils/BufferGeometryUtils.js');
+			// The model downloads while three.js loads and the renderer starts, not after.
+			const modelData = downloadModel(url, download.signal);
+			// Leaving the page before it is awaited must not report an unhandled rejection.
+			modelData.catch(() => {});
+
+			// three.js is heavy and only this tab needs it, so it is imported lazily; all
+			// at once, since one after another costs a round trip per chunk.
+			const [THREE, { OrbitControls }, { GLTFLoader }, { MeshoptDecoder }, { RoomEnvironment }, { mergeGeometries }] =
+				await Promise.all([
+					import('three/webgpu'),
+					import('three/addons/controls/OrbitControls.js'),
+					import('three/addons/loaders/GLTFLoader.js'),
+					import('three/addons/libs/meshopt_decoder.module.js'),
+					import('three/addons/environments/RoomEnvironment.js'),
+					import('three/addons/utils/BufferGeometryUtils.js')
+				]);
 			if (disposed || !host) return;
 
 			// WebGPU where the browser has it, WebGL 2 otherwise; same code either way.
@@ -1210,8 +1222,8 @@
 			}
 
 			// Renders since the GLB optimisation are meshopt-compressed (see render/glb.ts).
-			new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).load(
-				url,
+			const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
+			modelData.then((data) => loader.parseAsync(data, '')).then(
 				async (gltf) => {
 					if (disposed) return;
 					// KiCad names the board's own meshes "<board>_PCB", "<board>_soldermask",
@@ -1282,9 +1294,6 @@
 					snapTo(new THREE.Vector3(...HOME));
 					loaded = true;
 				},
-				(event) => {
-					if (event.total) progress = Math.round((event.loaded / event.total) * 100);
-				},
 				() => {
 					if (!disposed) error = t('viewer3d.loadFailed');
 				}
@@ -1323,9 +1332,39 @@
 
 		return () => {
 			disposed = true;
+			download.abort();
 			cleanup?.();
 		};
 	});
+
+	/**
+	 * Fetches the GLB. Progress needs the size, which a compressed response does not
+	 * give (its Content-Length counts compressed bytes), so it stays unknown then.
+	 */
+	async function downloadModel(source: string, signal: AbortSignal) {
+		const response = await fetch(source, { signal });
+		if (!response.ok || !response.body) throw new Error(`HTTP ${response.status}`);
+		const total = response.headers.get('content-encoding') ? 0 : Number(response.headers.get('content-length')) || 0;
+		if (total) progress = 0;
+
+		const reader = response.body.getReader();
+		const chunks: Uint8Array[] = [];
+		let received = 0;
+		for (;;) {
+			const { done, value } = await reader.read();
+			if (done) break;
+			chunks.push(value);
+			received += value.length;
+			if (total) progress = Math.min(100, Math.round((received / total) * 100));
+		}
+		const data = new Uint8Array(received);
+		let offset = 0;
+		for (const chunk of chunks) {
+			data.set(chunk, offset);
+			offset += chunk.length;
+		}
+		return data.buffer;
+	}
 </script>
 
 <div
@@ -1577,10 +1616,14 @@
 	{:else if !loaded}
 		<div class="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-3">
 			<Icon name="cube" size={28} class="animate-pulse text-[var(--text-muted)]" />
-			<div class="h-1 w-40 overflow-hidden rounded-full bg-[var(--surface-3)]">
-				<div class="h-full rounded-full bg-[var(--accent)] transition-all duration-200" style:width="{progress}%"></div>
-			</div>
-			<p class="text-xs text-[var(--text-muted)]">{t('viewer3d.loading', { progress })}</p>
+			{#if progress === null}
+				<p class="text-xs text-[var(--text-muted)]">{t('viewer3d.loadingUnknown')}</p>
+			{:else}
+				<div class="h-1 w-40 overflow-hidden rounded-full bg-[var(--surface-3)]">
+					<div class="h-full rounded-full bg-[var(--accent)] transition-all duration-200" style:width="{progress}%"></div>
+				</div>
+				<p class="text-xs text-[var(--text-muted)]">{t('viewer3d.loading', { progress })}</p>
+			{/if}
 		</div>
 	{/if}
 </div>
