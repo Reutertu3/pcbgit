@@ -104,7 +104,8 @@ cp .env.example .env      # set PCBGIT_ADMIN_PASSWORD
 docker compose up -d --build
 ```
 
-Open <http://localhost:3000> and sign in as `admin`.
+Open <http://localhost:3000> and sign in as `admin`. Another port: set
+`PCBGIT_PORT` in `.env`.
 
 > [!TIP]
 > The first build takes a few minutes: it downloads KiCad and its 3D model
@@ -281,7 +282,8 @@ Set these in `.env`:
 | Variable | Default | Purpose |
 |---|---|---|
 | `PCBGIT_DOMAIN` | — | Public domain (production). Used by Caddy and to set `ORIGIN`. |
-| `PCBGIT_ORIGIN` | `http://localhost:3000` | Public URL, used for links in server-rendered pages and for the cookie's scheme. Optional on a LAN: any address works. |
+| `PCBGIT_PORT` | `3000` | Port pcbgit is published on (local and LAN; production uses 80/443) |
+| `PCBGIT_ORIGIN` | `http://localhost:<PCBGIT_PORT>` | Public URL, used for links in server-rendered pages and for the cookie's scheme. Optional on a LAN: any address works. |
 | `PCBGIT_ADMIN_USER` | `admin` | Admin account created when no active admin exists |
 | `PCBGIT_ADMIN_PASSWORD` | — | Password for that account. Required. |
 | `PCBGIT_ADMIN_EMAIL` | `admin@localhost` | Email for that account |
