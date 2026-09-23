@@ -218,7 +218,6 @@
 	"overview.upstream": "Upstream repository",
 	"overview.recent": "Recent versions",
 	"schematic.tooLarge": "This browser cannot create an image that large.",
-	"schematic.noDarkExport": "This browser cannot export the dark look; choose Light.",
 	"schematic.emptyTitle": "No schematic in this version",
 	"schematic.emptyMessage": "Schematics are rendered from the .kicad_sch file at the root of the project.",
 	"schematic.sheets": "Sheets",
@@ -600,6 +599,12 @@
 	"users.noMatch": "No users match that search.",
 	"adminBoards.retryFailedTitle": "Queue a re-render for every failed version",
 	"adminBoards.retryFailed": "Retry failed",
+	"adminBoards.rerenderAll": "Re-render all",
+	"adminBoards.rerenderAllTitle": "Queue a re-render of the current version of every board",
+	"adminBoards.rerenderAllConfirm": {
+		"one": "Re-render the current version of {count} board? Its viewers stay empty until the render finishes.",
+		"other": "Re-render the current version of all {count} boards? Each board's viewers stay empty until its render finishes."
+	},
 	"adminBoards.board": "Board",
 	"adminBoards.stars": "Stars",
 	"adminBoards.updated": "Updated",
@@ -802,6 +807,10 @@
 	"adminBoards.queuedFailed": {
 		"one": "Queued {count} failed render.",
 		"other": "Queued {count} failed renders."
+	},
+	"adminBoards.queuedAll": {
+		"one": "Queued {count} board for re-rendering.",
+		"other": "Queued {count} boards for re-rendering."
 	},
 	"adminBoards.deleted": "Deleted {name}.",
 	"instance.saved": "Instance settings saved.",

@@ -43,6 +43,7 @@ export const load: PageServerLoad = async ({ url }) => {
 			term,
 			term
 		),
+		renderableCount: get<{ n: number }>('SELECT COUNT(*) AS n FROM projects WHERE head_commit_id IS NOT NULL')?.n ?? 0,
 		search
 	};
 };
@@ -88,6 +89,15 @@ export const actions: Actions = {
 		for (const commit of failed) enqueueRender(commit.project_id, commit.id);
 		audit(locals.user!.id, 'admin.rerender_failed', String(failed.length));
 		return { success: true, message: translate(locals.locale, 'adminBoards.queuedFailed', { count: failed.length }) };
+	},
+
+	rerenderAll: async ({ locals }) => {
+		const heads = all<{ id: string; head_commit_id: string }>(
+			'SELECT id, head_commit_id FROM projects WHERE head_commit_id IS NOT NULL ORDER BY updated_at DESC'
+		);
+		for (const project of heads) enqueueRender(project.id, project.head_commit_id);
+		audit(locals.user!.id, 'admin.rerender_all', String(heads.length));
+		return { success: true, message: translate(locals.locale, 'adminBoards.queuedAll', { count: heads.length }) };
 	},
 
 	delete: async ({ request, locals }) => {

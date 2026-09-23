@@ -10,6 +10,7 @@
 
 	let confirmDelete = $state<string | null>(null);
 	let confirmText = $state('');
+	let confirmRerenderAll = $state(false);
 </script>
 
 <svelte:head><title>{t('admin.nav.boards')} · {t('admin.title')} · {data.site.name}</title></svelte:head>
@@ -25,8 +26,33 @@
 				<Icon name="refresh" size={13} /> {t('adminBoards.retryFailed')}
 			</button>
 		</form>
+		<button
+			class="btn btn-sm"
+			type="button"
+			title={t('adminBoards.rerenderAllTitle')}
+			disabled={!data.renderableCount}
+			onclick={() => (confirmRerenderAll = !confirmRerenderAll)}
+		>
+			<Icon name="refresh" size={13} /> {t('adminBoards.rerenderAll')}
+		</button>
 	</div>
 </div>
+
+{#if confirmRerenderAll}
+	<form
+		method="POST"
+		action="?/rerenderAll"
+		use:enhance={() => async ({ update }) => {
+			await update();
+			confirmRerenderAll = false;
+		}}
+		class="surface mb-4 flex flex-wrap items-center gap-2 px-3 py-2.5"
+	>
+		<span class="text-xs">{t('adminBoards.rerenderAllConfirm', { count: data.renderableCount })}</span>
+		<button class="btn btn-primary btn-sm" type="submit">{t('adminBoards.rerenderAll')}</button>
+		<button class="btn btn-ghost btn-sm" type="button" onclick={() => (confirmRerenderAll = false)}>{t('common.cancel')}</button>
+	</form>
+{/if}
 
 {#if form?.message}<FormError message={form.message} kind="success" />{/if}
 {#if form?.error}<FormError message={form.error} />{/if}

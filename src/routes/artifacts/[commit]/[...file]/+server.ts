@@ -5,6 +5,7 @@ import type { RequestHandler } from './$types';
 import { artifactAccess, artifactCacheControl } from '$lib/server/artifactaccess';
 import { ARTIFACT_DIR } from '$lib/server/paths';
 import { ibomThemeCss } from '$lib/ibomtheme';
+import { darkSchematicSvg, isSchematicSheet } from '$lib/server/render/schematictheme';
 
 const TYPES: Record<string, string> = {
 	'.svg': 'image/svg+xml',
@@ -68,6 +69,11 @@ export const GET: RequestHandler = async ({ params, locals, setHeaders, url }) =
 		const css = ibomThemeCss(url.searchParams.get('c'), dark);
 		if (css) html = html.replace('</head>', `<style>${css}</style></head>`);
 		return new Response(html);
+	}
+
+	// Schematic sheets: ?dark swaps KiCad's default colours for the dark look.
+	if (url.searchParams.has('dark') && isSchematicSheet(relative)) {
+		return new Response(darkSchematicSvg(fs.readFileSync(target, 'utf8')));
 	}
 
 	setHeaders({ 'Content-Length': String(stat.size) });

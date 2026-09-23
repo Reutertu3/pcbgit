@@ -218,7 +218,6 @@
 	"overview.upstream": "Upstream-Repository",
 	"overview.recent": "Letzte Versionen",
 	"schematic.tooLarge": "Dieser Browser kann kein so großes Bild erzeugen.",
-	"schematic.noDarkExport": "Dieser Browser kann die dunkle Darstellung nicht exportieren; wähle Hell.",
 	"schematic.emptyTitle": "Kein Schaltplan in dieser Version",
 	"schematic.emptyMessage": "Schaltpläne werden aus der .kicad_sch-Datei im Projektstamm gerendert.",
 	"schematic.sheets": "Blätter",
@@ -600,6 +599,12 @@
 	"users.noMatch": "Keine Benutzer passen zu dieser Suche.",
 	"adminBoards.retryFailedTitle": "Alle fehlgeschlagenen Versionen erneut einreihen",
 	"adminBoards.retryFailed": "Fehlgeschlagene wiederholen",
+	"adminBoards.rerenderAll": "Alle neu rendern",
+	"adminBoards.rerenderAllTitle": "Die aktuelle Version jedes Boards zum Neu-Rendern einreihen",
+	"adminBoards.rerenderAllConfirm": {
+		"one": "Die aktuelle Version von {count} Board neu rendern? Seine Ansichten bleiben leer, bis das Rendering fertig ist.",
+		"other": "Die aktuelle Version aller {count} Boards neu rendern? Die Ansichten jedes Boards bleiben leer, bis sein Rendering fertig ist."
+	},
 	"adminBoards.board": "Board",
 	"adminBoards.stars": "Sterne",
 	"adminBoards.updated": "Aktualisiert",
@@ -802,6 +807,10 @@
 	"adminBoards.queuedFailed": {
 		"one": "{count} fehlgeschlagenes Rendering eingereiht.",
 		"other": "{count} fehlgeschlagene Renderings eingereiht."
+	},
+	"adminBoards.queuedAll": {
+		"one": "{count} Board zum Neu-Rendern eingereiht.",
+		"other": "{count} Boards zum Neu-Rendern eingereiht."
 	},
 	"adminBoards.deleted": "{name} gelöscht.",
 	"instance.saved": "Instanzeinstellungen gespeichert.",

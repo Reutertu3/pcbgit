@@ -13,6 +13,7 @@ import { bomToCsv, groupBom, parseBomCsv, type BomLine } from './bom';
 import {
 	IBOM_SCRIPT,
 	kicadVersion,
+	orderSchematicSheets,
 	pcbCompositeSvgArgs,
 	pcbDrcArgs,
 	pcbDrillArgs,
@@ -275,7 +276,7 @@ async function renderSchematic(
 	log.push(`schematic svg: ${svg.ok ? 'ok' : `failed (${svg.code}) ${svg.stderr.trim()}`}`);
 
 	if (svg.ok) {
-		const sheets = (await fsp.readdir(svgDir)).filter((f) => f.endsWith('.svg')).sort();
+		const sheets = orderSchematicSheets(await fsp.readdir(svgDir), schPath);
 		for (const [index, file] of sheets.entries()) {
 			const source = path.join(svgDir, file);
 			await storeArtifact({

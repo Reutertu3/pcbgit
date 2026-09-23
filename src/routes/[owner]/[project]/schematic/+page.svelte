@@ -11,11 +11,16 @@
 	let index = $state(0);
 	let inverted = $state(false);
 
+	/** KiCad's default sheet colour, and Gruvbox Dark's background for the dark look. */
+	const SHEET_LIGHT = '#f5f4ef';
+	const SHEET_DARK = '#282828';
+
 	const sheet = $derived(data.sheets[index]);
 	const box = $derived(parseViewBox(sheet?.viewBox));
+	/** The server recolours sheets for the dark look (?dark). */
+	const sheetUrl = (dark: boolean) => (dark ? `${sheet.url}?dark` : sheet.url);
 
 	/* ---- export the current sheet as a raster image ---- */
-	const DARK_FILTER = 'invert(1) hue-rotate(180deg) saturate(0.85) brightness(1.15)';
 	/** Canvas limits: 16k px per side everywhere; keep area sane for Safari too. */
 	const MAX_EDGE = 16384;
 	const MAX_PIXELS = 100_000_000;
@@ -42,8 +47,9 @@
 		exporting = true;
 		exportError = null;
 		try {
+			const dark = look === 'dark' || (look === 'shown' && !inverted);
 			const image = new Image();
-			image.src = sheet.url;
+			image.src = sheetUrl(dark);
 			await image.decode();
 
 			const { width, height } = size;
@@ -53,15 +59,9 @@
 			const ctx = canvas.getContext('2d');
 			if (!ctx) throw new Error(t('schematic.tooLarge'));
 
-			const dark = look === 'dark' || (look === 'shown' && !inverted);
 			// Paint the paper first, in case the SVG has no background of its own.
-			ctx.fillStyle = '#ffffff';
+			ctx.fillStyle = dark ? SHEET_DARK : SHEET_LIGHT;
 			ctx.fillRect(0, 0, width, height);
-			if (dark) {
-				ctx.filter = DARK_FILTER;
-				// Browsers without canvas filters (Safari) leave this at "none".
-				if (ctx.filter === 'none') throw new Error(t('schematic.noDarkExport'));
-			}
 			// Drawing the SVG at the target size rasterises the vectors at full resolution.
 			ctx.drawImage(image, 0, 0, width, height);
 
@@ -118,7 +118,7 @@
 				contentWidth={box.width}
 				contentHeight={box.height}
 				class="h-[calc(100vh-15rem)] min-h-[32rem]"
-				background={inverted ? '#ffffff' : 'var(--viewer-bg)'}
+				background={inverted ? SHEET_LIGHT : SHEET_DARK}
 			>
 				{#snippet toolbar()}
 					<div class="flex overflow-hidden rounded-md border bg-[var(--surface-1)]/92 backdrop-blur">
@@ -147,10 +147,9 @@
 				{/snippet}
 
 				<img
-					src={sheet.url}
+					src={sheetUrl(!inverted)}
 					alt={t('schematic.sheetAlt', { name: sheet.name })}
 					class="block h-full w-full"
-					style:filter={inverted ? 'none' : 'invert(1) hue-rotate(180deg) saturate(0.85) brightness(1.15)'}
 					draggable="false"
 				/>
 			</PanZoom>

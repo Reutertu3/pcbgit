@@ -9,6 +9,8 @@ import { analyzeBoardText } from '../src/lib/server/render/board.ts';
 import { renderPcb } from '../scripts/fixtures/kicad.ts';
 import { parseViewBox, unionViewBox } from '../src/lib/viewbox.ts';
 import { exportableLayers, layerIdFromFilename, layerStyle } from '../src/lib/layers.ts';
+import { orderSchematicSheets } from '../src/lib/server/render/kicad.ts';
+import { darkSchematicSvg, isSchematicSheet } from '../src/lib/server/render/schematictheme.ts';
 
 test('s-expression parser handles nesting, quotes and escapes', () => {
 	const tree = parseSexpr('(kicad_pcb (version 20241229) (title_block (title "Sensor \\"Hub\\"")) (net 1 "GND"))');
@@ -207,6 +209,31 @@ test('KiCad plot filenames use user-facing names; they map back to canonical ids
 	assert.equal(layerIdFromFilename('board-User_Comments.svg', names), 'Cmts.User');
 	assert.equal(layerStyle('Cmts.User').label, 'Comments');
 	assert.ok(exportableLayers(names).includes('Cmts.User'));
+});
+
+test('schematic sheets put the root first, even though sub-sheet names sort before it', () => {
+	// Filenames as kicad-cli 10 writes them for a root with two sub-sheets.
+	const produced = ['Touch-Matrix_Lipo-Tastatur.svg', 'Touch-Matrix_Lipo.svg', 'Touch-Matrix_Lipo-DF-Player.svg', 'notes.txt'];
+	assert.deepEqual(orderSchematicSheets(produced, '/tmp/render/Touch-Matrix_Lipo.kicad_sch'), [
+		'Touch-Matrix_Lipo.svg',
+		'Touch-Matrix_Lipo-DF-Player.svg',
+		'Touch-Matrix_Lipo-Tastatur.svg'
+	]);
+	assert.deepEqual(orderSchematicSheets(['board.svg'], 'board.kicad_sch'), ['board.svg']);
+	assert.deepEqual(orderSchematicSheets(['b.svg', 'a.svg'], 'missing.kicad_sch'), ['a.svg', 'b.svg']);
+});
+
+test('the dark schematic look swaps KiCad default colours for Gruvbox Dark', () => {
+	// As kicad-cli writes them: upper-case background, lower-case strokes.
+	const svg = '<g style="fill:#F5F4EF; stroke:#F5F4EF"/><path style="stroke:#009600"/><path style="stroke:#840000;fill:#FFFFC2"/><path style="stroke:#123456"/>';
+	assert.equal(
+		darkSchematicSvg(svg),
+		'<g style="fill:#282828; stroke:#282828"/><path style="stroke:#b8bb26"/><path style="stroke:#fb4934;fill:#3c3836"/><path style="stroke:#123456"/>'
+	);
+	assert.ok(isSchematicSheet('sheet-0.svg'));
+	assert.ok(isSchematicSheet('sub/sheet-12.svg'));
+	assert.ok(!isSchematicSheet('layer-F_Cu.svg'));
+	assert.ok(!isSchematicSheet('preview-front.svg'));
 });
 
 test('footprints are classified as SMD or through-hole by reference', () => {

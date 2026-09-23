@@ -90,6 +90,17 @@ export function schSvgArgs(schPath: string, outDir: string) {
 	return ['sch', 'export', 'svg', '--output', outDir, schPath];
 }
 
+/**
+ * Orders the SVGs from schSvgArgs root sheet first. kicad-cli names sub-sheets
+ * `<root>-<sheet>.svg`, and '-' sorts before '.', so a plain sort puts them
+ * ahead of `<root>.svg` and sheet-0 would be a sub-sheet.
+ */
+export function orderSchematicSheets(files: string[], schPath: string) {
+	const root = `${schPath.split(/[\\/]/).pop()!.replace(/\.kicad_sch$/, '')}.svg`;
+	const sheets = files.filter((f) => f.endsWith('.svg')).sort();
+	return sheets.includes(root) ? [root, ...sheets.filter((f) => f !== root)] : sheets;
+}
+
 export function schBomArgs(schPath: string, outFile: string) {
 	return [
 		'sch', 'export', 'bom',
