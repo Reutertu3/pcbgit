@@ -52,6 +52,23 @@ copy results out (see `thumbnails.ts`).
 - **Schema changes:** a new column on an existing table also needs an entry in
   `ADDED_COLUMNS` (db/index.ts), or existing instances never get it.
 - **Admin actions** that change data call `audit(...)`.
+- **Forms that edit existing values** use `use:enhance={keepValues}` ($lib/forms):
+  SvelteKit resets a form after success, and with Svelte 5 that empties every field
+  filled via `value={…}`. Forms that should clear (passwords, "create …") keep plain
+  enhance. Their save actions return `saved: true`, and the page shows the message
+  next to the button with `SavedNote`; errors stay at the top (`FormError`).
+- **Form state that follows page data** is an overridable `$derived(data.x)`, not
+  `$state(data.x)`: pages are reused between boards, and `$state` keeps the first.
+- **Board houses** are entries in `FAB_PROFILES` ($lib/fab.ts) plus a `fab.<id>`
+  translation; every render makes one fabrication ZIP per profile. **Licenses** are
+  one table in $lib/licenses.ts (stored id, name, link, commercial, sharing). Boards
+  keep ids no longer offered, and the settings form keeps them selectable.
+- **`render/kicad.ts` has no `$lib` imports:** the renderer runs it with plain Node,
+  outside Vite. Pass options in instead.
+- **Styling:** colours come from the theme tokens (`--accent`, `--on-accent`,
+  `--surface-*`, `--border-*`), mixed with `color-mix`. Rules in `@layer components`
+  lose to Tailwind utilities (a later layer) whatever their specificity, so a
+  property a component rule changes on hover must not also be set by a utility.
 - Comments explain *why*, briefly, matching the existing style. No dead code.
 
 ## Things that bite
@@ -84,6 +101,16 @@ copy results out (see `thumbnails.ts`).
   account, in memory. Behind a proxy the address comes from `ADDRESS_HEADER` /
   `XFF_DEPTH` (set in `deploy/docker-compose.prod.yml`); without them every visitor
   looks like the proxy and one attacker locks everyone out.
+- **Push checks** (`PUSH_CHECKS`, `receive.fsckObjects` via `GIT_CONFIG_*`) only
+  apply over HTTP: git strips those variables for local pushes, so test them
+  through `runGitBackend()` (see `tests/git-checks.test.ts`).
+- **Testing a form action with curl:** send `Accept: text/html`, or SvelteKit
+  answers with the JSON meant for enhanced forms instead of the rendered page.
+- **Cookies:** `pcbgit_session` (login), `pcbgit-lang` (language), `pcbgit_sort`
+  (front-page sort, set only when the visitor picks one). Theme, 3D colours and the
+  chosen board house are `localStorage`.
+- **Ports:** the app listens on 3000 in the container; `PCBGIT_PORT` in `.env`
+  sets the published port, and `ORIGIN` defaults to follow it.
 
 ## Verifying render changes
 
@@ -101,8 +128,10 @@ copy results out (see `thumbnails.ts`).
 
 `graphify-out/` (gitignored) holds a graphify graph of the repo. Refresh it with
 `/graphify --update` after code changes (code-only updates cost no LLM tokens).
-It does not see calls made inside SvelteKit `actions = { … }` objects or Svelte
-template markup, so route handlers look disconnected; confirm in the code.
+It is good for "what calls what" in TypeScript. It does not see calls made inside
+SvelteKit `actions = { … }` objects, Svelte template markup, or code that loops
+over a table or constant (`FAB_PROFILES`), so route handlers and table-driven
+code look disconnected; confirm in the code.
 
 ## Known open issues
 
