@@ -22,18 +22,29 @@
 	);
 </script>
 
+<!--
+	The whole card opens the board: the title link stretches over it (after:inset-0).
+	Links that go somewhere else sit above that overlay (z-10): the two previews open
+	their own tab, the owner and tags their own pages.
+-->
 <article
-	class="surface group flex flex-col overflow-hidden transition-colors hover:border-[var(--border-strong)]"
+	class="surface board-card group relative flex flex-col overflow-hidden"
 >
-	<a {href} class="relative block" aria-label={project.name}>
+	<div class="relative">
 		<div class="grid h-40 grid-cols-2 gap-px bg-[var(--border-subtle)]">
 			<!-- Schematic and board previews sit side by side, the way you compare them on a bench. -->
-			<figure class="relative m-0 overflow-hidden bg-[var(--preview-bg)]">
+			<svelte:element
+				this={project.has_schematic && schematicSrc ? 'a' : 'div'}
+				href={project.has_schematic && schematicSrc ? `${href}/schematic` : undefined}
+				class="relative m-0 block overflow-hidden bg-[var(--preview-bg)]"
+				class:board-card-preview={project.has_schematic && schematicSrc}
+				class:z-10={project.has_schematic && schematicSrc}
+			>
 				{#if project.has_schematic && schematicSrc}
 					<img
 						src={schematicSrc}
 						alt={t('card.schematicAlt', { name: project.name })}
-						class="h-full w-full object-contain p-2 opacity-90 transition-transform duration-300 group-hover:scale-[1.04]"
+						class="h-full w-full object-contain p-2 opacity-90 transition-transform duration-[1600ms] ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-[1.04] group-hover:duration-300"
 						loading="lazy"
 						decoding="async"
 					/>
@@ -42,19 +53,25 @@
 						<Icon name="schematic" size={22} />
 					</div>
 				{/if}
-				<figcaption
-					class="mono absolute left-1.5 top-1.5 rounded bg-black/55 px-1.5 py-0.5 text-[0.625rem] text-white/80"
+				<span
+					class="board-card-label mono absolute left-1.5 top-1.5 rounded px-1.5 py-0.5 text-[0.625rem]"
 				>
 					SCH
-				</figcaption>
-			</figure>
+				</span>
+			</svelte:element>
 
-			<figure class="relative m-0 overflow-hidden bg-[var(--preview-bg)]">
+			<svelte:element
+				this={project.has_pcb && previewSrc ? 'a' : 'div'}
+				href={project.has_pcb && previewSrc ? `${href}/pcb` : undefined}
+				class="relative m-0 block overflow-hidden bg-[var(--preview-bg)]"
+				class:board-card-preview={project.has_pcb && previewSrc}
+				class:z-10={project.has_pcb && previewSrc}
+			>
 				{#if project.has_pcb && previewSrc}
 					<img
 						src={previewSrc}
 						alt={t('card.boardAlt', { name: project.name })}
-						class="h-full w-full object-contain p-2 transition-transform duration-300 group-hover:scale-[1.04]"
+						class="h-full w-full object-contain p-2 transition-transform duration-[1600ms] ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-[1.04] group-hover:duration-300"
 						loading="lazy"
 						decoding="async"
 					/>
@@ -63,32 +80,32 @@
 						<Icon name="board" size={22} />
 					</div>
 				{/if}
-				<figcaption
-					class="mono absolute left-1.5 top-1.5 rounded bg-black/55 px-1.5 py-0.5 text-[0.625rem] text-white/80"
+				<span
+					class="board-card-label mono absolute left-1.5 top-1.5 rounded px-1.5 py-0.5 text-[0.625rem]"
 				>
 					PCB
-				</figcaption>
-			</figure>
+				</span>
+			</svelte:element>
 		</div>
 
 		{#if project.visibility === 'private'}
-			<span class="chip absolute right-1.5 top-1.5 !bg-black/60 !text-white/85">
+			<span class="chip absolute right-1.5 top-1.5 z-20 !bg-black/60 !text-white/85 pointer-events-none">
 				<Icon name="lock" size={10} /> {t('common.private')}
 			</span>
 		{/if}
-	</a>
+	</div>
 
 	<div class="flex flex-1 flex-col gap-2 p-3">
 		<div class="flex items-start justify-between gap-2">
 			<h3 class="min-w-0 text-[0.9375rem] font-semibold leading-tight">
-				<a {href} class="hover:text-[var(--accent)]">{project.name}</a>
+				<a {href} class="after:absolute after:inset-0 hover:text-[var(--accent)] group-hover:text-[var(--accent)]">{project.name}</a>
 			</h3>
 			<StatusDot status={project.head_status} />
 		</div>
 
 		<a
 			href="/{project.owner_username}"
-			class="flex w-fit items-center gap-1.5 text-xs text-[var(--text-muted)] hover:text-[var(--text-secondary)]"
+			class="relative z-10 flex w-fit items-center gap-1.5 text-xs text-[var(--text-muted)] hover:text-[var(--text-secondary)]"
 		>
 			<Avatar name={project.owner_display_name || project.owner_username} size={16} />
 			{project.owner_username}
@@ -101,9 +118,10 @@
 		{/if}
 
 		{#if project.tags.length}
-			<div class="flex flex-wrap gap-1">
+			<!-- Only the chips take the click; the gaps between them still open the board. -->
+			<div class="pointer-events-none relative z-10 flex flex-wrap gap-1">
 				{#each project.tags.slice(0, 4) as tag}
-					<TagChip {tag} href="/?tag={tag.slug}" />
+					<span class="pointer-events-auto"><TagChip {tag} href="/?tag={tag.slug}" /></span>
 				{/each}
 				{#if project.tags.length > 4}
 					<span class="chip">+{project.tags.length - 4}</span>

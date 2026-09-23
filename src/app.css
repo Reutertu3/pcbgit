@@ -227,6 +227,58 @@
 		border-radius: 0.625rem;
 	}
 
+	/*
+	 * Board cards: hover (or keyboard focus on a link inside) tints the card with the
+	 * theme's accent, whichever theme is active. The two previews are links of their
+	 * own, so each also frames itself in the accent. Highlights fade in quickly and
+	 * out slowly. Nothing moves: a card that lifts slides out from under a pointer at
+	 * its edge, loses hover, drops back and flickers.
+	 */
+	.board-card {
+		--board-card-ease: cubic-bezier(0.22, 1, 0.36, 1);
+		transition:
+			border-color 1.6s var(--board-card-ease),
+			background-color 1.6s var(--board-card-ease),
+			box-shadow 1.6s var(--board-card-ease);
+	}
+	.board-card:hover,
+	.board-card:focus-within {
+		border-color: color-mix(in srgb, var(--accent) 70%, var(--border-strong));
+		background: color-mix(in srgb, var(--accent) 5%, var(--surface-1));
+		box-shadow:
+			0 0 0 1px color-mix(in srgb, var(--accent) 35%, transparent),
+			0 14px 32px -16px color-mix(in srgb, var(--accent) 60%, transparent);
+		transition-duration: 0.3s;
+	}
+	/* The frame is a layer above the image; an inset shadow would be painted under it. */
+	.board-card-preview::after {
+		content: '';
+		position: absolute;
+		inset: 0;
+		border: 2px solid var(--accent);
+		opacity: 0;
+		pointer-events: none;
+		transition: opacity 1.6s var(--board-card-ease);
+	}
+	.board-card-preview:hover::after {
+		opacity: 1;
+		transition-duration: 0.3s;
+	}
+	/* Colours and timing here, not as utilities: those sit in a later layer and would win. */
+	.board-card-label {
+		z-index: 1;
+		background: rgb(0 0 0 / 0.55);
+		color: rgb(255 255 255 / 0.8);
+		transition:
+			background-color 1.6s var(--board-card-ease),
+			color 1.6s var(--board-card-ease);
+	}
+	.board-card-preview:hover .board-card-label {
+		background: var(--accent);
+		color: var(--on-accent);
+		transition-duration: 0.3s;
+	}
+
 	.btn {
 		display: inline-flex;
 		align-items: center;
