@@ -38,7 +38,20 @@ function normalizeSeverity(value: string | undefined): Violation['severity'] {
 	}
 }
 
-function toViolation(raw: RawViolation, source: Violation['source']): Violation {
+/**
+ * The layer an item description names ("… of R4 on F.Cu"). KiCad writes a layer's
+ * user name when it has one ("on Front"), which may contain spaces; those map
+ * back to the canonical name so markers know the board side.
+ */
+function layerOf(description: string, userNames: Record<string, string>) {
+	const renamed = Object.entries(userNames)
+		.sort(([, a], [, b]) => b.length - a.length)
+		.find(([, user]) => new RegExp(`\\bon ${user.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?![\\w.])`).test(description));
+	if (renamed) return renamed[0];
+	return /\bon ([A-Za-z0-9_.]+)\b/.exec(description)?.[1] ?? '';
+}
+
+function toViolation(raw: RawViolation, source: Violation['source'], userNames: Record<string, string> = {}): Violation {
 	const items = raw.items ?? [];
 	const first = items[0];
 	// Items carry the offending objects; their descriptions are the useful detail.
@@ -46,7 +59,7 @@ function toViolation(raw: RawViolation, source: Violation['source']): Violation 
 		.map((item) => item.description)
 		.filter(Boolean)
 		.join('\n');
-	const layer = /\bon ([A-Za-z0-9_.]+)\b/.exec(first?.description ?? '')?.[1] ?? '';
+	const layer = layerOf(first?.description ?? '', userNames);
 
 	return {
 		source,
@@ -60,13 +73,14 @@ function toViolation(raw: RawViolation, source: Violation['source']): Violation 
 	};
 }
 
-export function parseDrcReport(json: string): Violation[] {
+/** `userNames` maps canonical layer names to the board's own names for them. */
+export function parseDrcReport(json: string, userNames: Record<string, string> = {}): Violation[] {
 	const report = safeParse(json);
 	if (!report) return [];
 	return [
-		...(report.violations ?? []).map((v: RawViolation) => toViolation(v, 'drc')),
-		...(report.unconnected_items ?? []).map((v: RawViolation) => toViolation(v, 'unconnected')),
-		...(report.schematic_parity ?? []).map((v: RawViolation) => toViolation(v, 'schematic_parity'))
+		...(report.violations ?? []).map((v: RawViolation) => toViolation(v, 'drc', userNames)),
+		...(report.unconnected_items ?? []).map((v: RawViolation) => toViolation(v, 'unconnected', userNames)),
+		...(report.schematic_parity ?? []).map((v: RawViolation) => toViolation(v, 'schematic_parity', userNames))
 	];
 }
 

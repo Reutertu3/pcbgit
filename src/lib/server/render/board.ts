@@ -6,6 +6,8 @@ export interface BoardLayer {
 	name: string;
 	type: string;
 	copper: boolean;
+	/** The name given in the board setup ("Front" for F.Cu); kicad-cli uses it in file names and reports. */
+	userName?: string;
 }
 
 export type Mount = 'smd' | 'tht' | 'other';
@@ -44,13 +46,14 @@ export function analyzeBoardText(text: string): BoardStats {
 	if (layersNode) {
 		for (const entry of layersNode.slice(1)) {
 			if (!isList(entry)) continue;
-			const [id, name, type] = entry as string[];
+			const [id, name, type, userName] = entry as string[];
 			if (typeof name !== 'string') continue;
 			layers.push({
 				id: Number(id),
 				name,
 				type: typeof type === 'string' ? type : 'user',
-				copper: COPPER.test(name)
+				copper: COPPER.test(name),
+				...(typeof userName === 'string' && userName !== name ? { userName } : {})
 			});
 		}
 	}

@@ -314,6 +314,8 @@ async function renderBoard(
 	violations: Violation[]
 ) {
 	const layerNames = board?.layers.map((l) => l.name) ?? [];
+	// Layers renamed in the board setup appear under those names in kicad-cli's output.
+	const userNames = Object.fromEntries((board?.layers ?? []).filter((l) => l.userName).map((l) => [l.name, l.userName!]));
 	const layers = exportableLayers(layerNames);
 
 	// Per-layer SVGs, stacked and toggled in the 2D viewer.
@@ -327,7 +329,7 @@ async function renderBoard(
 			const produced = (await fsp.readdir(layerDir)).filter((f) => f.endsWith('.svg'));
 			let stored = 0;
 			for (const file of produced) {
-				const layerId = layerIdFromFilename(file, layerNames);
+				const layerId = layerIdFromFilename(file, layerNames, userNames);
 				if (!layerId) continue;
 				const style = layerStyle(layerId);
 				const source = path.join(layerDir, file);
@@ -401,7 +403,7 @@ async function renderBoard(
 	const drc = await runKicad(pcbDrcArgs(pcbPath, drcPath));
 	log.push(`drc: ${drc.ok ? 'ok' : `failed (${drc.code}) ${drc.stderr.trim()}`}`);
 	if (fs.existsSync(drcPath)) {
-		violations.push(...parseDrcReport(await fsp.readFile(drcPath, 'utf8')));
+		violations.push(...parseDrcReport(await fsp.readFile(drcPath, 'utf8'), userNames));
 		await storeArtifact({ commitId, kind: 'drc_json', name: 'drc.json', source: drcPath });
 	}
 

@@ -86,12 +86,22 @@ export function previewLayers(boardLayerNames: string[], side: 'front' | 'back')
 }
 
 /** kicad-cli names layer files by replacing '.' with '_'; map back to the layer id. */
-export function layerIdFromFilename(filename: string, boardLayerNames: string[]) {
+export function layerIdFromFilename(filename: string, boardLayerNames: string[], userNames: Record<string, string> = {}) {
 	const stem = filename.replace(/\.svg$/i, '');
+	const matches = (candidate: string) => {
+		// kicad-cli puts the layer name in the file name with "." and characters
+		// that are illegal in file names replaced by "_"; spaces stay.
+		const slug = candidate.replace(/[.\\/:*?"<>|]/g, '_');
+		return stem === slug || stem.endsWith(`-${slug}`) || stem.endsWith(`_${slug}`);
+	};
+	// A layer renamed in the board setup ("Front" for F.Cu) is plotted under that
+	// name, so those are tried first.
+	for (const name of boardLayerNames) {
+		if (userNames[name] && matches(userNames[name])) return name;
+	}
 	for (const name of boardLayerNames) {
 		for (const candidate of [name, ALIASES[name]].filter(Boolean)) {
-			const slug = candidate.replace(/\./g, '_');
-			if (stem === slug || stem.endsWith(`-${slug}`) || stem.endsWith(`_${slug}`)) return name;
+			if (matches(candidate)) return name;
 		}
 	}
 	return null;

@@ -236,6 +236,37 @@ test('the dark schematic look swaps KiCad default colours for Gruvbox Dark', () 
 	assert.ok(!isSchematicSheet('preview-front.svg'));
 });
 
+test('layers renamed in the board setup map back from file names and DRC reports', () => {
+	// As in a real board: copper renamed to "Front"/"Back", silkscreen with KiCad's default name.
+	const board = analyzeBoardText(`(kicad_pcb (version 20241229)
+		(layers (0 "F.Cu" signal "Front") (31 "B.Cu" signal "Back") (37 "F.SilkS" user "F.Silkscreen") (44 "Edge.Cuts" user)))`);
+	assert.deepEqual(
+		board.layers.map((l) => [l.name, l.userName]),
+		[['F.Cu', 'Front'], ['B.Cu', 'Back'], ['F.SilkS', 'F.Silkscreen'], ['Edge.Cuts', undefined]]
+	);
+
+	const names = board.layers.map((l) => l.name);
+	const userNames = Object.fromEntries(board.layers.filter((l) => l.userName).map((l) => [l.name, l.userName!]));
+	assert.equal(layerIdFromFilename('BQ25170_Eval-Front.svg', names, userNames), 'F.Cu');
+	assert.equal(layerIdFromFilename('BQ25170_Eval-Back.svg', names, userNames), 'B.Cu');
+	assert.equal(layerIdFromFilename('BQ25170_Eval-F_Silkscreen.svg', names, userNames), 'F.SilkS');
+	assert.equal(layerIdFromFilename('BQ25170_Eval-Edge_Cuts.svg', names, userNames), 'Edge.Cuts');
+	// kicad-cli 10 turns "Top Copper: 1/2" into "Top Copper_ 1_2" (checked by plotting).
+	assert.equal(layerIdFromFilename('b-Top Copper_ 1_2.svg', ['F.Cu'], { 'F.Cu': 'Top Copper: 1/2' }), 'F.Cu');
+
+	const report = JSON.stringify({
+		violations: [
+			{ type: 'clearance', severity: 'error', description: 'x', items: [{ description: 'Pad 1 of R4 on Back', pos: { x: 1, y: 2 } }] },
+			{ type: 'clearance', severity: 'error', description: 'x', items: [{ description: 'Pad 2 of R5 on Top Copper', pos: { x: 1, y: 2 } }] },
+			{ type: 'solder_mask', severity: 'warning', description: 'x', items: [{ description: 'Pad of TS1 on F.Mask', pos: { x: 1, y: 2 } }] }
+		]
+	});
+	assert.deepEqual(
+		parseDrcReport(report, { 'B.Cu': 'Back', 'F.Cu': 'Top Copper' }).map((v) => v.layer),
+		['B.Cu', 'F.Cu', 'F.Mask']
+	);
+});
+
 test('footprints are classified as SMD or through-hole by reference', () => {
 	const pcb = renderPcb({
 		name: 'mounts', title: 'Mounts', widthMm: 20, heightMm: 20, copperLayers: 2, nets: ['GND'],
