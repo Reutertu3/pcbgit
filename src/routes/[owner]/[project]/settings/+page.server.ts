@@ -61,7 +61,7 @@ export const actions: Actions = {
 		setProjectTags(project.id, form.getAll('tags').map(String));
 
 		audit(locals.user!.id, 'project.update', `${project.owner_username}/${project.slug}`);
-		return { success: true, message: translate(locals.locale, 'boardForm.saved') };
+		return { success: true, saved: true, message: translate(locals.locale, 'boardForm.saved') };
 	},
 
 	upload: async ({ request, params, locals }) => {

@@ -1,7 +1,9 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import { keepValues } from '$lib/forms';
 	import Icon from '$lib/components/Icon.svelte';
 	import FormError from '$lib/components/FormError.svelte';
+	import SavedNote from '$lib/components/SavedNote.svelte';
 	import Avatar from '$lib/components/Avatar.svelte';
 	import { t } from '$lib/i18n/t';
 
@@ -21,12 +23,11 @@
 		<a href="/settings/tokens" class="btn btn-sm"><Icon name="git" size={13} /> {t('nav.tokens')}</a>
 	</div>
 
-	{#if form?.message}<FormError message={form.message} kind="success" />{/if}
 	{#if form?.error}<FormError message={form.error} />{/if}
 
 	<section class="surface p-5">
 		<h2 class="mb-4 text-sm font-semibold">{t('account.profile')}</h2>
-		<form method="POST" action="?/profile" use:enhance>
+		<form method="POST" action="?/profile" use:enhance={keepValues}>
 			<div class="mb-4">
 				<label class="label" for="display_name">{t('account.displayName')}</label>
 				<input class="input" id="display_name" name="display_name" value={data.profile.displayName} maxlength="80" />
@@ -40,7 +41,10 @@
 				<label class="label" for="bio">{t('account.bio')}</label>
 				<textarea class="textarea !min-h-16" id="bio" name="bio" maxlength="300">{data.profile.bio}</textarea>
 			</div>
-			<button class="btn btn-primary" type="submit">{t('account.saveProfile')}</button>
+			<div class="flex flex-wrap items-center gap-3">
+				<button class="btn btn-primary" type="submit">{t('account.saveProfile')}</button>
+				<SavedNote message={form && 'saved' in form ? form.message : null} token={form} />
+			</div>
 		</form>
 	</section>
 

@@ -39,7 +39,7 @@ export const actions: Actions = {
 			now(),
 			locals.user.id
 		);
-		return { success: true, message: translate(locals.locale, 'account.profileSaved') };
+		return { success: true, saved: true, message: translate(locals.locale, 'account.profileSaved') };
 	},
 
 	password: async ({ request, locals }) => {

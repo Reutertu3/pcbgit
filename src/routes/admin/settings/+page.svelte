@@ -1,10 +1,12 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import { keepValues } from '$lib/forms';
 	import { invalidateAll } from '$app/navigation';
 	import { formatDateTime, relativeTime } from '$lib/format';
 	import Changelog from '$lib/components/Changelog.svelte';
 	import Icon from '$lib/components/Icon.svelte';
 	import FormError from '$lib/components/FormError.svelte';
+	import SavedNote from '$lib/components/SavedNote.svelte';
 	import { t, tParts } from '$lib/i18n/t';
 
 	let { data, form } = $props();
@@ -27,11 +29,11 @@
 
 <h2 class="mb-4 text-lg font-semibold tracking-tight">{t('instance.title')}</h2>
 
-{#if form?.message}<FormError message={form.message} kind="success" />{/if}
+{#if form?.message && !(form && 'saved' in form)}<FormError message={form.message} kind="success" />{/if}
 {#if form && 'error' in form && form.error}<FormError message={form.error} />{/if}
 
 <section class="surface p-5">
-	<form method="POST" action="?/save" use:enhance>
+	<form method="POST" action="?/save" use:enhance={keepValues}>
 		<div class="mb-4">
 			<label class="label" for="site_name">{t('instance.siteName')}</label>
 			<input class="input" id="site_name" name="site_name" value={data.settings.siteName} maxlength="60" />
@@ -50,7 +52,10 @@
 				</span>
 			</span>
 		</label>
-		<button class="btn btn-primary" type="submit">{t('instance.save')}</button>
+		<div class="flex flex-wrap items-center gap-3">
+			<button class="btn btn-primary" type="submit">{t('instance.save')}</button>
+			<SavedNote message={form && 'saved' in form ? form.message : null} token={form} />
+		</div>
 	</form>
 </section>
 

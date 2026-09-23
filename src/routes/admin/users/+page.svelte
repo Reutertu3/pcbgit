@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import { keepValues } from '$lib/forms';
 	import Icon from '$lib/components/Icon.svelte';
 	import Avatar from '$lib/components/Avatar.svelte';
 	import FormError from '$lib/components/FormError.svelte';
@@ -95,7 +96,7 @@
 						</div>
 					</td>
 					<td class="px-3 py-2">
-						<form method="POST" action="?/setRole" use:enhance>
+						<form method="POST" action="?/setRole" use:enhance={keepValues}>
 							<input type="hidden" name="id" value={user.id} />
 							<select
 								class="select !w-auto !py-1 text-xs"

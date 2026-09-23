@@ -23,7 +23,7 @@ export const actions: Actions = {
 		setSetting('site_tagline', String(form.get('site_tagline') ?? '').trim().slice(0, 160));
 		setSetting('registration_open', form.get('registration_open') ? 'true' : 'false');
 		audit(locals.user!.id, 'admin.settings_save');
-		return { success: true, message: translate(locals.locale, 'instance.saved') };
+		return { success: true, saved: true, message: translate(locals.locale, 'instance.saved') };
 	},
 
 	update: async ({ request, locals }) => {

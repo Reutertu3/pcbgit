@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import { keepValues } from '$lib/forms';
 	import Icon from '$lib/components/Icon.svelte';
 	import StatusDot from '$lib/components/StatusDot.svelte';
 	import FormError from '$lib/components/FormError.svelte';
@@ -82,7 +83,7 @@
 						</div>
 					</td>
 					<td class="px-3 py-2">
-						<form method="POST" action="?/setVisibility" use:enhance>
+						<form method="POST" action="?/setVisibility" use:enhance={keepValues}>
 							<input type="hidden" name="id" value={project.id} />
 							<select
 								class="select !w-auto !py-1 text-xs"

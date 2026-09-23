@@ -1,7 +1,9 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import { keepValues } from '$lib/forms';
 	import Icon from '$lib/components/Icon.svelte';
 	import FormError from '$lib/components/FormError.svelte';
+	import SavedNote from '$lib/components/SavedNote.svelte';
 	import CloneBox from '$lib/components/CloneBox.svelte';
 	import TagPicker from '$lib/components/TagPicker.svelte';
 	import { formatBytes } from '$lib/format';
@@ -29,13 +31,13 @@
 <svelte:head><title>{t('nav.settings')} · {data.project.name} · {data.site.name}</title></svelte:head>
 
 <div class="mx-auto max-w-3xl px-4 py-6">
-	{#if form?.message}<FormError message={form.message} kind="success" />{/if}
+	{#if form?.message && !(form && 'saved' in form)}<FormError message={form.message} kind="success" />{/if}
 	{#if form?.error}<FormError message={form.error} />{/if}
 
 	<!-- Metadata -->
 	<section class="surface p-5">
 		<h2 class="mb-4 text-sm font-semibold">{t('boardForm.details')}</h2>
-		<form method="POST" action="?/save" use:enhance>
+		<form method="POST" action="?/save" use:enhance={keepValues}>
 			<div class="mb-4">
 				<label class="label" for="name">{t('boardForm.name')}</label>
 				<input class="input" id="name" name="name" value={data.project.name} required />
@@ -83,7 +85,10 @@
 				<TagPicker tags={data.allTags} selected={data.project.tags.map((tag) => tag.slug)} />
 			</div>
 
-			<button class="btn btn-primary" type="submit">{t('common.saveChanges')}</button>
+			<div class="flex flex-wrap items-center gap-3">
+				<button class="btn btn-primary" type="submit">{t('common.saveChanges')}</button>
+				<SavedNote message={form && 'saved' in form ? form.message : null} token={form} />
+			</div>
 		</form>
 	</section>
 
