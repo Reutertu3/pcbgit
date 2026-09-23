@@ -765,6 +765,10 @@
 	"boardForm.error.confirm": "Type \"{slug}\" to confirm deletion.",
 	"auth.error.missing": "Enter your username and password.",
 	"auth.error.incorrect": "Incorrect username or password.",
+	"auth.error.tooMany": {
+		"one": "Too many failed sign-in attempts. Try again in {count} minute.",
+		"other": "Too many failed sign-in attempts. Try again in {count} minutes."
+	},
 	"auth.error.disabled": "This account has been disabled.",
 	"auth.error.email": "Enter a valid email address.",
 	"auth.error.passwordShort": "Password must be at least 8 characters.",

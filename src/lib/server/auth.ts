@@ -26,15 +26,16 @@ export function hashPassword(password: string) {
 	return `scrypt$${SCRYPT.N}$${SCRYPT.r}$${SCRYPT.p}$${salt.toString('base64')}$${key.toString('base64')}`;
 }
 
-export function verifyPassword(password: string, stored: string) {
+/** Async: scrypt takes tens of milliseconds, and the sync version stalls every request meanwhile. */
+export async function verifyPassword(password: string, stored: string) {
 	const [scheme, n, r, p, salt, key] = stored.split('$');
 	if (scheme !== 'scrypt') return false;
 	const expected = Buffer.from(key, 'base64');
-	const actual = crypto.scryptSync(password, Buffer.from(salt, 'base64'), expected.length, {
-		N: Number(n),
-		r: Number(r),
-		p: Number(p)
-	});
+	const actual = await new Promise<Buffer>((resolve, reject) =>
+		crypto.scrypt(password, Buffer.from(salt, 'base64'), expected.length, { N: Number(n), r: Number(r), p: Number(p) }, (error, derived) =>
+			error ? reject(error) : resolve(derived)
+		)
+	);
 	return crypto.timingSafeEqual(expected, actual);
 }
 

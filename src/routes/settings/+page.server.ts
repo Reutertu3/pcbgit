@@ -48,7 +48,7 @@ export const actions: Actions = {
 		const current = String(form.get('current') ?? '');
 		const next = String(form.get('next') ?? '');
 
-		if (!verifyPassword(current, locals.user.password_hash)) {
+		if (!(await verifyPassword(current, locals.user.password_hash))) {
 			return fail(401, { error: translate(locals.locale, 'account.error.currentPassword') });
 		}
 		if (next.length < 8) return fail(400, { error: translate(locals.locale, 'account.error.newPasswordShort') });

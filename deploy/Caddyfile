@@ -16,5 +16,7 @@
 			header Content-Type model/gltf-binary
 		}
 	}
+	# Browsers remember to use HTTPS only; the app sets its other headers itself.
+	header Strict-Transport-Security "max-age=31536000"
 	reverse_proxy pcbgit:3000
 }

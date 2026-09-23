@@ -765,6 +765,10 @@
 	"boardForm.error.confirm": "Gib „{slug}“ ein, um das Löschen zu bestätigen.",
 	"auth.error.missing": "Gib Benutzername und Passwort ein.",
 	"auth.error.incorrect": "Benutzername oder Passwort ist falsch.",
+	"auth.error.tooMany": {
+		"one": "Zu viele fehlgeschlagene Anmeldeversuche. Versuche es in {count} Minute erneut.",
+		"other": "Zu viele fehlgeschlagene Anmeldeversuche. Versuche es in {count} Minuten erneut."
+	},
 	"auth.error.disabled": "Dieses Konto wurde deaktiviert.",
 	"auth.error.email": "Gib eine gültige E-Mail-Adresse ein.",
 	"auth.error.passwordShort": "Das Passwort muss mindestens 8 Zeichen lang sein.",

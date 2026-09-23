@@ -7,6 +7,10 @@ services:
     ports: !reset []
     environment:
       ORIGIN: https://${PCBGIT_DOMAIN:?set PCBGIT_DOMAIN in .env}
+      # Client address from Caddy, which replaces any X-Forwarded-For a client sends.
+      # Without it every visitor looks like Caddy and shares one sign-in limit.
+      ADDRESS_HEADER: X-Forwarded-For
+      XFF_DEPTH: "1"
       # Shared with the host's update watcher (deploy/install.sh sets it up).
       PCBGIT_CONTROL_DIR: /control
     volumes:

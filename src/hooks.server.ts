@@ -58,5 +58,11 @@ export const handle: Handle = async ({ event, resolve }) => {
 	});
 	response.headers.set('X-Content-Type-Options', 'nosniff');
 	response.headers.set('Referrer-Policy', 'same-origin');
+	// No framing by other sites (clickjacking). Rendered iBOM pages send their own
+	// policy, which already includes this, so an existing one is left alone.
+	response.headers.set('X-Frame-Options', 'SAMEORIGIN');
+	if (!response.headers.has('Content-Security-Policy')) {
+		response.headers.set('Content-Security-Policy', "frame-ancestors 'self'");
+	}
 	return response;
 };
