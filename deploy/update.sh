@@ -31,6 +31,20 @@ compose() {
 # Replace atomically so the app never reads a half-written file.
 publish() { chmod 644 "$1.tmp" && mv "$1.tmp" "$1"; }
 
+# Caddy reads the Caddyfile through a bind mount, which keeps showing the old file
+# after git replaces it, and compose only recreates services whose definition
+# changed. Restart Caddy whenever what it sees differs from the repository.
+sync_caddy() {
+	[[ -n "$(compose ps -q caddy 2>/dev/null)" ]] || return 0
+	if ! cmp -s "$REPO_DIR/deploy/Caddyfile" <(compose exec -T caddy cat /etc/caddy/Caddyfile </dev/null 2>/dev/null); then
+		echo "== Caddyfile changed: restarting caddy"
+		local previous=${phase:-}
+		phase="restarting caddy"
+		compose restart caddy
+		phase=$previous
+	fi
+}
+
 # Records what an update would bring: the commits on GitHub that the server does
 # not have yet (newest first, with their messages as the changelog), and whether
 # the server copy has commits of its own, which would block a fast-forward.
@@ -119,6 +133,8 @@ fi
 
 if [[ "$from" == "$to" && "${FORCE:-0}" != 1 ]]; then
 	echo "== already up to date" >>"$LOG"
+	# Still catches a Caddyfile an earlier update left unapplied.
+	sync_caddy >>"$LOG" 2>&1
 	write_availability
 	write_status success "Already up to date"
 	exit 0
@@ -132,6 +148,7 @@ write_status running "Building $to"
 	# A release tag on exactly this commit is shown in the footer next to the commit.
 	export PCBGIT_GIT_TAG="$(git_ describe --tags --exact-match "$to" 2>/dev/null || true)"
 	compose up -d --build --remove-orphans
+	sync_caddy
 	docker image prune -f
 	echo "== $(date -Is) done"
 } >>"$LOG" 2>&1
