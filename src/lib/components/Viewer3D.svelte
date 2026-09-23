@@ -420,10 +420,26 @@
 				trailing = 1;
 				if (!pending) pending = requestAnimationFrame(frame);
 			};
+			/*
+			 * At most 60 fps: high-refresh displays call back 120-240 times a second,
+			 * which costs GPU time for nothing, and speeds up the per-frame damping. A
+			 * callback that comes too early waits for the next one. The remainder is
+			 * carried over, so a 144 Hz display averages 60 instead of dropping to 48.
+			 */
+			const FRAME_MS = 1000 / 60;
+			let lastFrame = -Infinity;
 			function frame(now: number) {
 				pending = 0;
 				// An export owns the canvas while it runs; it re-requests a frame when done.
 				if (exporting) return;
+				const elapsed = now - lastFrame;
+				// 1 ms slack: a 60 Hz display's callbacks jitter around 16.7 ms.
+				if (elapsed < FRAME_MS - 1) {
+					pending = requestAnimationFrame(frame);
+					return;
+				}
+				// Carry over only what exceeds one frame; after a pause, start afresh.
+				lastFrame = elapsed < FRAME_MS || elapsed > 2 * FRAME_MS ? now : now - (elapsed % FRAME_MS);
 				const animating = stepAnimation(now);
 				// With damping, update() keeps emitting 'change' until the motion settles.
 				const moving = controls.update() || animating || interacting;
