@@ -329,6 +329,15 @@
 								<Icon name="download" size={13} /> {t('overview.dlBom')}
 							</a>
 						{/if}
+						{#if data.schematicPdf}
+							<a
+								href={data.schematicPdf}
+								download="{data.project.slug}-{shortSha(data.commit.sha)}-schematic.pdf"
+								class="btn btn-sm justify-start"
+							>
+								<Icon name="download" size={13} /> {t('overview.dlSchematicPdf')}
+							</a>
+						{/if}
 						{#if data.tabs.three}
 							<a href="/artifacts/{data.commit.id}/board.glb" class="btn btn-sm justify-start">
 								<Icon name="download" size={13} /> {t('overview.dlGlb')}

@@ -25,6 +25,7 @@ import {
 	runKicad,
 	schBomArgs,
 	schErcArgs,
+	schPdfArgs,
 	schSvgArgs
 } from './kicad';
 import { discoverKicadFiles, hasKicadContent } from './kicadfiles';
@@ -295,6 +296,14 @@ async function renderSchematic(
 			});
 		}
 		log.push(`schematic sheets: ${sheets.length}`);
+	}
+
+	// All sheets as one PDF, for printing and archiving.
+	const pdfPath = path.join(outDir, 'schematic.pdf');
+	const pdf = await runKicad(schPdfArgs(schPath, pdfPath));
+	log.push(`schematic pdf: ${pdf.ok ? 'ok' : `failed (${pdf.code}) ${pdf.stderr.trim()}`}`);
+	if (pdf.ok && fs.existsSync(pdfPath)) {
+		await storeArtifact({ commitId, kind: 'schematic_pdf', name: 'schematic.pdf', source: pdfPath });
 	}
 
 	const ercPath = path.join(outDir, 'erc.json');

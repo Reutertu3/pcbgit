@@ -125,6 +125,7 @@ export function artifactSummary(commitId: string) {
 			.map((row) => ({ profile: row.name, url: artifactUrl(row) }))
 			.sort((a, b) => fabOrder(a.profile) - fabOrder(b.profile)),
 		ibom: rows.find((row) => row.kind === 'ibom_html'),
+		schematicPdf: rows.find((row) => row.kind === 'schematic_pdf'),
 		previewFront: rows.find((row) => row.kind === 'pcb_preview_svg' && row.name === 'front'),
 		previewBack: rows.find((row) => row.kind === 'pcb_preview_svg' && row.name === 'back'),
 		totalBytes: rows.reduce((sum, row) => sum + row.size_bytes, 0),

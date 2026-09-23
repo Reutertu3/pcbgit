@@ -173,6 +173,11 @@ export function orderSchematicSheets(files: string[], schPath: string) {
 	return sheets.includes(root) ? [root, ...sheets.filter((f) => f !== root)] : sheets;
 }
 
+/** Every sheet in one PDF, with KiCad's clickable links between hierarchical sheets. */
+export function schPdfArgs(schPath: string, outFile: string) {
+	return ['sch', 'export', 'pdf', '--output', outFile, schPath];
+}
+
 export function schBomArgs(schPath: string, outFile: string) {
 	return [
 		'sch', 'export', 'bom',

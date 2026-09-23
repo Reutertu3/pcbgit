@@ -9,6 +9,7 @@ import { darkSchematicSvg, isSchematicSheet } from '$lib/server/render/schematic
 
 const TYPES: Record<string, string> = {
 	'.svg': 'image/svg+xml',
+	'.pdf': 'application/pdf',
 	'.glb': 'model/gltf-binary',
 	'.json': 'application/json',
 	'.csv': 'text/csv',
@@ -60,6 +61,9 @@ export const GET: RequestHandler = async ({ params, locals, setHeaders, url }) =
 	});
 
 	if (extension === '.svg') setHeaders({ 'Content-Security-Policy': SVG_POLICY });
+	// PDFs come out of the renderer and can carry script; they are saved, never
+	// opened as a document of this origin.
+	if (extension === '.pdf') setHeaders({ 'Content-Disposition': 'attachment' });
 
 	if (extension === '.html') {
 		setHeaders({ 'Content-Security-Policy': PAGE_POLICY });

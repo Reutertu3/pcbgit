@@ -10,7 +10,7 @@ import { renderPcb } from '../scripts/fixtures/kicad.ts';
 import { parseViewBox, unionViewBox } from '../src/lib/viewbox.ts';
 import { exportableLayers, fabricationLayers, layerIdFromFilename, layerStyle } from '../src/lib/layers.ts';
 import { DEFAULT_FAB, FAB_PROFILES, fabProfile } from '../src/lib/fab.ts';
-import { orderSchematicSheets, pcbDrillArgs, pcbGerberArgs } from '../src/lib/server/render/kicad.ts';
+import { orderSchematicSheets, pcbDrillArgs, pcbGerberArgs, schPdfArgs } from '../src/lib/server/render/kicad.ts';
 import { darkSchematicSvg, isSchematicSheet } from '../src/lib/server/render/schematictheme.ts';
 
 test('s-expression parser handles nesting, quotes and escapes', () => {
@@ -210,6 +210,10 @@ test('KiCad plot filenames use user-facing names; they map back to canonical ids
 	assert.equal(layerIdFromFilename('board-User_Comments.svg', names), 'Cmts.User');
 	assert.equal(layerStyle('Cmts.User').label, 'Comments');
 	assert.ok(exportableLayers(names).includes('Cmts.User'));
+});
+
+test('the schematic PDF covers the whole design from its root sheet', () => {
+	assert.deepEqual(schPdfArgs('/w/c/board.kicad_sch', '/w/out/schematic.pdf'), ['sch', 'export', 'pdf', '--output', '/w/out/schematic.pdf', '/w/c/board.kicad_sch']);
 });
 
 test('schematic sheets put the root first, even though sub-sheet names sort before it', () => {

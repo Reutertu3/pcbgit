@@ -6,6 +6,7 @@ import { artifactDir } from '../paths';
 
 export type ArtifactKind =
 	| 'schematic_svg'
+	| 'schematic_pdf'
 	| 'pcb_layer_svg'
 	| 'pcb_preview_svg'
 	| 'pcb_glb'

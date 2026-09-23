@@ -133,6 +133,17 @@
 						<a class="viewer-btn border-l" href={sheet.url} download title={t('schematic.downloadSvg')}>
 							<Icon name="download" size={13} />
 						</a>
+						{#if data.pdf}
+							<a
+								class="viewer-btn !w-auto border-l px-2 text-xs font-semibold"
+								href={data.pdf}
+								download="{data.project.slug}-{shortSha(data.commit?.sha)}-schematic.pdf"
+								title={t('schematic.downloadPdf')}
+								aria-label={t('schematic.downloadPdf')}
+							>
+								PDF
+							</a>
+						{/if}
 						<button
 							class="viewer-btn border-l"
 							class:!text-[var(--accent)]={exportOpen}
