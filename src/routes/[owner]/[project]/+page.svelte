@@ -9,6 +9,8 @@
 	import type { CommentView } from '$lib/types';
 	import { t, tParts } from '$lib/i18n/t';
 	import { DEFAULT_FAB, fabProfile } from '$lib/fab';
+	import LicenseSummary from '$lib/components/LicenseSummary.svelte';
+	import { licenseName } from '$lib/licenses';
 	import { onMount } from 'svelte';
 
 	let { data, form } = $props();
@@ -317,6 +319,16 @@
 							{data.commit.message}
 						</p>
 					{/if}
+				</div>
+
+				<div class="surface p-4">
+					<h3 class="mb-2.5 flex items-baseline justify-between gap-2 text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">
+						{t('overview.license')}
+						<span class="normal-case tracking-normal text-[var(--text-primary)]">
+							{data.project.license ? licenseName(data.project.license, t('license.proprietary')) : t('boardForm.noLicense')}
+						</span>
+					</h3>
+					<LicenseSummary license={data.project.license} />
 				</div>
 
 				<div class="surface p-4">

@@ -8,6 +8,7 @@
 	import { formatCount } from '$lib/format';
 	import type { IconName } from '$lib/icons';
 	import { t } from '$lib/i18n/t';
+	import { licenseName } from '$lib/licenses';
 
 	let { data, children } = $props();
 
@@ -87,7 +88,7 @@
 						<span class="chip"><Icon name="lock" size={10} /> {t('common.private')}</span>
 					{/if}
 					{#if data.project.license}
-						<span class="chip">{data.project.license}</span>
+						<span class="chip">{licenseName(data.project.license, t('license.proprietary'))}</span>
 					{/if}
 				</div>
 				{#if data.project.description}

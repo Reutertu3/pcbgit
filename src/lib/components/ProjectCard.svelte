@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { t } from '$lib/i18n/t';
+	import { licenseName } from '$lib/licenses';
 	import Icon from '$lib/components/Icon.svelte';
 	import Avatar from '$lib/components/Avatar.svelte';
 	import StatusDot from '$lib/components/StatusDot.svelte';
@@ -156,7 +157,7 @@
 				{/if}
 			</div>
 			<div class="flex items-center gap-2">
-				{#if project.license}<span class="chip !px-1.5 !py-0 !text-[0.625rem]">{project.license}</span>{/if}
+				{#if project.license}<span class="chip !px-1.5 !py-0 !text-[0.625rem]">{licenseName(project.license, t('license.proprietary'))}</span>{/if}
 				<span>{relativeTime(project.updated_at)}</span>
 			</div>
 		</div>

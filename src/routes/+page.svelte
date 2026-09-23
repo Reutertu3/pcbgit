@@ -11,10 +11,10 @@
 	let { data } = $props();
 
 	const SORTS = $derived([
+		{ value: 'name', label: t('browse.sort.name') },
 		{ value: 'recent', label: t('browse.sort.recent') },
 		{ value: 'created', label: t('browse.sort.created') },
-		{ value: 'stars', label: t('browse.sort.stars') },
-		{ value: 'name', label: t('browse.sort.name') }
+		{ value: 'stars', label: t('browse.sort.stars') }
 	]);
 
 
@@ -38,7 +38,7 @@
 
 	const activeFilterCount = $derived(
 		data.filters.tags.length +
-			(data.filters.license ? 1 : 0) +
+			(data.filters.author ? 1 : 0) +
 			(data.filters.q ? 1 : 0)
 	);
 </script>
@@ -90,22 +90,30 @@
 					</div>
 				{/if}
 
-				<div>
-					<h2 class="label !mb-2">{t('boardForm.license')}</h2>
-					<select
-						class="select !py-1.5 text-[0.8125rem]"
-						value={data.filters.license}
-						onchange={(event) =>
-							goto(withParam((params) => {
-								const value = event.currentTarget.value;
-								if (value) params.set('license', value);
-								else params.delete('license');
-							}))}
-					>
-						<option value="">{t('browse.anyLicense')}</option>
-						{#each data.licenses as license}<option value={license}>{license}</option>{/each}
-					</select>
-				</div>
+				{#if data.authors.length > 1}
+					<div>
+						<h2 class="label !mb-2">{t('browse.author')}</h2>
+						<select
+							class="select !py-1.5 text-[0.8125rem]"
+							value={data.filters.author}
+							onchange={(event) =>
+								goto(withParam((params) => {
+									const value = event.currentTarget.value;
+									if (value) params.set('author', value);
+									else params.delete('author');
+								}))}
+						>
+							<option value="">{t('browse.anyAuthor')}</option>
+							{#each data.authors as author}
+								<option value={author.username}>
+									{author.display_name && author.display_name !== author.username
+										? `${author.display_name} (${author.username})`
+										: author.username}
+								</option>
+							{/each}
+						</select>
+					</div>
+				{/if}
 
 				{#if activeFilterCount > 0}
 					<a href="/" class="btn btn-sm w-fit"><Icon name="x" size={12} /> {t('browse.clearFilters')}</a>

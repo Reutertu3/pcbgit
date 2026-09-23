@@ -6,12 +6,23 @@
 	import TagPicker from '$lib/components/TagPicker.svelte';
 	import { formatBytes } from '$lib/format';
 	import { t, tParts } from '$lib/i18n/t';
+	import LicenseSummary from '$lib/components/LicenseSummary.svelte';
+	import { licenseName } from '$lib/licenses';
 
 	let { data, form } = $props();
 
 	let file = $state<File | null>(null);
 	let confirmText = $state('');
 	let uploading = $state(false);
+
+	// Follows the board shown (the page is reused between boards), yet the select can change it.
+	let license = $derived(data.project.license);
+	// A license no longer offered stays selectable, so saving other settings keeps it.
+	const licenseOptions = $derived(
+		data.project.license && !data.licenses.includes(data.project.license)
+			? [data.project.license, ...data.licenses]
+			: data.licenses
+	);
 
 </script>
 
@@ -38,12 +49,13 @@
 			<div class="mb-4 grid gap-4 sm:grid-cols-2">
 				<div>
 					<label class="label" for="license">{t('boardForm.license')}</label>
-					<select class="select" id="license" name="license">
+					<select class="select" id="license" name="license" bind:value={license}>
 						<option value="">{t('boardForm.noLicense')}</option>
-						{#each data.licenses as license}
-							<option value={license} selected={data.project.license === license}>{license}</option>
+						{#each licenseOptions as id}
+							<option value={id}>{licenseName(id, t('license.proprietary'))}</option>
 						{/each}
 					</select>
+					<div class="mt-2"><LicenseSummary {license} /></div>
 				</div>
 				<div>
 					<label class="label" for="visibility">{t('boardForm.visibility')}</label>

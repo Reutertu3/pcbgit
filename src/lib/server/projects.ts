@@ -23,20 +23,8 @@ export interface Project {
 /** A project row enriched with the counts and render facts the UI shows. */
 export type ProjectCard = ProjectSummary;
 
-export const LICENSES = [
-	'CERN-OHL-S-2.0',
-	'CERN-OHL-W-2.0',
-	'CERN-OHL-P-2.0',
-	'TAPR-OHL-1.0',
-	'MIT',
-	'Apache-2.0',
-	'BSD-3-Clause',
-	'GPL-3.0',
-	'CC-BY-4.0',
-	'CC-BY-SA-4.0',
-	'CC0-1.0',
-	'Proprietary'
-];
+/** Offered in the board forms; the table and its explanations live in $lib/licenses. */
+export { LICENSE_IDS as LICENSES } from '$lib/licenses';
 
 export function slugify(value: string) {
 	return value
@@ -79,29 +67,37 @@ export interface BrowseQuery {
 	search?: string;
 	tags?: string[];
 	owner?: string;
-	license?: string;
 	sort?: 'recent' | 'stars' | 'name' | 'created';
 	starredBy?: string;
 	page?: number;
 	perPage?: number;
 }
 
+/** SQL condition on `projects p`: private projects are visible to their owner and to admins only. */
+function visibleTo(viewer: User | null): { sql: string; params: unknown[] } {
+	if (viewer?.role === 'admin') return { sql: '1 = 1', params: [] };
+	if (viewer) return { sql: "(p.visibility = 'public' OR p.owner_id = ?)", params: [viewer.id] };
+	return { sql: "p.visibility = 'public'", params: [] };
+}
+
+/** Everyone with at least one board this viewer can see, for the author filter. */
+export function browseAuthors(viewer: User | null) {
+	const visible = visibleTo(viewer);
+	return all<{ username: string; display_name: string }>(
+		`SELECT u.username, u.display_name FROM projects p JOIN users u ON u.id = p.owner_id
+		 WHERE ${visible.sql} GROUP BY u.id
+		 ORDER BY COALESCE(NULLIF(u.display_name, ''), u.username) COLLATE NOCASE`,
+		...visible.params
+	);
+}
+
 export function browseProjects(query: BrowseQuery) {
 	const perPage = Math.min(Math.max(query.perPage ?? 24, 1), 100);
 	const page = Math.max(query.page ?? 1, 1);
 
-	const where: string[] = [];
-	const params: unknown[] = [];
-
-	// Private projects are visible to their owner and to admins only.
-	if (query.viewer?.role === 'admin') {
-		where.push('1 = 1');
-	} else if (query.viewer) {
-		where.push("(p.visibility = 'public' OR p.owner_id = ?)");
-		params.push(query.viewer.id);
-	} else {
-		where.push("p.visibility = 'public'");
-	}
+	const visible = visibleTo(query.viewer ?? null);
+	const where: string[] = [visible.sql];
+	const params: unknown[] = [...visible.params];
 
 	if (query.search?.trim()) {
 		const term = `%${query.search.trim()}%`;
@@ -111,10 +107,6 @@ export function browseProjects(query: BrowseQuery) {
 	if (query.owner) {
 		where.push('u.username = ?');
 		params.push(query.owner);
-	}
-	if (query.license) {
-		where.push('p.license = ?');
-		params.push(query.license);
 	}
 	if (query.starredBy) {
 		where.push('EXISTS (SELECT 1 FROM stars s WHERE s.project_id = p.id AND s.user_id = ?)');

@@ -5,8 +5,13 @@
 	import TagPicker from '$lib/components/TagPicker.svelte';
 	import { formatBytes } from '$lib/format';
 	import { t, tParts } from '$lib/i18n/t';
+	import LicenseSummary from '$lib/components/LicenseSummary.svelte';
+	import { licenseName } from '$lib/licenses';
 
 	let { data, form } = $props();
+
+	/** Kept across a failed submit, and explained below the select as it changes. */
+	let license = $derived(form?.license ?? '');
 
 	let typedName = $state<string | null>(null);
 	let typedSlug = $state<string | null>(null);
@@ -103,12 +108,13 @@
 			<div class="mb-4 grid gap-4 sm:grid-cols-2">
 				<div>
 					<label class="label" for="license">{t('boardForm.license')}</label>
-					<select class="select" id="license" name="license">
+					<select class="select" id="license" name="license" bind:value={license}>
 						<option value="">{t('boardForm.noLicense')}</option>
-						{#each data.licenses as license}
-							<option value={license} selected={form?.license === license}>{license}</option>
+						{#each data.licenses as id}
+							<option value={id}>{licenseName(id, t('license.proprietary'))}</option>
 						{/each}
 					</select>
+					<div class="mt-2"><LicenseSummary {license} /></div>
 				</div>
 				<div>
 					<label class="label" for="visibility">{t('boardForm.visibility')}</label>

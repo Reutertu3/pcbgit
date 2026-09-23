@@ -1,15 +1,22 @@
 import type { PageServerLoad } from './$types';
-import { browseProjects, popularTags, LICENSES } from '$lib/server/projects';
+import { browseAuthors, browseProjects, popularTags } from '$lib/server/projects';
 import { count } from '$lib/server/db';
+
+const SORTS = ['name', 'recent', 'created', 'stars'] as const;
+type Sort = (typeof SORTS)[number];
 
 export const load: PageServerLoad = async ({ url, locals }) => {
 	const params = url.searchParams;
+	const requested = params.get('sort') as Sort | null;
+	const sort: Sort = requested && SORTS.includes(requested) ? requested : 'name';
+	const author = params.get('author') ?? '';
+
 	const result = browseProjects({
 		viewer: locals.user,
 		search: params.get('q') ?? '',
 		tags: params.getAll('tag'),
-		license: params.get('license') ?? '',
-		sort: (params.get('sort') as 'recent' | 'stars' | 'name' | 'created') ?? 'recent',
+		owner: author || undefined,
+		sort,
 		page: Number(params.get('page')) || 1,
 		perPage: 24
 	});
@@ -17,12 +24,12 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 	return {
 		...result,
 		tags: popularTags(24),
-		licenses: LICENSES,
+		authors: browseAuthors(locals.user),
 		filters: {
 			q: params.get('q') ?? '',
 			tags: params.getAll('tag'),
-			license: params.get('license') ?? '',
-			sort: params.get('sort') ?? 'recent'
+			author,
+			sort
 		},
 		stats: {
 			boards: count("SELECT COUNT(*) FROM projects WHERE visibility = 'public'"),
