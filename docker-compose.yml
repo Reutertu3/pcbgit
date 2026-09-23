@@ -32,6 +32,9 @@ services:
       - pcbgit-render:/work
     depends_on:
       - renderer
+    # The app runs as an unprivileged user on port 3000 and needs no capabilities.
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
 
   # kicad-cli, iBOM and the thumbnail rasterisers parse uploaded boards. They run
   # here, with the current job's files as their only data: no database, no

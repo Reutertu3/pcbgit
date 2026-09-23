@@ -32,6 +32,10 @@ services:
       - caddy-config:/config
     depends_on:
       - pcbgit
+    # Caddy's image runs as root; all it needs is to bind ports 80 and 443.
+    cap_drop: [ALL]
+    cap_add: [NET_BIND_SERVICE]
+    security_opt: ["no-new-privileges:true"]
 
 volumes:
   caddy-data:
