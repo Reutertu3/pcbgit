@@ -13,7 +13,7 @@ the code live in CLAUDE.md.
 | v0.3.0 | 2026-09-23 | Production Gerbers, re-render all, isolated renderer, security audit |
 | v0.3.1 | 2026-09-24 | Port setting, README images; also schematic PDF, license list, front-page filter and sort, settings form fix (not listed in its release notes) |
 | v0.4.0 | 2026-09-24 | Collaborators, version notifications, messages page, profile pictures |
-| (unreleased) | 2026-09-24 | Render isolation against symlink tricks, download crash fix |
+| v0.4.1 | 2026-09-24 | Render isolation against symlink tricks, download crash fix |
 
 ## 2026-09-22
 
