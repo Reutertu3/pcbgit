@@ -125,6 +125,29 @@ test('the render checkout drops symlinks that leave it, and keeps the others', a
 	assert.ok(!isLink(path.join(checkout, 'lib', 'escaping.kicad_sch')));
 });
 
+test('a chain of links that each look local, and a link to /, are dropped too', async () => {
+	const work = fs.mkdtempSync(path.join(base, 'chain-'));
+	git(work, ['init', '-q', '-b', 'main']);
+	fs.mkdirSync(path.join(work, 'x'));
+	fs.writeFileSync(path.join(work, 'board.kicad_pcb'), '(kicad_pcb)');
+	// x/d is the checkout itself; through it, "d/../outside.txt" reads like x/outside.txt
+	// but the kernel goes one level above the checkout.
+	fs.symlinkSync('..', path.join(work, 'x', 'd'));
+	fs.symlinkSync('d/../outside.txt', path.join(work, 'x', 'leak.kicad_sch'));
+	fs.symlinkSync('/', path.join(work, 'everything'));
+	git(work, ['add', '-A']);
+	git(work, ['commit', '-q', '-m', 'chain']);
+
+	const out = fs.mkdtempSync(path.join(base, 'out-'));
+	fs.writeFileSync(path.join(out, 'outside.txt'), 'not part of the board');
+	const started = Date.now();
+	const checkout = await exportTree(path.join(work, '.git'), 'HEAD', out, 'checkout');
+	assert.ok(Date.now() - started < 5000, 'the link to / is not walked');
+	assert.ok(isLink(path.join(checkout, 'x', 'd')), 'a link back to the checkout stays inside it');
+	assert.ok(!isLink(path.join(checkout, 'x', 'leak.kicad_sch')));
+	assert.ok(!isLink(path.join(checkout, 'everything')));
+});
+
 function isLink(file: string) {
 	try {
 		return fs.lstatSync(file).isSymbolicLink();

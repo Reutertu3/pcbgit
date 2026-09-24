@@ -55,8 +55,11 @@ function resolveRequest(request: RunnerRequest): { bin: string } | { error: stri
 	} else {
 		return { error: `not allowed: ${request.bin}` };
 	}
-	// Paths must stay in the render directory; layer lists and flags have no slash.
-	const outside = fileArgs.find((arg) => arg.includes('/') && !inRenderDir(arg));
+	// Every value must resolve inside the render directory: paths, but also a bare ".."
+	// (tools run with the render directory as their working directory). Layer lists
+	// and numbers do. Flags carry no paths here, so one holding a slash
+	// ("--output=/data/x", "-o/data/x") is refused rather than parsed.
+	const outside = fileArgs.find((arg) => (arg.startsWith('-') ? arg.includes('/') : !inRenderDir(arg)));
 	if (outside) return { error: `path outside the render directory: ${outside}` };
 	return { bin };
 }

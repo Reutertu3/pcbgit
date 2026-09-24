@@ -22,8 +22,13 @@ export interface SchematicStats {
 
 const MPN_KEYS = ['mpn', 'manufacturer part number', 'part number', 'pn', 'lcsc', 'digikey', 'mouser'];
 
-/** Reads the root sheet plus every hierarchical sub-sheet it references. */
-export function analyzeSchematic(rootSchPath: string): SchematicStats {
+/**
+ * Reads the root sheet plus every hierarchical sub-sheet it references. Sheets name
+ * their files freely ("../../x"), and this runs in the app, which can read /data:
+ * only plain files whose real path is inside `root` (the checkout) are read.
+ */
+export function analyzeSchematic(rootSchPath: string, root: string): SchematicStats {
+	const realRoot = fs.realpathSync(root);
 	const visited = new Set<string>();
 	const symbols: SchSymbol[] = [];
 	const sheets: { name: string; file: string }[] = [];
@@ -31,10 +36,16 @@ export function analyzeSchematic(rootSchPath: string): SchematicStats {
 
 	const read = (filePath: string, sheetName: string) => {
 		const resolved = path.resolve(filePath);
-		if (visited.has(resolved) || !fs.existsSync(resolved)) return;
-		visited.add(resolved);
+		let real: string;
+		try {
+			real = fs.realpathSync(resolved);
+		} catch {
+			return;
+		}
+		if (!real.startsWith(realRoot + path.sep) || visited.has(real) || !fs.statSync(real).isFile()) return;
+		visited.add(real);
 
-		const tree = parseSexpr(fs.readFileSync(resolved, 'utf8'));
+		const tree = parseSexpr(fs.readFileSync(real, 'utf8'));
 		const root = (tree.find((n) => isList(n) && n[0] === 'kicad_sch') as SNode[]) ?? [];
 
 		const titleBlock = child(root, 'title_block');

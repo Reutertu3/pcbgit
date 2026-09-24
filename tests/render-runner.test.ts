@@ -67,6 +67,11 @@ test('the runner refuses paths outside the render directory', async () => {
 		assert.equal(result.ok, false, bad);
 		assert.match(result.stderr, /renderer refused: path outside the render directory/, bad);
 	}
+	// The same path folded into a flag, and a bare ".." (tools run inside the render directory).
+	for (const args of [['--output=/data/pcbgit.db'], ['-o/data/pcbgit.db'], ['--output', '..']]) {
+		const result = await runKicad(['sch', 'export', 'svg', ...args], 5000);
+		assert.match(result.stderr, /renderer refused: path outside the render directory/, args.join(' '));
+	}
 });
 
 test('the runner only runs the render tools, with its own environment', async () => {

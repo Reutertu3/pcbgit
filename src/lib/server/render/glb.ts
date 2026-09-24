@@ -21,13 +21,17 @@ export const PART_MESH_PREFIX = 'pcbgit_';
 
 const TRIANGLES = 4;
 
-export async function optimizeBoardGlb(source: string, target: string, mounts: Record<string, Mount>) {
+/**
+ * Takes and returns bytes, never paths: readBinary() refuses external buffers and
+ * images, which read() would load from any path the file names.
+ */
+export async function optimizeBoardGlb(source: Uint8Array, mounts: Record<string, Mount>) {
 	await Promise.all([MeshoptEncoder.ready, MeshoptDecoder.ready]);
 	const io = new NodeIO()
 		.registerExtensions([...KHRONOS_EXTENSIONS, EXTMeshoptCompression])
 		.registerDependencies({ 'meshopt.encoder': MeshoptEncoder, 'meshopt.decoder': MeshoptDecoder });
 
-	const document = await io.read(source);
+	const document = await io.readBinary(source);
 	const root = document.getRoot();
 	const scene = root.getDefaultScene() ?? root.listScenes()[0];
 	if (!scene) throw new Error('GLB has no scene');
@@ -79,8 +83,7 @@ export async function optimizeBoardGlb(source: string, target: string, mounts: R
 	for (const node of created) scene.addChild(node);
 
 	document.createExtension(EXTMeshoptCompression).setRequired(true);
-	await io.write(target, document);
-	return { groups: groups.size, board };
+	return { data: await io.writeBinary(document), groups: groups.size, board };
 }
 
 /** KiCad's board is the shallowest "<name>_PCB" mesh; a daughterboard model sits deeper. */

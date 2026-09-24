@@ -35,7 +35,11 @@ in Docker, a volume shared with the `renderer` service). Every external tool
 read-only, limited), otherwise it runs locally (`npm run dev`). The runner only
 accepts those tools and paths inside `RENDER_DIR`. New tools must be added to
 its allowlist, and must only be given paths under `RENDER_DIR`: copy inputs in,
-copy results out (see `thumbnails.ts`).
+copy results out (see `thumbnails.ts`). The renderer can rewrite anything in
+`RENDER_DIR`, and the app resolves paths with `/data` mounted: read results only
+with `readOutput(file, jobDir)`, create files there only with `writeNew()` /
+`COPYFILE_EXCL` (`render/outputs.ts`), and hand bytes, not paths, to
+`storeArtifact()` and `optimizeBoardGlb()`.
 
 ## Conventions
 

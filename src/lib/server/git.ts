@@ -117,7 +117,8 @@ export async function exportTree(repo: string, sha: string, parentDir: string, l
 		maxBuffer: 512 * 1024 * 1024
 	});
 	const tarPath = path.join(dir, '.tree.tar');
-	await fsp.writeFile(tarPath, archive.stdout as unknown as Buffer);
+	// Exclusive create: the renderer can write here, and must not plant a link to write through.
+	await fsp.writeFile(tarPath, archive.stdout as unknown as Buffer, { flag: 'wx' });
 	await exec('tar', ['-xf', tarPath, '-C', dir]);
 	await fsp.rm(tarPath, { force: true });
 	await removeEscapingLinks(dir);
@@ -127,14 +128,28 @@ export async function exportTree(repo: string, sha: string, parentDir: string, l
 /**
  * A commit can hold symlinks, and tar recreates them, absolute ones included.
  * KiCad follows them when a schematic names a sub-sheet by path, so any that point
- * outside the checkout are removed; links within the project keep working.
+ * outside the checkout, or nowhere, are removed; links within the project keep working.
+ *
+ * Walked by hand: readdir's recursive mode follows directory links, so a link to `/`
+ * would walk the whole filesystem. Each link is judged by where the kernel ends up
+ * (realpath), not by its text: a chain of links that each look local can still leave.
  */
 async function removeEscapingLinks(root: string) {
-	for (const entry of await fsp.readdir(root, { recursive: true, withFileTypes: true })) {
-		if (!entry.isSymbolicLink()) continue;
-		const link = path.join(entry.parentPath, entry.name);
-		const target = path.resolve(entry.parentPath, await fsp.readlink(link));
-		if (target !== root && !target.startsWith(root + path.sep)) await fsp.rm(link, { force: true });
+	const links: string[] = [];
+	const walk = async (dir: string) => {
+		for (const entry of await fsp.readdir(dir, { withFileTypes: true })) {
+			const full = path.join(dir, entry.name);
+			if (entry.isSymbolicLink()) links.push(full);
+			else if (entry.isDirectory()) await walk(full);
+		}
+	};
+	await walk(root);
+
+	const realRoot = await fsp.realpath(root);
+	// In order, so a link that only resolved through one removed earlier is removed too.
+	for (const link of links) {
+		const target = await fsp.realpath(link).catch(() => null);
+		if (!target || (target !== realRoot && !target.startsWith(realRoot + path.sep))) await fsp.rm(link, { force: true });
 	}
 }
 

@@ -10,6 +10,7 @@ import { DATA_DIR, RENDER_DIR, repoPath } from '../paths';
 import { rerenderFlag } from '../restore';
 import { clearArtifacts, listArtifacts, storeArtifact, svgGeometry } from './artifacts';
 import { analyzeBoard, type BoardStats } from './board';
+import { readOutput } from './outputs';
 import { bomToCsv, groupBom, parseBomCsv, type BomLine } from './bom';
 import {
 	IBOM_SCRIPT,
@@ -199,7 +200,7 @@ async function renderCommit(job: JobRow, log: string[]) {
 		await clearArtifacts(commit.id);
 
 		const board = files.pcb ? analyzeBoard(files.pcb) : null;
-		const bom = await buildBom(files, outDir, commit.id, log, Boolean(version));
+		const bom = await buildBom(files, checkout, outDir, commit.id, log, Boolean(version));
 		const violations: Violation[] = [];
 
 		if (version) {
@@ -235,6 +236,7 @@ async function renderCommit(job: JobRow, log: string[]) {
 
 async function buildBom(
 	files: ReturnType<typeof discoverKicadFiles>,
+	checkout: string,
 	outDir: string,
 	commitId: string,
 	log: string[],
@@ -248,9 +250,10 @@ async function buildBom(
 		const result = await runKicad(schBomArgs(files.rootSch, csvPath));
 		log.push(`bom: ${result.ok ? 'ok' : `failed (${result.code}) ${result.stderr.trim()}`}`);
 		if (result.ok && fs.existsSync(csvPath)) {
-			const lines = parseBomCsv(await fsp.readFile(csvPath, 'utf8'));
+			const csv = await readOutput(csvPath, outDir);
+			const lines = parseBomCsv(csv.toString('utf8'));
 			if (lines.length) {
-				await storeArtifact({ commitId, kind: 'bom_csv', name: 'bom.csv', source: csvPath });
+				await storeArtifact({ commitId, kind: 'bom_csv', name: 'bom.csv', data: csv, targetName: 'bom.csv' });
 				return lines;
 			}
 		}
@@ -258,12 +261,10 @@ async function buildBom(
 
 	// Fallback: parse the schematic ourselves so the BOM tab is never empty.
 	const { analyzeSchematic } = await import('./schematic');
-	const lines = groupBom(analyzeSchematic(files.rootSch).symbols);
+	const lines = groupBom(analyzeSchematic(files.rootSch, checkout).symbols);
 	log.push(`bom: built from schematic parser (${lines.length} lines)`);
 	if (lines.length) {
-		const csvPath = path.join(outDir, 'bom.csv');
-		await fsp.writeFile(csvPath, bomToCsv(lines));
-		await storeArtifact({ commitId, kind: 'bom_csv', name: 'bom.csv', source: csvPath });
+		await storeArtifact({ commitId, kind: 'bom_csv', name: 'bom.csv', data: Buffer.from(bomToCsv(lines)), targetName: 'bom.csv' });
 	}
 	return lines;
 }
@@ -284,15 +285,15 @@ async function renderSchematic(
 	if (svg.ok) {
 		const sheets = orderSchematicSheets(await fsp.readdir(svgDir), schPath);
 		for (const [index, file] of sheets.entries()) {
-			const source = path.join(svgDir, file);
+			const data = await readOutput(path.join(svgDir, file), outDir);
 			await storeArtifact({
 				commitId,
 				kind: 'schematic_svg',
 				name: path.basename(file, '.svg'),
-				source,
+				data,
 				targetName: `sheet-${index}.svg`,
 				ordinal: index,
-				meta: { geometry: svgGeometry(source) }
+				meta: { geometry: svgGeometry(data) }
 			});
 		}
 		log.push(`schematic sheets: ${sheets.length}`);
@@ -303,15 +304,16 @@ async function renderSchematic(
 	const pdf = await runKicad(schPdfArgs(schPath, pdfPath));
 	log.push(`schematic pdf: ${pdf.ok ? 'ok' : `failed (${pdf.code}) ${pdf.stderr.trim()}`}`);
 	if (pdf.ok && fs.existsSync(pdfPath)) {
-		await storeArtifact({ commitId, kind: 'schematic_pdf', name: 'schematic.pdf', source: pdfPath });
+		await storeArtifact({ commitId, kind: 'schematic_pdf', name: 'schematic.pdf', data: await readOutput(pdfPath, outDir), targetName: 'schematic.pdf' });
 	}
 
 	const ercPath = path.join(outDir, 'erc.json');
 	const erc = await runKicad(schErcArgs(schPath, ercPath));
 	log.push(`erc: ${erc.ok ? 'ok' : `failed (${erc.code}) ${erc.stderr.trim()}`}`);
 	if (fs.existsSync(ercPath)) {
-		violations.push(...parseErcReport(await fsp.readFile(ercPath, 'utf8')));
-		await storeArtifact({ commitId, kind: 'erc_json', name: 'erc.json', source: ercPath });
+		const report = await readOutput(ercPath, outDir);
+		violations.push(...parseErcReport(report.toString('utf8')));
+		await storeArtifact({ commitId, kind: 'erc_json', name: 'erc.json', data: report, targetName: 'erc.json' });
 	}
 }
 
@@ -342,15 +344,15 @@ async function renderBoard(
 				const layerId = layerIdFromFilename(file, layerNames, userNames);
 				if (!layerId) continue;
 				const style = layerStyle(layerId);
-				const source = path.join(layerDir, file);
+				const data = await readOutput(path.join(layerDir, file), outDir);
 				await storeArtifact({
 					commitId,
 					kind: 'pcb_layer_svg',
 					name: layerId,
-					source,
+					data,
 					targetName: `layer-${layerId.replace(/\./g, '_')}.svg`,
 					ordinal: Math.round(style.order * 100),
-					meta: { geometry: svgGeometry(source), style }
+					meta: { geometry: svgGeometry(data), style }
 				});
 				stored++;
 			}
@@ -365,13 +367,15 @@ async function renderBoard(
 		const file = path.join(outDir, `preview-${side}.svg`);
 		const result = await runKicad(pcbCompositeSvgArgs(pcbPath, file, preview, side === 'back'));
 		if (result.ok && fs.existsSync(file)) {
+			const data = await readOutput(file, outDir);
 			await storeArtifact({
 				commitId,
 				kind: 'pcb_preview_svg',
 				name: side,
-				source: file,
+				data,
+				targetName: path.basename(file),
 				ordinal: side === 'front' ? 0 : 1,
-				meta: { geometry: svgGeometry(file) }
+				meta: { geometry: svgGeometry(data) }
 			});
 		}
 		log.push(`preview ${side}: ${result.ok ? 'ok' : `failed (${result.code})`}`);
@@ -384,7 +388,7 @@ async function renderBoard(
 		const stored = result.ok && fs.existsSync(file);
 		// iBOM's stderr is mostly wx debug chatter; its last line holds the error.
 		log.push(`ibom: ${stored ? 'ok' : `failed (${result.code}) ${result.stderr.trim().split('\n').at(-1)}`}`);
-		if (stored) await storeArtifact({ commitId, kind: 'ibom_html', name: 'ibom.html', source: file });
+		if (stored) await storeArtifact({ commitId, kind: 'ibom_html', name: 'ibom.html', data: await readOutput(file, outDir), targetName: 'ibom.html' });
 	}
 
 	// 3D model.
@@ -395,17 +399,17 @@ async function renderBoard(
 		// Joined by material and meshopt-compressed: a fraction of the size, and the
 		// browser no longer merges tens of thousands of primitives on every load.
 		// A failure here keeps KiCad's file, which the viewer still handles.
-		const optimized = path.join(outDir, 'board-optimized.glb');
-		let source = glb;
+		const original = await readOutput(glb, outDir);
+		let data: Uint8Array = original;
 		try {
 			const started = Date.now();
-			const result = await optimizeBoardGlb(glb, optimized, board?.mounts ?? {});
-			source = optimized;
-			log.push(`glb optimized: ${fs.statSync(glb).size} → ${fs.statSync(optimized).size} bytes, ${result.groups} meshes, ${Date.now() - started} ms`);
+			const result = await optimizeBoardGlb(original, board?.mounts ?? {});
+			data = result.data;
+			log.push(`glb optimized: ${original.byteLength} → ${data.byteLength} bytes, ${result.groups} meshes, ${Date.now() - started} ms`);
 		} catch (error) {
 			log.push(`glb optimize: failed, keeping KiCad's file (${(error as Error).message})`);
 		}
-		await storeArtifact({ commitId, kind: 'pcb_glb', name: 'board.glb', source, targetName: 'board.glb', meta: { mounts: board?.mounts ?? {}, optimized: source === optimized } });
+		await storeArtifact({ commitId, kind: 'pcb_glb', name: 'board.glb', data, targetName: 'board.glb', meta: { mounts: board?.mounts ?? {}, optimized: data !== original } });
 	}
 
 	// DRC.
@@ -413,8 +417,9 @@ async function renderBoard(
 	const drc = await runKicad(pcbDrcArgs(pcbPath, drcPath));
 	log.push(`drc: ${drc.ok ? 'ok' : `failed (${drc.code}) ${drc.stderr.trim()}`}`);
 	if (fs.existsSync(drcPath)) {
-		violations.push(...parseDrcReport(await fsp.readFile(drcPath, 'utf8'), userNames));
-		await storeArtifact({ commitId, kind: 'drc_json', name: 'drc.json', source: drcPath });
+		const report = await readOutput(drcPath, outDir);
+		violations.push(...parseDrcReport(report.toString('utf8'), userNames));
+		await storeArtifact({ commitId, kind: 'drc_json', name: 'drc.json', data: report, targetName: 'drc.json' });
 	}
 
 	// Fabrication bundles: gerbers + drill, one ZIP per board house.
@@ -444,21 +449,20 @@ async function buildFabZip(
 	const board = path.basename(pcbPath, '.kicad_pcb');
 	const zip = new AdmZip();
 	for (const entry of entries) {
-		const full = path.join(fabDir, entry);
-		if (!(await fsp.stat(full)).isFile()) continue;
+		// Only plain files the renderer wrote in this job's directory; anything else is left out.
+		const data = await readOutput(path.join(fabDir, entry), outDir).catch(() => null);
+		if (!data) continue;
 		if (!profile.fileName) {
-			zip.addLocalFile(full);
+			zip.addFile(entry, data);
 			continue;
 		}
 		// Board houses with their own naming: find what each file holds first.
 		const drillPart = /-(N?PTH)\.drl$/i.exec(entry)?.[1]?.toUpperCase();
 		const part = drillPart ?? layerIdFromFilename(entry.replace(/\.[^.]+$/, ''), layers, userNames);
 		const name = part ? profile.fileName(board, part) : null;
-		if (name) zip.addLocalFile(full, '', name);
+		if (name) zip.addFile(name, data);
 	}
-	const zipPath = path.join(outDir, `fabrication-${profile.id}.zip`);
-	zip.writeZip(zipPath);
-	await storeArtifact({ commitId, kind: 'fab_zip', name: profile.id, source: zipPath });
+	await storeArtifact({ commitId, kind: 'fab_zip', name: profile.id, data: zip.toBuffer(), targetName: `fabrication-${profile.id}.zip` });
 }
 
 function persistResults(

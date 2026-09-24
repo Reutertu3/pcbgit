@@ -6,6 +6,7 @@ import { get, now, run } from './db';
 import { RENDER_DIR } from './paths';
 import { runTool } from './render/kicad';
 import { AVATAR_SIZE, avatarSvg, imageInfo } from './avatarimage';
+import { readOutput, writeNew } from './render/outputs';
 
 export class AvatarError extends UserError {}
 
@@ -26,7 +27,7 @@ export async function saveAvatar(userId: string, bytes: Uint8Array) {
 		const svg = path.join(work, 'avatar.svg');
 		const png = path.join(work, 'avatar.png');
 		const webp = path.join(work, 'avatar.webp');
-		await fsp.writeFile(svg, avatarSvg(bytes, info));
+		await writeNew(svg, avatarSvg(bytes, info));
 
 		const raster = await runTool('rsvg-convert', ['-w', String(AVATAR_SIZE), '-h', String(AVATAR_SIZE), '-f', 'png', '-o', png, svg], 60_000);
 		if (!raster.ok || !fs.existsSync(png)) throw new AvatarError('avatar.error.format');
@@ -37,7 +38,7 @@ export async function saveAvatar(userId: string, bytes: Uint8Array) {
 			`INSERT INTO avatars (user_id, image, type, updated_at) VALUES (?,?,?,?)
 			 ON CONFLICT(user_id) DO UPDATE SET image = excluded.image, type = excluded.type, updated_at = excluded.updated_at`,
 			userId,
-			await fsp.readFile(file),
+			await readOutput(file, work),
 			type,
 			now()
 		);

@@ -3,6 +3,7 @@ import fsp from 'node:fs/promises';
 import path from 'node:path';
 import { RENDER_DIR, artifactDir } from './paths';
 import { runTool } from './render/kicad';
+import { readOutput } from './render/outputs';
 
 /**
  * Raster thumbnails of rendered SVGs for the board cards. A real schematic SVG
@@ -52,7 +53,8 @@ async function generate(commitId: string, name: string): Promise<Thumbnail | nul
 		const svg = path.join(work, 'source.svg');
 		const rendered = path.join(work, 'thumb.png');
 		const encoded = path.join(work, 'thumb.webp');
-		await fsp.copyFile(source, svg);
+		// Exclusive: the renderer can write in `work` and must not plant a link to copy through.
+		await fsp.copyFile(source, svg, fs.constants.COPYFILE_EXCL);
 
 		const raster = await runTool('rsvg-convert', ['-w', String(WIDTH), '-f', 'png', '-o', rendered, svg], 60_000);
 		// rsvg-convert missing or failed: callers fall back to the SVG.
@@ -60,11 +62,11 @@ async function generate(commitId: string, name: string): Promise<Thumbnail | nul
 
 		const webpResult = await runTool('cwebp', ['-quiet', '-q', '80', '-alpha_q', '90', rendered, '-o', encoded], 60_000);
 		if (webpResult.ok && fs.existsSync(encoded)) {
-			await fsp.copyFile(encoded, webp);
+			await fsp.writeFile(webp, await readOutput(encoded, work));
 			return { file: webp, type: 'image/webp' };
 		}
 		// No WebP encoder: a PNG is still far smaller than the SVG.
-		await fsp.copyFile(rendered, png);
+		await fsp.writeFile(png, await readOutput(rendered, work));
 		return { file: png, type: 'image/png' };
 	} finally {
 		await fsp.rm(work, { recursive: true, force: true });

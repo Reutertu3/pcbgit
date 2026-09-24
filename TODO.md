@@ -51,7 +51,10 @@ Done in the audit of 2026-09-23 and after: open redirect after sign-in, sign-in
 rate limit (async scrypt), frame/HSTS headers, capability-free containers,
 render isolation (renderer container: no `/data`, no network, read-only,
 limited), CSP for SVG artifacts, git checks on push (`receive.fsckObjects`),
-symlinks leaving the render checkout removed.
+symlinks leaving the render checkout removed (by real path, so chains of links
+count too), renderer output read only as plain files inside the job's directory
+(`render/outputs.ts`) and the app's own files there created exclusively, GLBs read
+without external buffers, the schematic fallback confined to the checkout.
 
 ### Medium: before opening registration
 - [ ] Git push size: `git-http-backend` accepts any pack size.
@@ -69,6 +72,11 @@ symlinks leaving the render checkout removed.
       another board's rendered SVG next to the current job.
 - [ ] A compromised renderer can still falsify its own job's GLB or iBOM output
       (parsed in the browser, iBOM sandboxed).
+- [ ] A process a compromised renderer leaves running could swap a directory in
+      `/work` for a link between the app's realpath check and its open
+      (`readOutput`), or while `tar` extracts a checkout. Closing it needs
+      `openat2(RESOLVE_BENEATH)`, which Node does not offer, or a renderer that
+      cannot keep processes alive between tool runs.
 - [ ] Full Content-Security-Policy for pages (SvelteKit `kit.csp`); pages send
       only `frame-ancestors 'self'` so far.
 
