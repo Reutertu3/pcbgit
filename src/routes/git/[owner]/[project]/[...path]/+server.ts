@@ -3,7 +3,7 @@ import { authenticateToken, getUserByUsername } from '$lib/server/auth';
 import { get } from '$lib/server/db';
 import { authRequired, parseBasicAuth, runGitBackend } from '$lib/server/githttp';
 import { repoPath } from '$lib/server/paths';
-import { syncCommits } from '$lib/server/projects';
+import { canEdit, canView, syncCommits } from '$lib/server/projects';
 import { repoExists } from '$lib/server/git';
 
 interface Target {
@@ -50,11 +50,12 @@ async function handle(event: Parameters<RequestHandler>[0]) {
 
 	if (write) {
 		if (!actor) return authRequired('Push requires a personal access token as the password.\n');
-		const allowed = actor.id === project.owner_id || actor.role === 'admin';
+		// Owner, collaborators and admins, the same rule as the web interface.
+		const allowed = canEdit(project, actor);
 		if (!allowed) return new Response('You do not have write access to this repository\n', { status: 403 });
 	} else if (project.visibility === 'private') {
 		if (!actor) return authRequired('This repository is private.\n');
-		const allowed = actor.id === project.owner_id || actor.role === 'admin';
+		const allowed = canView(project, actor);
 		if (!allowed) return new Response('Repository not found\n', { status: 404 });
 	}
 
@@ -75,15 +76,15 @@ async function handle(event: Parameters<RequestHandler>[0]) {
 	if (write && request.method === 'POST') {
 		// The push is written by the time the backend's body is consumed by the
 		// client, so index the new commits once the response finishes streaming.
-		return indexAfterPush(response, project);
+		return indexAfterPush(response, project, actor!.id);
 	}
 	return response;
 }
 
 /** Wraps the response so commit indexing runs after the push stream completes. */
-function indexAfterPush(response: Response, project: Target) {
+function indexAfterPush(response: Response, project: Target, actorId: string) {
 	if (!response.body) {
-		void syncCommits(project, project.owner_username).catch(console.error);
+		void syncCommits(project, project.owner_username, actorId).catch(console.error);
 		return response;
 	}
 
@@ -101,7 +102,7 @@ function indexAfterPush(response: Response, project: Target) {
 				controller.error(error);
 			} finally {
 				try {
-					const result = await syncCommits(project, project.owner_username);
+					const result = await syncCommits(project, project.owner_username, actorId);
 					if (result.added) {
 						console.log(`[git] ${project.owner_username}/${project.slug}: indexed ${result.added} commit(s)`);
 					}

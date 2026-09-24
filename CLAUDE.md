@@ -52,6 +52,12 @@ copy results out (see `thumbnails.ts`).
 - **Schema changes:** a new column on an existing table also needs an entry in
   `ADDED_COLUMNS` (db/index.ts), or existing instances never get it.
 - **Admin actions** that change data call `audit(...)`.
+- **Permissions** go through `canView` / `canEdit` / `isOwner` (projects.ts). Collaborators
+  (`project_members`) can do everything an owner can except delete the board and manage
+  collaborators. SQL that filters by access (`visibleTo`, `VISIBLE` in notifications.ts)
+  repeats the rule; keep all of them in step.
+- **Notifications** are `comment`, `reply` or `version`. `syncCommits()` sends a version
+  notification only when it gets an actor (uploads, pushes); re-syncs pass none.
 - **Forms that edit existing values** use `use:enhance={keepValues}` ($lib/forms):
   SvelteKit resets a form after success, and with Svelte 5 that empties every field
   filled via `value={…}`. Forms that should clear (passwords, "create …") keep plain

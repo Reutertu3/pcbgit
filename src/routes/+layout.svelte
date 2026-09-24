@@ -129,7 +129,7 @@
 								<Icon name="user" size={14} /> {t('nav.yourBoards')}
 							</a>
 							<a href="/settings" class="menu-item" onclick={closeMenus}>
-								<Icon name="settings" size={14} /> {t('nav.settings')}
+								<Icon name="settings" size={14} /> {t('nav.userCenter')}
 							</a>
 							<a href="/settings/tokens" class="menu-item" onclick={closeMenus}>
 								<Icon name="git" size={14} /> {t('nav.tokens')}

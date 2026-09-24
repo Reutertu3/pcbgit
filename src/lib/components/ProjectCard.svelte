@@ -10,8 +10,10 @@
 
 	interface Props {
 		project: ProjectSummary;
+		/** Shown on the viewer's own list for boards someone else owns. */
+		collaborator?: boolean;
 	}
-	let { project }: Props = $props();
+	let { project, collaborator = false }: Props = $props();
 
 	const href = $derived(`/${project.owner_username}/${project.slug}`);
 	const dimensions = $derived(formatDimensions(project.board_width, project.board_height));
@@ -104,13 +106,16 @@
 			<StatusDot status={project.head_status} />
 		</div>
 
-		<a
-			href="/{project.owner_username}"
-			class="relative z-10 flex w-fit items-center gap-1.5 text-xs text-[var(--text-muted)] hover:text-[var(--text-secondary)]"
-		>
-			<Avatar name={project.owner_display_name || project.owner_username} size={16} />
-			{project.owner_username}
-		</a>
+		<div class="flex items-center gap-2">
+			<a
+				href="/{project.owner_username}"
+				class="relative z-10 flex w-fit items-center gap-1.5 text-xs text-[var(--text-muted)] hover:text-[var(--text-secondary)]"
+			>
+				<Avatar name={project.owner_display_name || project.owner_username} size={16} />
+				{project.owner_username}
+			</a>
+			{#if collaborator}<span class="chip !px-1.5 !py-0 !text-[0.625rem]">{t('collaborators.chip')}</span>{/if}
+		</div>
 
 		{#if project.description}
 			<p class="truncate-2 text-xs leading-relaxed text-[var(--text-secondary)]">

@@ -187,17 +187,32 @@ CREATE INDEX IF NOT EXISTS idx_comments_project ON comments(project_id, created_
 -- idx_comments_parent is created in db/index.ts, after parent_id is migrated in.
 
 -- One row per recipient per comment. Removed with the comment.
+-- A comment/reply points at its comment; a new version at the newest commit of the
+-- push or upload, with how many versions it brought. Databases from before
+-- "version" existed are rebuilt into this shape at boot (db/index.ts).
 CREATE TABLE IF NOT EXISTS notifications (
-  id         TEXT PRIMARY KEY,
-  user_id    TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  kind       TEXT NOT NULL CHECK (kind IN ('comment','reply')),
-  project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
-  comment_id TEXT NOT NULL REFERENCES comments(id) ON DELETE CASCADE,
-  actor_id   TEXT REFERENCES users(id) ON DELETE SET NULL,
-  created_at INTEGER NOT NULL,
-  read_at    INTEGER,
+  id            TEXT PRIMARY KEY,
+  user_id       TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  kind          TEXT NOT NULL CHECK (kind IN ('comment','reply','version')),
+  project_id    TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  comment_id    TEXT REFERENCES comments(id) ON DELETE CASCADE,
+  commit_id     TEXT REFERENCES commits(id) ON DELETE CASCADE,
+  version_count INTEGER NOT NULL DEFAULT 1,
+  actor_id      TEXT REFERENCES users(id) ON DELETE SET NULL,
+  created_at    INTEGER NOT NULL,
+  read_at       INTEGER,
   UNIQUE (user_id, comment_id)
 );
+
+-- Collaborators: existing users the owner lets edit and push to a board.
+CREATE TABLE IF NOT EXISTS project_members (
+  project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  user_id    TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  added_by   TEXT REFERENCES users(id) ON DELETE SET NULL,
+  added_at   INTEGER NOT NULL,
+  PRIMARY KEY (project_id, user_id)
+);
+CREATE INDEX IF NOT EXISTS idx_members_user ON project_members(user_id);
 CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id, read_at, created_at DESC);
 
 CREATE TABLE IF NOT EXISTS audit_log (

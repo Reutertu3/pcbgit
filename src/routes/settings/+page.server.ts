@@ -3,10 +3,19 @@ import { translate } from '$lib/i18n';
 import type { Actions, PageServerLoad } from './$types';
 import { audit, get, now, run } from '$lib/server/db';
 import { destroyUserSessions, hashPassword, verifyPassword } from '$lib/server/auth';
+import { listNotifications, markAllRead, notificationCount } from '$lib/server/notifications';
+
+const MESSAGES_PER_PAGE = 25;
 
 export const load: PageServerLoad = async ({ locals, url }) => {
 	if (!locals.user) redirect(303, `/login?next=${encodeURIComponent(url.pathname)}`);
+	const total = notificationCount(locals.user.id);
+	const pageCount = Math.max(1, Math.ceil(total / MESSAGES_PER_PAGE));
+	const page = Math.min(pageCount, Math.max(1, Number(url.searchParams.get('page')) || 1));
 	return {
+		messages: listNotifications(locals.user.id, MESSAGES_PER_PAGE, (page - 1) * MESSAGES_PER_PAGE),
+		messagePage: page,
+		messagePageCount: pageCount,
 		profile: {
 			username: locals.user.username,
 			email: locals.user.email,
@@ -17,6 +26,12 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 };
 
 export const actions: Actions = {
+	markAllRead: async ({ locals }) => {
+		if (!locals.user) return fail(401, { error: translate(locals.locale, 'error.signInFirst') });
+		markAllRead(locals.user.id);
+		return { success: true };
+	},
+
 	profile: async ({ request, locals }) => {
 		if (!locals.user) return fail(401, { error: translate(locals.locale, 'error.signInFirst') });
 		const form = await request.formData();

@@ -17,9 +17,41 @@ function open() {
 	database.exec('PRAGMA synchronous = NORMAL');
 	// The schema is written to be idempotent, so replaying it on every boot is the migration.
 	database.exec(SCHEMA_SQL);
+	rebuildNotifications(database);
 	addMissingColumns(database);
 	database.exec(POST_MIGRATION_SQL);
 	return database;
+}
+
+/**
+ * Notifications began as comments only: a CHECK allowing just comment/reply and a
+ * required comment_id. SQLite cannot change either in place, so a table in that
+ * old shape is copied into the current one (schema.sql) once.
+ */
+function rebuildNotifications(database: DatabaseSync) {
+	const current = database.prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'notifications'").get() as
+		| { sql: string }
+		| undefined;
+	if (!current || current.sql.includes("'version'")) return;
+
+	const create = /CREATE TABLE IF NOT EXISTS notifications \(([\s\S]*?)\n\);/.exec(SCHEMA_SQL)?.[1];
+	if (!create) throw new Error('notifications table missing from schema.sql');
+	database.exec('BEGIN');
+	try {
+		database.exec(`CREATE TABLE notifications_next (${create}\n)`);
+		database.exec(
+			`INSERT INTO notifications_next (id, user_id, kind, project_id, comment_id, actor_id, created_at, read_at)
+			 SELECT id, user_id, kind, project_id, comment_id, actor_id, created_at, read_at FROM notifications`
+		);
+		database.exec('DROP TABLE notifications');
+		database.exec('ALTER TABLE notifications_next RENAME TO notifications');
+		database.exec('CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id, read_at, created_at DESC)');
+		database.exec('COMMIT');
+		console.log('[db] notifications table rebuilt for version notifications');
+	} catch (error) {
+		database.exec('ROLLBACK');
+		throw error;
+	}
 }
 
 /**

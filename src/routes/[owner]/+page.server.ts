@@ -8,9 +8,12 @@ export const load: PageServerLoad = async ({ params, locals, url }) => {
 	const owner = getUserByUsername(params.owner);
 	if (!owner || (!owner.is_active && locals.user?.role !== 'admin')) error(404, 'error.userNotFound');
 
+	const isSelf = locals.user?.id === owner.id;
 	const result = browseProjects({
 		viewer: locals.user,
 		owner: owner.username,
+		// Your own list also holds the boards you work on; other people's show what they own.
+		includeCollaborations: isSelf,
 		search: url.searchParams.get('q') ?? '',
 		sort: (url.searchParams.get('sort') as 'recent' | 'stars' | 'name') ?? 'recent',
 		page: Number(url.searchParams.get('page')) || 1,
@@ -38,6 +41,6 @@ export const load: PageServerLoad = async ({ params, locals, url }) => {
 				owner.id
 			)
 		},
-		isSelf: locals.user?.id === owner.id
+		isSelf
 	};
 };

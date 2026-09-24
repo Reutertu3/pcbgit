@@ -6,8 +6,12 @@ import { commitFiles } from '$lib/server/git';
 import { repoPath } from '$lib/server/paths';
 import {
 	LICENSES,
+	addCollaborator,
 	canEdit,
 	deleteProject,
+	isOwner,
+	listCollaborators,
+	removeCollaborator,
 	getProject,
 	listTags,
 	setProjectTags,
@@ -28,6 +32,13 @@ function requireEditable(owner: string, slug: string, user: App.Locals['user']) 
 	return project;
 }
 
+/** Deleting the board and choosing its collaborators stay with the owner (and admins). */
+function requireOwner(owner: string, slug: string, user: App.Locals['user']) {
+	const project = requireEditable(owner, slug, user);
+	if (!isOwner(project, user)) error(403, 'error.ownerOnly');
+	return project;
+}
+
 export const load: PageServerLoad = async ({ params, locals, parent, url }) => {
 	const { editable } = await parent();
 	if (!editable) redirect(303, `/${params.owner}/${params.project}`);
@@ -36,6 +47,8 @@ export const load: PageServerLoad = async ({ params, locals, parent, url }) => {
 	return {
 		licenses: LICENSES,
 		allTags: listTags(),
+		isOwner: isOwner(project, locals.user),
+		collaborators: listCollaborators(project.id),
 		cloneUrl: `${url.origin}/git/${project.owner_username}/${project.slug}.git`
 	};
 };
@@ -95,7 +108,7 @@ export const actions: Actions = {
 			authorEmail: locals.user!.email,
 			branch: project.default_branch
 		});
-		const result = await syncCommits(project, project.owner_username);
+		const result = await syncCommits(project, project.owner_username, locals.user!.id);
 
 		return {
 			success: true,
@@ -105,8 +118,23 @@ export const actions: Actions = {
 		};
 	},
 
+	addCollaborator: async ({ request, params, locals }) => {
+		const project = requireOwner(params.owner, params.project, locals.user);
+		const username = String((await request.formData()).get('username') ?? '').trim();
+		if (!username) return fail(400, { error: translate(locals.locale, 'collaborators.error.noUser') });
+		const refused = addCollaborator(project, username, locals.user!.id);
+		if (refused) return fail(400, { error: translate(locals.locale, refused, { username }) });
+		return { success: true, message: translate(locals.locale, 'collaborators.added', { username }) };
+	},
+
+	removeCollaborator: async ({ request, params, locals }) => {
+		const project = requireOwner(params.owner, params.project, locals.user);
+		removeCollaborator(project, String((await request.formData()).get('user_id') ?? ''), locals.user!.id);
+		return { success: true, message: translate(locals.locale, 'collaborators.removed') };
+	},
+
 	delete: async ({ request, params, locals }) => {
-		const project = requireEditable(params.owner, params.project, locals.user);
+		const project = requireOwner(params.owner, params.project, locals.user);
 		const confirmation = String((await request.formData()).get('confirm') ?? '');
 		if (confirmation !== project.slug) {
 			return fail(400, { error: translate(locals.locale, 'boardForm.error.confirm', { slug: project.slug }) });

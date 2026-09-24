@@ -1,8 +1,9 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import Icon from './Icon.svelte';
-	import { relativeTime } from '$lib/format';
-	import { t, tParts } from '$lib/i18n/t';
+	import NotificationText from './NotificationText.svelte';
+	import { t } from '$lib/i18n/t';
+	import { notificationHref } from '$lib/notifications';
 	import type { NotificationView } from '$lib/types';
 
 	interface Props {
@@ -69,7 +70,7 @@
 	async function openItem(item: NotificationView) {
 		open = false;
 		await markOne(item);
-		goto(`/${item.project_owner}/${item.project_slug}#comment-${item.comment_id}`);
+		goto(notificationHref(item));
 	}
 </script>
 
@@ -131,15 +132,7 @@
 							<li class="group flex items-start gap-2 px-3 py-2.5 hover:bg-s3" class:unread={!item.read_at}>
 								<span class="dot mt-1.5" aria-hidden="true"></span>
 								<button class="min-w-0 flex-1 text-left" onclick={() => openItem(item)}>
-									<span class="block text-xs leading-snug text-[var(--text-secondary)]">
-										{#each tParts(item.kind === 'reply' ? 'notifications.reply' : 'notifications.comment') as part}
-											{#if typeof part === 'string'}{part}{:else}<strong class="font-semibold text-[var(--text-primary)]"
-													>{part.slot === 'actor' ? item.actor : item.project_name}</strong
-												>{/if}
-										{/each}
-									</span>
-									<span class="excerpt mt-0.5 block text-xs text-[var(--text-muted)]">“{item.excerpt}”</span>
-									<span class="mt-0.5 block text-[0.6875rem] text-[var(--text-muted)]">{relativeTime(item.created_at)}</span>
+									<NotificationText {item} />
 								</button>
 								{#if !item.read_at}
 									<button
@@ -156,6 +149,9 @@
 					</ul>
 				{/if}
 			</div>
+			<a href="/settings#messages" class="block border-t px-3 py-2 text-center text-xs text-[var(--accent)] hover:underline" onclick={() => (open = false)}>
+				{t('notifications.showAll')}
+			</a>
 		</div>
 	{/if}
 </div>
@@ -188,12 +184,5 @@
 	}
 	.unread {
 		background: color-mix(in srgb, var(--accent) 6%, transparent);
-	}
-	.excerpt {
-		display: -webkit-box;
-		-webkit-line-clamp: 2;
-		line-clamp: 2;
-		-webkit-box-orient: vertical;
-		overflow: hidden;
 	}
 </style>

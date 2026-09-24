@@ -153,13 +153,17 @@ export interface CommentThread extends CommentView {
 
 export interface NotificationView {
 	id: string;
-	kind: 'comment' | 'reply';
+	kind: 'comment' | 'reply' | 'version';
 	created_at: number;
 	read_at: number | null;
-	comment_id: string;
+	comment_id: string | null;
+	/** Versions a push or upload brought (kind 'version'). */
+	version_count: number;
 	actor: string;
 	project_name: string;
 	project_slug: string;
 	project_owner: string;
-	excerpt: string;
+	/** Comment text, or the newest version's commit message. */
+	excerpt: string | null;
+	short_sha: string | null;
 }

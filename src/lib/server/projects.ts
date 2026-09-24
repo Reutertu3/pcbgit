@@ -1,6 +1,7 @@
 import { all, audit, count, get, newId, now, run, tx } from './db';
 import { deleteRepo, initRepo, listCommits, repoExists, resolveRef } from './git';
 import { repoPath } from './paths';
+import { notifyForVersions } from './notifications';
 import { enqueueRender } from './render/worker';
 import type { User } from './auth';
 import type { CommitSummary, ProjectSummary, TagRef } from '$lib/types';
@@ -67,16 +68,21 @@ export interface BrowseQuery {
 	search?: string;
 	tags?: string[];
 	owner?: string;
+	/** With `owner`: also the boards that user collaborates on (their own "Your boards"). */
+	includeCollaborations?: boolean;
 	sort?: 'recent' | 'stars' | 'name' | 'created';
 	starredBy?: string;
 	page?: number;
 	perPage?: number;
 }
 
-/** SQL condition on `projects p`: private projects are visible to their owner and to admins only. */
+/** SQL: is the user in `?` a collaborator on `projects p`. */
+export const MEMBER_SQL = 'EXISTS (SELECT 1 FROM project_members m WHERE m.project_id = p.id AND m.user_id = ?)';
+
+/** SQL condition on `projects p`: private projects are visible to their owner, collaborators and admins only. */
 function visibleTo(viewer: User | null): { sql: string; params: unknown[] } {
 	if (viewer?.role === 'admin') return { sql: '1 = 1', params: [] };
-	if (viewer) return { sql: "(p.visibility = 'public' OR p.owner_id = ?)", params: [viewer.id] };
+	if (viewer) return { sql: `(p.visibility = 'public' OR p.owner_id = ? OR ${MEMBER_SQL})`, params: [viewer.id, viewer.id] };
 	return { sql: "p.visibility = 'public'", params: [] };
 }
 
@@ -104,7 +110,10 @@ export function browseProjects(query: BrowseQuery) {
 		where.push('(p.name LIKE ? OR p.slug LIKE ? OR p.description LIKE ? OR u.username LIKE ?)');
 		params.push(term, term, term, term);
 	}
-	if (query.owner) {
+	if (query.owner && query.includeCollaborations) {
+		where.push(`(u.username = ? OR EXISTS (SELECT 1 FROM project_members m JOIN users mu ON mu.id = m.user_id WHERE m.project_id = p.id AND mu.username = ?))`);
+		params.push(query.owner, query.owner);
+	} else if (query.owner) {
 		where.push('u.username = ?');
 		params.push(query.owner);
 	}
@@ -166,12 +175,58 @@ export function getProjectById(id: string) {
 	return row ? withTags(row) : null;
 }
 
-export function canView(project: Pick<Project, 'visibility' | 'owner_id'>, viewer: User | null) {
-	return project.visibility === 'public' || viewer?.id === project.owner_id || viewer?.role === 'admin';
+export function isCollaborator(projectId: string, userId: string) {
+	return Boolean(get('SELECT 1 AS x FROM project_members WHERE project_id = ? AND user_id = ?', projectId, userId));
 }
 
-export function canEdit(project: Pick<Project, 'owner_id'>, viewer: User | null) {
+type Access = Pick<Project, 'id' | 'visibility' | 'owner_id'>;
+
+export function canView(project: Access, viewer: User | null) {
+	return project.visibility === 'public' || canEdit(project, viewer);
+}
+
+/** Owner, collaborators and admins: settings, uploads, pushes, re-renders. */
+export function canEdit(project: Pick<Project, 'id' | 'owner_id'>, viewer: User | null) {
+	if (!viewer) return false;
+	return viewer.id === project.owner_id || viewer.role === 'admin' || isCollaborator(project.id, viewer.id);
+}
+
+/** What stays with the owner (and admins): deleting the board, choosing its collaborators. */
+export function isOwner(project: Pick<Project, 'owner_id'>, viewer: User | null) {
 	return Boolean(viewer) && (viewer!.id === project.owner_id || viewer!.role === 'admin');
+}
+
+/* -------------------------------------------------------- collaborators */
+
+export interface Collaborator {
+	user_id: string;
+	username: string;
+	display_name: string;
+	added_at: number;
+}
+
+export function listCollaborators(projectId: string) {
+	return all<Collaborator>(
+		`SELECT m.user_id, u.username, u.display_name, m.added_at FROM project_members m
+		 JOIN users u ON u.id = m.user_id WHERE m.project_id = ? ORDER BY u.username COLLATE NOCASE`,
+		projectId
+	);
+}
+
+/** Why an addition was refused, as a translation key; null when it was added. */
+export function addCollaborator(project: Pick<Project, 'id' | 'owner_id' | 'slug'>, username: string, actorId: string) {
+	const user = get<{ id: string; is_active: number }>('SELECT id, is_active FROM users WHERE username = ? COLLATE NOCASE', username.trim());
+	if (!user || !user.is_active) return 'collaborators.error.noUser' as const;
+	if (user.id === project.owner_id) return 'collaborators.error.owner' as const;
+	if (isCollaborator(project.id, user.id)) return 'collaborators.error.already' as const;
+	run('INSERT INTO project_members (project_id, user_id, added_by, added_at) VALUES (?,?,?,?)', project.id, user.id, actorId, now());
+	audit(actorId, 'project.collaborator_add', `${project.slug}:${username.trim()}`);
+	return null;
+}
+
+export function removeCollaborator(project: Pick<Project, 'id' | 'slug'>, userId: string, actorId: string) {
+	const removed = run('DELETE FROM project_members WHERE project_id = ? AND user_id = ?', project.id, userId).changes;
+	if (removed) audit(actorId, 'project.collaborator_remove', `${project.slug}:${userId}`);
 }
 
 /* ------------------------------------------------------------ mutations */
@@ -230,9 +285,15 @@ export function updateProject(
 
 /**
  * Reconciles the commit table with what is actually in the repo and queues
- * renders for anything new. Called after every push and every web upload.
+ * renders for anything new. Called after every push and every web upload;
+ * those pass who did it, so the board's other people hear about new versions.
+ * Re-syncs pass no actor: they only catch up on history.
  */
-export async function syncCommits(project: { id: string; slug: string; default_branch: string }, ownerUsername: string) {
+export async function syncCommits(
+	project: { id: string; slug: string; default_branch: string },
+	ownerUsername: string,
+	actorId?: string
+) {
 	const repo = repoPath(ownerUsername, project.slug);
 	if (!repoExists(ownerUsername, project.slug)) return { added: 0, head: null };
 
@@ -276,6 +337,9 @@ export async function syncCommits(project: { id: string; slug: string; default_b
 
 	// Render newest first so the page a user lands on fills in first.
 	for (const commit of [...added].reverse()) enqueueRender(project.id, commit.id);
+	if (actorId && added.length) {
+		notifyForVersions({ projectId: project.id, actorId, commitId: added[added.length - 1].id, count: added.length });
+	}
 	return { added: added.length, head: head?.id ?? null };
 }
 

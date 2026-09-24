@@ -10,6 +10,7 @@
 	import { t, tParts } from '$lib/i18n/t';
 	import LicenseSummary from '$lib/components/LicenseSummary.svelte';
 	import { licenseName } from '$lib/licenses';
+	import Avatar from '$lib/components/Avatar.svelte';
 
 	let { data, form } = $props();
 
@@ -28,7 +29,7 @@
 
 </script>
 
-<svelte:head><title>{t('nav.settings')} · {data.project.name} · {data.site.name}</title></svelte:head>
+<svelte:head><title>{t('nav.boardSettings')} · {data.project.name} · {data.site.name}</title></svelte:head>
 
 <div class="mx-auto max-w-3xl px-4 py-6">
 	{#if form?.message && !(form && 'saved' in form)}<FormError message={form.message} kind="success" />{/if}
@@ -149,27 +150,65 @@
 		</div>
 	</section>
 
-	<!-- Danger zone -->
-	<section
-		class="mt-4 rounded-lg border p-5"
-		style:border-color="color-mix(in srgb, var(--err) 35%, transparent)"
-	>
-		<h2 class="mb-1 text-sm font-semibold" style:color="var(--err)">{t('boardForm.deleteTitle')}</h2>
-		<p class="mb-4 text-xs leading-relaxed text-[var(--text-secondary)]">
-			{t('boardForm.deleteHint')}
-		</p>
-		<form method="POST" action="?/delete" use:enhance>
-			<label class="label" for="confirm">
-				{#each tParts('boardForm.typeToConfirm') as part}
-					{#if typeof part === 'string'}{part}{:else}<span class="mono text-[var(--text-primary)]">{data.project.slug}</span>{/if}
-				{/each}
-			</label>
-			<div class="flex flex-wrap gap-2">
-				<input class="input mono !w-auto flex-1" id="confirm" name="confirm" bind:value={confirmText} autocomplete="off" />
-				<button class="btn btn-danger" type="submit" disabled={confirmText !== data.project.slug}>
-					<Icon name="trash" size={13} /> {t('boardForm.delete')}
-				</button>
-			</div>
-		</form>
-	</section>
+	{#if data.isOwner}
+		<!-- Collaborators -->
+		<section class="surface mt-4 p-5">
+			<h2 class="mb-1 text-sm font-semibold">{t('collaborators.title')}</h2>
+			<p class="mb-4 text-xs leading-relaxed text-[var(--text-secondary)]">{t('collaborators.hint')}</p>
+
+			{#if data.collaborators.length}
+				<ul class="mb-4 divide-y rounded-lg border">
+					{#each data.collaborators as person (person.user_id)}
+						<li class="flex items-center gap-2 px-3 py-2">
+							<Avatar name={person.display_name || person.username} size={20} />
+							<a href="/{person.username}" class="min-w-0 flex-1 truncate text-sm hover:text-[var(--accent)]">
+								{person.display_name || person.username}
+								<span class="mono text-xs text-[var(--text-muted)]">@{person.username}</span>
+							</a>
+							<form method="POST" action="?/removeCollaborator" use:enhance>
+								<input type="hidden" name="user_id" value={person.user_id} />
+								<button class="btn btn-sm" type="submit" aria-label={t('collaborators.removeLabel', { username: person.username })}>
+									<Icon name="trash" size={12} /> {t('collaborators.remove')}
+								</button>
+							</form>
+						</li>
+					{/each}
+				</ul>
+			{:else}
+				<p class="mb-4 text-xs text-[var(--text-muted)]">{t('collaborators.none')}</p>
+			{/if}
+
+			<form method="POST" action="?/addCollaborator" use:enhance class="flex flex-wrap gap-2">
+				<label class="sr-only" for="collaborator">{t('collaborators.username')}</label>
+				<input class="input mono !w-auto flex-1" id="collaborator" name="username" placeholder={t('collaborators.username')} autocomplete="off" required />
+				<button class="btn" type="submit"><Icon name="plus" size={13} /> {t('collaborators.add')}</button>
+			</form>
+		</section>
+	{/if}
+
+	{#if data.isOwner}
+		<!-- Danger zone -->
+		<section
+			class="mt-4 rounded-lg border p-5"
+			style:border-color="color-mix(in srgb, var(--err) 35%, transparent)"
+		>
+			<h2 class="mb-1 text-sm font-semibold" style:color="var(--err)">{t('boardForm.deleteTitle')}</h2>
+			<p class="mb-4 text-xs leading-relaxed text-[var(--text-secondary)]">
+				{t('boardForm.deleteHint')}
+			</p>
+			<form method="POST" action="?/delete" use:enhance>
+				<label class="label" for="confirm">
+					{#each tParts('boardForm.typeToConfirm') as part}
+						{#if typeof part === 'string'}{part}{:else}<span class="mono text-[var(--text-primary)]">{data.project.slug}</span>{/if}
+					{/each}
+				</label>
+				<div class="flex flex-wrap gap-2">
+					<input class="input mono !w-auto flex-1" id="confirm" name="confirm" bind:value={confirmText} autocomplete="off" />
+					<button class="btn btn-danger" type="submit" disabled={confirmText !== data.project.slug}>
+						<Icon name="trash" size={13} /> {t('boardForm.delete')}
+					</button>
+				</div>
+			</form>
+		</section>
+	{/if}
 </div>

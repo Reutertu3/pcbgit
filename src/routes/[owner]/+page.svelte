@@ -32,7 +32,7 @@
 		</div>
 		{#if data.isSelf}
 			<div class="flex gap-2">
-				<a href="/settings" class="btn btn-sm"><Icon name="settings" size={13} /> {t('nav.settings')}</a>
+				<a href="/settings" class="btn btn-sm"><Icon name="settings" size={13} /> {t('nav.userCenter')}</a>
 				<a href="/new" class="btn btn-primary btn-sm"><Icon name="plus" size={13} /> {t('nav.newBoard')}</a>
 			</div>
 		{/if}
@@ -51,7 +51,7 @@
 	{:else}
 		<div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
 			{#each data.projects as project (project.id)}
-				<ProjectCardView {project} />
+				<ProjectCardView {project} collaborator={project.owner_username !== data.owner.username} />
 			{/each}
 		</div>
 	{/if}
