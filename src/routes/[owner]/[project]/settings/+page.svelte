@@ -17,6 +17,7 @@
 	let file = $state<File | null>(null);
 	let confirmText = $state('');
 	let uploading = $state(false);
+	const inCollaborators = $derived(Boolean(form && 'collaborators' in form));
 
 	// Follows the board shown (the page is reused between boards), yet the select can change it.
 	let license = $derived(data.project.license);
@@ -32,8 +33,10 @@
 <svelte:head><title>{t('nav.boardSettings')} · {data.project.name} · {data.site.name}</title></svelte:head>
 
 <div class="mx-auto max-w-3xl px-4 py-6">
-	{#if form?.message && !(form && 'saved' in form)}<FormError message={form.message} kind="success" />{/if}
-	{#if form?.error}<FormError message={form.error} />{/if}
+	{#if !inCollaborators}
+		{#if form?.message && !(form && 'saved' in form)}<FormError message={form.message} kind="success" />{/if}
+		{#if form?.error}<FormError message={form.error} />{/if}
+	{/if}
 
 	<!-- Metadata -->
 	<section class="surface p-5">
@@ -155,12 +158,14 @@
 		<section class="surface mt-4 p-5">
 			<h2 class="mb-1 text-sm font-semibold">{t('collaborators.title')}</h2>
 			<p class="mb-4 text-xs leading-relaxed text-[var(--text-secondary)]">{t('collaborators.hint')}</p>
+			{#if inCollaborators && form?.error}<FormError message={form.error} />{/if}
+			{#if inCollaborators && form?.message}<FormError message={form.message} kind="success" />{/if}
 
 			{#if data.collaborators.length}
 				<ul class="mb-4 divide-y rounded-lg border">
 					{#each data.collaborators as person (person.user_id)}
 						<li class="flex items-center gap-2 px-3 py-2">
-							<Avatar name={person.display_name || person.username} size={20} />
+							<Avatar name={person.display_name || person.username} username={person.username} avatar={person.avatar} size={20} />
 							<a href="/{person.username}" class="min-w-0 flex-1 truncate text-sm hover:text-[var(--accent)]">
 								{person.display_name || person.username}
 								<span class="mono text-xs text-[var(--text-muted)]">@{person.username}</span>
@@ -178,11 +183,24 @@
 				<p class="mb-4 text-xs text-[var(--text-muted)]">{t('collaborators.none')}</p>
 			{/if}
 
-			<form method="POST" action="?/addCollaborator" use:enhance class="flex flex-wrap gap-2">
-				<label class="sr-only" for="collaborator">{t('collaborators.username')}</label>
-				<input class="input mono !w-auto flex-1" id="collaborator" name="username" placeholder={t('collaborators.username')} autocomplete="off" required />
-				<button class="btn" type="submit"><Icon name="plus" size={13} /> {t('collaborators.add')}</button>
-			</form>
+			{#if data.candidates.length}
+				<form method="POST" action="?/addCollaborator" use:enhance class="flex flex-wrap gap-2">
+					<label class="sr-only" for="collaborator">{t('collaborators.pick')}</label>
+					<select class="select !w-auto flex-1" id="collaborator" name="username" required>
+						<option value="">{t('collaborators.pick')}</option>
+						{#each data.candidates as person (person.username)}
+							<option value={person.username}>
+								{person.display_name && person.display_name !== person.username
+									? `${person.display_name} (@${person.username})`
+									: `@${person.username}`}
+							</option>
+						{/each}
+					</select>
+					<button class="btn" type="submit"><Icon name="plus" size={13} /> {t('collaborators.add')}</button>
+				</form>
+			{:else}
+				<p class="text-xs text-[var(--text-muted)]">{t('collaborators.noCandidates')}</p>
+			{/if}
 		</section>
 	{/if}
 

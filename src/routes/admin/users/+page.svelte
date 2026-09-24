@@ -84,7 +84,7 @@
 				<tr class="border-t" class:opacity-55={!user.is_active}>
 					<td class="px-3 py-2">
 						<div class="flex items-center gap-2">
-							<Avatar name={user.display_name || user.username} size={26} />
+							<Avatar name={user.display_name || user.username} username={user.username} avatar={user.avatar} size={26} />
 							<div class="min-w-0">
 								<a href="/{user.username}" class="block truncate font-medium hover:text-[var(--accent)]">
 									{user.display_name || user.username}

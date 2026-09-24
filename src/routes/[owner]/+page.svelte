@@ -12,7 +12,7 @@
 
 <div class="mx-auto max-w-[1400px] px-4 py-6">
 	<header class="surface mb-5 flex flex-wrap items-start gap-4 p-5">
-		<Avatar name={data.owner.displayName} size={64} />
+		<Avatar name={data.owner.displayName} username={data.owner.username} avatar={data.owner.avatar} size={64} />
 		<div class="min-w-0 flex-1">
 			<div class="flex flex-wrap items-center gap-2">
 				<h1 class="text-xl font-semibold tracking-tight">{data.owner.displayName}</h1>

@@ -110,7 +110,7 @@
 						aria-haspopup="menu"
 						aria-expanded={menuOpen}
 					>
-						<Avatar name={data.user.displayName} size={26} />
+						<Avatar name={data.user.displayName} username={data.user.username} avatar={data.user.avatar} size={26} />
 					</button>
 					{#if menuOpen}
 						<!-- svelte-ignore a11y_no_static_element_interactions -->
@@ -127,6 +127,9 @@
 							</div>
 							<a href="/{data.user.username}" class="menu-item" onclick={closeMenus}>
 								<Icon name="user" size={14} /> {t('nav.yourBoards')}
+							</a>
+							<a href="/messages" class="menu-item" onclick={closeMenus}>
+								<Icon name="bell" size={14} /> {t('nav.messages')}
 							</a>
 							<a href="/settings" class="menu-item" onclick={closeMenus}>
 								<Icon name="settings" size={14} /> {t('nav.userCenter')}

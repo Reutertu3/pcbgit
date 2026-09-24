@@ -79,7 +79,7 @@
 						href="/{data.project.owner_username}"
 						class="flex items-center gap-1.5 text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
 					>
-						<Avatar name={data.project.owner_display_name || data.project.owner_username} size={18} />
+						<Avatar name={data.project.owner_display_name || data.project.owner_username} username={data.project.owner_username} avatar={data.project.owner_avatar} size={18} />
 						{data.project.owner_username}
 					</a>
 					<span class="text-[var(--text-muted)]">/</span>

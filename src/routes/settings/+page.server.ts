@@ -3,33 +3,42 @@ import { translate } from '$lib/i18n';
 import type { Actions, PageServerLoad } from './$types';
 import { audit, get, now, run } from '$lib/server/db';
 import { destroyUserSessions, hashPassword, verifyPassword } from '$lib/server/auth';
-import { listNotifications, markAllRead, notificationCount } from '$lib/server/notifications';
-
-const MESSAGES_PER_PAGE = 25;
+import { AvatarError, avatarVersion, removeAvatar, saveAvatar } from '$lib/server/avatars';
 
 export const load: PageServerLoad = async ({ locals, url }) => {
 	if (!locals.user) redirect(303, `/login?next=${encodeURIComponent(url.pathname)}`);
-	const total = notificationCount(locals.user.id);
-	const pageCount = Math.max(1, Math.ceil(total / MESSAGES_PER_PAGE));
-	const page = Math.min(pageCount, Math.max(1, Number(url.searchParams.get('page')) || 1));
 	return {
-		messages: listNotifications(locals.user.id, MESSAGES_PER_PAGE, (page - 1) * MESSAGES_PER_PAGE),
-		messagePage: page,
-		messagePageCount: pageCount,
 		profile: {
 			username: locals.user.username,
 			email: locals.user.email,
 			displayName: locals.user.display_name,
+			avatar: avatarVersion(locals.user.id),
 			bio: locals.user.bio
 		}
 	};
 };
 
 export const actions: Actions = {
-	markAllRead: async ({ locals }) => {
+	// `avatar` keeps the feedback next to the picture instead of at the top of the page.
+	avatar: async ({ request, locals }) => {
 		if (!locals.user) return fail(401, { error: translate(locals.locale, 'error.signInFirst') });
-		markAllRead(locals.user.id);
-		return { success: true };
+		const file = (await request.formData()).get('picture');
+		if (!(file instanceof File) || file.size === 0) {
+			return fail(400, { avatar: true, error: translate(locals.locale, 'avatar.error.missing') });
+		}
+		try {
+			await saveAvatar(locals.user.id, new Uint8Array(await file.arrayBuffer()));
+		} catch (thrown) {
+			if (thrown instanceof AvatarError) return fail(400, { avatar: true, error: thrown.in(locals.locale) });
+			throw thrown;
+		}
+		return { avatar: true, success: true, message: translate(locals.locale, 'avatar.saved') };
+	},
+
+	removeAvatar: async ({ locals }) => {
+		if (!locals.user) return fail(401, { error: translate(locals.locale, 'error.signInFirst') });
+		removeAvatar(locals.user.id);
+		return { avatar: true, success: true, message: translate(locals.locale, 'avatar.removed') };
 	},
 
 	profile: async ({ request, locals }) => {

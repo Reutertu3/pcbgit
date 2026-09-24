@@ -1,6 +1,7 @@
 import type { LayoutServerLoad } from './$types';
 import { getSetting } from '$lib/server/db';
 import { unreadCount } from '$lib/server/notifications';
+import { avatarVersion } from '$lib/server/avatars';
 import { runningTag, runningVersion } from '$lib/server/updater';
 
 const DEFAULT_TAGLINE = 'Self-hosted home for hardware design';
@@ -14,6 +15,7 @@ export const load: LayoutServerLoad = async ({ locals, url }) => {
 					id: locals.user.id,
 					username: locals.user.username,
 					displayName: locals.user.display_name || locals.user.username,
+					avatar: avatarVersion(locals.user.id),
 					role: locals.user.role
 				}
 			: null,

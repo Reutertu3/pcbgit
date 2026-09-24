@@ -171,7 +171,7 @@
 								</div>
 								<p class="py-1 text-sm italic text-[var(--text-muted)]">{t('comments.deleted')}</p>
 							{:else}
-								<Avatar name={item.display_name || item.username} size={isReply ? 24 : 28} />
+								<Avatar name={item.display_name || item.username} username={item.username} avatar={item.avatar} size={isReply ? 24 : 28} />
 								<div class="min-w-0 flex-1">
 									<div class="flex flex-wrap items-baseline gap-x-2">
 										<a href="/{item.username}" class="text-sm font-medium hover:text-[var(--accent)]">{item.username}</a>

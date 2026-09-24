@@ -16,6 +16,7 @@ interface AdminUserRow {
 	username: string;
 	email: string;
 	display_name: string;
+	avatar: number | null;
 	role: 'user' | 'admin';
 	is_active: number;
 	created_at: number;
@@ -30,7 +31,7 @@ export const load: PageServerLoad = async ({ url }) => {
 
 	return {
 		users: all<AdminUserRow>(
-			`SELECT u.id, u.username, u.email, u.display_name, u.role, u.is_active, u.created_at,
+			`SELECT u.id, u.username, u.email, u.display_name, (SELECT updated_at FROM avatars WHERE user_id = u.id) AS avatar, u.role, u.is_active, u.created_at,
 			   (SELECT COUNT(*) FROM projects p WHERE p.owner_id = u.id) AS project_count,
 			   (SELECT COUNT(*) FROM access_tokens t WHERE t.user_id = u.id) AS token_count,
 			   (SELECT MAX(s.created_at) FROM sessions s WHERE s.user_id = u.id) AS last_session

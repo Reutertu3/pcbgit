@@ -149,7 +149,7 @@
 					</ul>
 				{/if}
 			</div>
-			<a href="/settings#messages" class="block border-t px-3 py-2 text-center text-xs text-[var(--accent)] hover:underline" onclick={() => (open = false)}>
+			<a href="/messages" class="block border-t px-3 py-2 text-center text-xs text-[var(--accent)] hover:underline" onclick={() => (open = false)}>
 				{t('notifications.showAll')}
 			</a>
 		</div>

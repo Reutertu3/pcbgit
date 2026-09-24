@@ -49,6 +49,7 @@ const CARD_SELECT = `
 	SELECT p.*,
 	  u.username AS owner_username,
 	  u.display_name AS owner_display_name,
+	  (SELECT updated_at FROM avatars WHERE user_id = u.id) AS owner_avatar,
 	  (SELECT COUNT(*) FROM stars s WHERE s.project_id = p.id) AS star_count,
 	  (SELECT COUNT(*) FROM comments c WHERE c.project_id = p.id AND c.deleted_at IS NULL) AS comment_count,
 	  (SELECT COUNT(*) FROM commits c WHERE c.project_id = p.id) AS commit_count,
@@ -202,14 +203,30 @@ export interface Collaborator {
 	user_id: string;
 	username: string;
 	display_name: string;
+	avatar: number | null;
 	added_at: number;
 }
 
 export function listCollaborators(projectId: string) {
 	return all<Collaborator>(
-		`SELECT m.user_id, u.username, u.display_name, m.added_at FROM project_members m
+		`SELECT m.user_id, u.username, u.display_name, (SELECT updated_at FROM avatars WHERE user_id = u.id) AS avatar, m.added_at FROM project_members m
 		 JOIN users u ON u.id = m.user_id WHERE m.project_id = ? ORDER BY u.username COLLATE NOCASE`,
 		projectId
+	);
+}
+
+/**
+ * Who can be added: active users other than the owner and current collaborators.
+ * Admins are left out, since they can edit every board anyway.
+ */
+export function collaboratorCandidates(project: Pick<Project, 'id' | 'owner_id'>) {
+	return all<{ username: string; display_name: string }>(
+		`SELECT u.username, u.display_name FROM users u
+		 WHERE u.is_active = 1 AND u.role = 'user' AND u.id != ?
+		   AND NOT EXISTS (SELECT 1 FROM project_members m WHERE m.project_id = ? AND m.user_id = u.id)
+		 ORDER BY COALESCE(NULLIF(u.display_name, ''), u.username) COLLATE NOCASE`,
+		project.owner_id,
+		project.id
 	);
 }
 

@@ -111,7 +111,7 @@
 				href="/{project.owner_username}"
 				class="relative z-10 flex w-fit items-center gap-1.5 text-xs text-[var(--text-muted)] hover:text-[var(--text-secondary)]"
 			>
-				<Avatar name={project.owner_display_name || project.owner_username} size={16} />
+				<Avatar name={project.owner_display_name || project.owner_username} username={project.owner_username} avatar={project.owner_avatar} size={16} />
 				{project.owner_username}
 			</a>
 			{#if collaborator}<span class="chip !px-1.5 !py-0 !text-[0.625rem]">{t('collaborators.chip')}</span>{/if}

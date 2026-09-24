@@ -3,6 +3,7 @@ import type { PageServerLoad } from './$types';
 import { count } from '$lib/server/db';
 import { getUserByUsername } from '$lib/server/auth';
 import { browseProjects } from '$lib/server/projects';
+import { avatarVersion } from '$lib/server/avatars';
 
 export const load: PageServerLoad = async ({ params, locals, url }) => {
 	const owner = getUserByUsername(params.owner);
@@ -25,6 +26,7 @@ export const load: PageServerLoad = async ({ params, locals, url }) => {
 		owner: {
 			username: owner.username,
 			displayName: owner.display_name || owner.username,
+			avatar: avatarVersion(owner.id),
 			bio: owner.bio,
 			role: owner.role,
 			isActive: Boolean(owner.is_active),

@@ -23,6 +23,8 @@ export interface ProjectSummary {
 	updated_at: number;
 	owner_username: string;
 	owner_display_name: string;
+	/** Version of the owner's profile picture; null without one. */
+	owner_avatar: number | null;
 	star_count: number;
 	comment_count: number;
 	commit_count: number;
@@ -145,6 +147,7 @@ export interface CommentView {
 	user_id: string;
 	username: string;
 	display_name: string;
+	avatar: number | null;
 }
 
 export interface CommentThread extends CommentView {

@@ -16,6 +16,7 @@ interface Row {
 	user_id: string;
 	username: string;
 	display_name: string;
+	avatar: number | null;
 }
 
 function toView(row: Row): CommentView {
@@ -28,14 +29,16 @@ function toView(row: Row): CommentView {
 		deleted,
 		user_id: deleted ? '' : row.user_id,
 		username: deleted ? '' : row.username,
-		display_name: deleted ? '' : row.display_name
+		display_name: deleted ? '' : row.display_name,
+		avatar: deleted ? null : row.avatar
 	};
 }
 
 /** Top-level comments, oldest first, each with its replies (one level deep). */
 export function listThreads(projectId: string): CommentThread[] {
 	const rows = all<Row>(
-		`SELECT c.id, c.parent_id, c.body, c.created_at, c.deleted_at, c.user_id, u.username, u.display_name
+		`SELECT c.id, c.parent_id, c.body, c.created_at, c.deleted_at, c.user_id, u.username, u.display_name,
+		   (SELECT updated_at FROM avatars WHERE user_id = u.id) AS avatar
 		 FROM comments c JOIN users u ON u.id = c.user_id
 		 WHERE c.project_id = ? ORDER BY c.created_at, c.rowid`,
 		projectId

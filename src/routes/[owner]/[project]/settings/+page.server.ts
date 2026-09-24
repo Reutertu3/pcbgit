@@ -8,6 +8,7 @@ import {
 	LICENSES,
 	addCollaborator,
 	canEdit,
+	collaboratorCandidates,
 	deleteProject,
 	isOwner,
 	listCollaborators,
@@ -49,6 +50,7 @@ export const load: PageServerLoad = async ({ params, locals, parent, url }) => {
 		allTags: listTags(),
 		isOwner: isOwner(project, locals.user),
 		collaborators: listCollaborators(project.id),
+		candidates: collaboratorCandidates(project),
 		cloneUrl: `${url.origin}/git/${project.owner_username}/${project.slug}.git`
 	};
 };
@@ -121,16 +123,17 @@ export const actions: Actions = {
 	addCollaborator: async ({ request, params, locals }) => {
 		const project = requireOwner(params.owner, params.project, locals.user);
 		const username = String((await request.formData()).get('username') ?? '').trim();
-		if (!username) return fail(400, { error: translate(locals.locale, 'collaborators.error.noUser') });
+		// `collaborators` keeps the feedback in that section instead of at the top of the page.
+		if (!username) return fail(400, { collaborators: true, error: translate(locals.locale, 'collaborators.error.pick') });
 		const refused = addCollaborator(project, username, locals.user!.id);
-		if (refused) return fail(400, { error: translate(locals.locale, refused, { username }) });
-		return { success: true, message: translate(locals.locale, 'collaborators.added', { username }) };
+		if (refused) return fail(400, { collaborators: true, error: translate(locals.locale, refused, { username }) });
+		return { collaborators: true, success: true, message: translate(locals.locale, 'collaborators.added', { username }) };
 	},
 
 	removeCollaborator: async ({ request, params, locals }) => {
 		const project = requireOwner(params.owner, params.project, locals.user);
 		removeCollaborator(project, String((await request.formData()).get('user_id') ?? ''), locals.user!.id);
-		return { success: true, message: translate(locals.locale, 'collaborators.removed') };
+		return { collaborators: true, success: true, message: translate(locals.locale, 'collaborators.removed') };
 	},
 
 	delete: async ({ request, params, locals }) => {
