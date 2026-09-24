@@ -112,23 +112,34 @@ function edgeCutsBounds(root: SNode[]) {
 		maxY = Math.max(maxY, y);
 	};
 
-	const points = (node: SNode[], key: string) => {
-		const found = child(node, key);
-		if (found) add(Number(found[1]), Number(found[2]));
-	};
-
-	for (const kind of ['gr_line', 'gr_rect', 'gr_arc', 'gr_circle', 'gr_poly', 'gr_curve']) {
-		for (const shape of children(root, kind)) {
-			if (prop(shape, 'layer') !== 'Edge.Cuts') continue;
-			points(shape, 'start');
-			points(shape, 'end');
-			points(shape, 'mid');
-			points(shape, 'center');
-			for (const pts of descendants(shape, 'pts')) {
-				for (const xy of children(pts, 'xy')) add(Number(xy[1]), Number(xy[2]));
+	// Outline shapes on the board, and inside footprints (an outline drawn as a part,
+	// as Eagle projects often do), moved and rotated like their footprint.
+	const collect = (parent: SNode[], prefix: 'gr' | 'fp', place: (x: number, y: number) => void) => {
+		const points = (node: SNode[], key: string) => {
+			const found = child(node, key);
+			if (found) place(Number(found[1]), Number(found[2]));
+		};
+		for (const kind of ['line', 'rect', 'arc', 'circle', 'poly', 'curve']) {
+			for (const shape of children(parent, `${prefix}_${kind}`)) {
+				if (prop(shape, 'layer') !== 'Edge.Cuts') continue;
+				points(shape, 'start');
+				points(shape, 'end');
+				points(shape, 'mid');
+				points(shape, 'center');
+				for (const pts of descendants(shape, 'pts')) {
+					for (const xy of children(pts, 'xy')) place(Number(xy[1]), Number(xy[2]));
+				}
+				// A circle's radius is implied by its center/end pair, already covered above.
 			}
-			// A circle's radius is implied by its center/end pair, already covered above.
 		}
+	};
+	collect(root, 'gr', add);
+	for (const footprint of children(root, 'footprint')) {
+		const at = child(footprint, 'at');
+		const [fx, fy, angle] = [Number(at?.[1] ?? 0), Number(at?.[2] ?? 0), Number(at?.[3] ?? 0)];
+		const a = (angle * Math.PI) / 180;
+		// KiCad rotates counter-clockwise on screen, with y pointing down.
+		collect(footprint, 'fp', (x, y) => add(fx + x * Math.cos(a) + y * Math.sin(a), fy - x * Math.sin(a) + y * Math.cos(a)));
 	}
 
 	if (!Number.isFinite(minX)) return null;

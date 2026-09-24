@@ -114,7 +114,8 @@ const DEFAULT_TAG_CATEGORIES = [
 const ADDED_COLUMNS: [table: string, column: string, definition: string][] = [
 	['commits', 'board_bbox', "TEXT NOT NULL DEFAULT ''"],
 	['comments', 'parent_id', 'TEXT REFERENCES comments(id) ON DELETE CASCADE'],
-	['comments', 'deleted_at', 'INTEGER']
+	['comments', 'deleted_at', 'INTEGER'],
+	['commits', 'converted_from', "TEXT NOT NULL DEFAULT ''"]
 ];
 
 /**

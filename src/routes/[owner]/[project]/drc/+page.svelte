@@ -105,6 +105,12 @@
 			{/each}
 		</div>
 
+		{#if data.commit?.converted_from}
+			<p class="mb-3 rounded-lg border px-3 py-2 text-xs leading-relaxed text-[var(--text-secondary)]">
+				{t('checks.converted', { from: data.commit.converted_from })}
+			</p>
+		{/if}
+
 		<!-- Controls -->
 		<div class="mb-3 flex flex-wrap items-center gap-2">
 			<div class="relative min-w-48 flex-1">

@@ -41,6 +41,15 @@ with `readOutput(file, jobDir)`, create files there only with `writeNew()` /
 `COPYFILE_EXCL` (`render/outputs.ts`), and hand bytes, not paths, to
 `storeArtifact()` and `optimizeBoardGlb()`.
 
+**Eagle projects** (6 and newer) are converted before that: a commit without KiCad
+files is searched for Eagle `.sch`/`.brd` (`render/eagle/detect.ts`, by content);
+`eagleimport.ts` runs `scripts/eagle-convert.ts` (schematic, our own converter in
+`render/eagle/`) and `kicad-cli pcb import` (board) in the renderer, into
+`<out>/converted/`, and the pipeline continues with those files. The version gets
+`commits.converted_from` ('' = native), shown as **Native** / **Converted**. The
+converter takes untrusted XML: keep its reader entity-free and capped
+(`eagle/xml.ts`), run every number through `num()` and every string through `q()`.
+
 ## Conventions
 
 - **Translations:** every user-facing string goes in both `src/lib/i18n/en.json` and

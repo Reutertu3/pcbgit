@@ -152,3 +152,14 @@ with them on would have untagged every board. Checked on the local instance:
 23 tags and 20 board links before and after.
 
 Eagle support was scoped the same day: Eagle 6 and newer only (see TODO.md).
+
+### Eagle projects render like KiCad ones
+Old Eagle projects (Eagle 6 and newer) can be uploaded or pushed for archiving.
+The schematic is translated by pcbgit's own converter, since kicad-cli cannot read
+Eagle schematics (only KiCad's GUI can; scripting that GUI worked but was fragile
+and heavy). The board goes through `kicad-cli pcb import`. Both run in the
+isolated renderer; the converter's XML reader expands no entities and caps size
+and depth. Boards are marked Native or Converted, converted ones warn on Gerbers
+and checks, and offer the converted KiCad project as a download. Eagle before 6
+(binary) is refused with a clear message. Board outlines drawn inside a footprint,
+common in Eagle projects, now count for the board size (KiCad boards too).

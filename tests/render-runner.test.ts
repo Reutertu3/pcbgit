@@ -7,7 +7,8 @@ import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 
-import { runKicad, type RunnerResponse } from '../src/lib/server/render/kicad.ts';
+import { EAGLE_CONVERTER, runEagleConvert, runKicad, type RunnerResponse } from '../src/lib/server/render/kicad.ts';
+import { eagleSchematic } from './eagle-fixture.ts';
 
 const base = fs.mkdtempSync(path.join(os.tmpdir(), 'pcbgit-runner-'));
 const work = path.join(base, 'work');
@@ -89,4 +90,16 @@ test('the runner only runs the render tools, with its own environment', async ()
 	// iBOM is allowed by its script path; the board path is still checked.
 	const ibom = await raw({ bin: 'python3', args: ['/opt/ibom/generate_interactive_bom.py', '--dest-dir', work, '/elsewhere/board.kicad_pcb'], timeoutMs: 1000, env: {} });
 	assert.match(ibom.stderr, /path outside the render directory: \/elsewhere\/board.kicad_pcb/);
+});
+
+test('node runs only the Eagle converter, and only on files in the render directory', async () => {
+	const job = path.join(work, 'out-eagle');
+	fs.mkdirSync(path.join(job, 'converted'), { recursive: true });
+	fs.writeFileSync(path.join(job, 'board.sch'), eagleSchematic());
+	const result = await runEagleConvert(path.join(job, 'board.sch'), path.join(job, 'converted'));
+	assert.equal(result.ok, true, result.stderr);
+	assert.ok(fs.existsSync(path.join(job, 'converted', 'board.kicad_sch')));
+
+	assert.match((await raw({ bin: 'node', args: ['-e', 'require("fs").readFileSync("/etc/passwd")'], timeoutMs: 1000, env: {} })).stderr, /not allowed: node/);
+	assert.match((await raw({ bin: 'node', args: [EAGLE_CONVERTER, '/data/secret.sch', job], timeoutMs: 1000, env: {} })).stderr, /path outside the render directory/);
 });

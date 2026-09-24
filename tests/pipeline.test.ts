@@ -204,6 +204,41 @@ test('a commit with no KiCad project fails the render with a clear message', asy
 	assert.match(job.error, /No KiCad project found/);
 });
 
+test('an Eagle-only commit is converted and marked as such; Eagle before 6 is refused', async () => {
+	const { getUserById } = await import('../src/lib/server/auth.ts');
+	const { eagleSchematic } = await import('./eagle-fixture.ts');
+	const owner = getUserById(userId)!;
+
+	const eagle = await createProject({ owner, slug: 'eagleboard', name: 'Eagle Board' });
+	await commitFiles(repoPath('tester', 'eagleboard'), [{ path: 'demo.sch', data: Buffer.from(eagleSchematic({ version: '6.1' })) }], {
+		message: 'Eagle schematic',
+		authorName: 'Tester',
+		authorEmail: 'tester@example.com',
+		branch: 'main'
+	});
+	await syncCommits(eagle, 'tester');
+	await drainQueue();
+	const commit = get<{ id: string; render_status: string; converted_from: string }>('SELECT id, render_status, converted_from FROM commits WHERE project_id = ?', eagle.id)!;
+	assert.equal(commit.converted_from, 'Eagle 6.1');
+	assert.equal(commit.render_status, 'success');
+	// Without kicad-cli the BOM comes from pcbgit's parser, reading the converted schematic.
+	assert.deepEqual(all<{ refs: string }>('SELECT refs FROM bom_items WHERE commit_id = ?', commit.id).map((r) => r.refs), ['R1']);
+	assert.equal(count("SELECT COUNT(*) FROM artifacts WHERE commit_id = ? AND kind = 'converted_zip'", commit.id), 1);
+	assert.equal(getProject('tester', 'eagleboard')!.converted_from, 'Eagle 6.1');
+
+	const old = await createProject({ owner, slug: 'eagle5', name: 'Old Eagle' });
+	await commitFiles(repoPath('tester', 'eagle5'), [{ path: 'old.brd', data: Buffer.from([0x10, 0x80, 0, 0, 0, 0, 0, 0]) }], {
+		message: 'Eagle 5 board',
+		authorName: 'Tester',
+		authorEmail: 'tester@example.com',
+		branch: 'main'
+	});
+	await syncCommits(old, 'tester');
+	await drainQueue();
+	const job = get<{ error: string }>('SELECT error FROM render_jobs WHERE project_id = ?', old.id)!;
+	assert.match(job.error, /before Eagle 6/);
+});
+
 test('private boards are hidden from anonymous browsing but visible to their owner', async () => {
 	const { getUserById } = await import('../src/lib/server/auth.ts');
 	const owner = getUserById(userId)!;

@@ -326,3 +326,14 @@ test('footprints are classified as SMD or through-hole by reference', () => {
 	});
 	assert.deepEqual(analyzeBoardText(pcb).mounts, { R1: 'smd', J1: 'tht' });
 });
+
+test('a board outline drawn inside a footprint counts, moved and rotated with it', () => {
+	// Eagle projects often draw the outline as a part; kicad-cli imports it as a footprint.
+	const board = analyzeBoardText(`(kicad_pcb (layers (0 "F.Cu" signal) (25 "Edge.Cuts" user))
+		(footprint "outline" (at 10 20 90) (layer "F.Cu")
+			(fp_line (start 0 0) (end 50 0) (layer "Edge.Cuts"))
+			(fp_line (start 50 0) (end 50 -30) (layer "Edge.Cuts"))))`);
+	// 90° counter-clockwise: the 50 mm edge runs upwards, the 30 mm one to the left.
+	assert.equal(board.widthMm, 30);
+	assert.equal(board.heightMm, 50);
+});

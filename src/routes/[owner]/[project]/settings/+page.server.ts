@@ -22,7 +22,7 @@ import {
 import {
 	MAX_UPLOAD_BYTES,
 	UploadError,
-	containsKicadProject,
+	projectProblem,
 	filesFromZip
 } from '$lib/server/upload';
 
@@ -100,9 +100,8 @@ export const actions: Actions = {
 				error: thrown instanceof UploadError ? thrown.in(locals.locale) : translate(locals.locale, 'upload.error.unreadable')
 			});
 		}
-		if (!containsKicadProject(files)) {
-			return fail(400, { error: translate(locals.locale, 'upload.error.noKicad') });
-		}
+		const problem = projectProblem(files);
+		if (problem) return fail(400, { error: translate(locals.locale, problem) });
 
 		await commitFiles(repoPath(project.owner_username, project.slug), files, {
 			message,

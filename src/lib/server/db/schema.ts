@@ -114,6 +114,8 @@ CREATE TABLE IF NOT EXISTS commits (
   drc_warnings  INTEGER NOT NULL DEFAULT 0,
   erc_errors    INTEGER NOT NULL DEFAULT 0,
   erc_warnings  INTEGER NOT NULL DEFAULT 0,
+  -- '' for a native KiCad project; for one converted on render, e.g. 'Eagle 6.1'.
+  converted_from TEXT NOT NULL DEFAULT '',
   -- Board outline bounds in mm, as JSON, so DRC markers can be placed on the 2D view.
   board_bbox    TEXT NOT NULL DEFAULT '',
   UNIQUE (project_id, sha)

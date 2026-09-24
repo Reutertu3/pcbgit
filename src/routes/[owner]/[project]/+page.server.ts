@@ -56,6 +56,7 @@ export const load: PageServerLoad = async ({ params, locals, url, parent }) => {
 		},
 		fabZips: artifacts?.fabZips ?? [],
 		schematicPdf: artifacts?.schematicPdf ? artifactUrl(artifacts.schematicPdf) : null,
+		convertedProject: artifacts?.convertedProject ? artifactUrl(artifacts.convertedProject) : null,
 		artifactBytes: artifacts?.totalBytes ?? 0,
 		recentCommits: all<RecentCommit>(
 			`SELECT id, sha, message, author_name, committed_at, render_status

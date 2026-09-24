@@ -25,6 +25,8 @@ export interface ProjectSummary {
 	owner_display_name: string;
 	/** Version of the owner's profile picture; null without one. */
 	owner_avatar: number | null;
+	/** Head version's source: '' for a native KiCad project, e.g. 'Eagle 6.1' when converted. */
+	converted_from: string;
 	star_count: number;
 	comment_count: number;
 	commit_count: number;
@@ -64,6 +66,8 @@ export interface CommitSummary {
 	erc_warnings: number;
 	/** JSON {minX,minY,maxX,maxY} in mm, or '' when there is no board. */
 	board_bbox: string;
+	/** '' for a native KiCad project; e.g. 'Eagle 6.1' when converted on render. */
+	converted_from: string;
 }
 
 export interface BomRow {

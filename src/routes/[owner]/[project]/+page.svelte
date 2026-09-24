@@ -306,6 +306,10 @@
 							<dd>{formatDate(data.commit.committed_at)}</dd>
 						</div>
 						<div class="flex justify-between gap-2">
+							<dt class="text-[var(--text-muted)]">{t('overview.format')}</dt>
+							<dd class="truncate">{data.commit.converted_from ? t('source.convertedFrom', { from: data.commit.converted_from }) : t('source.nativeKicad')}</dd>
+						</div>
+						<div class="flex justify-between gap-2">
 							<dt class="text-[var(--text-muted)]">{t('tabs.files')}</dt>
 							<dd>{data.fileCount}</dd>
 						</div>
@@ -355,6 +359,15 @@
 								<Icon name="download" size={13} /> {t('overview.dlGlb')}
 							</a>
 						{/if}
+						{#if data.convertedProject}
+							<a
+								href={data.convertedProject}
+								download="{data.project.slug}-{shortSha(data.commit.sha)}-kicad.zip"
+								class="btn btn-sm justify-start"
+							>
+								<Icon name="download" size={13} /> {t('overview.dlConverted')}
+							</a>
+						{/if}
 						<a href="{base}/archive/{data.commit.sha}.zip" class="btn btn-sm justify-start">
 							<Icon name="download" size={13} /> {t('overview.dlSource')}
 						</a>
@@ -389,6 +402,9 @@
 							>
 								<Icon name="download" size={13} /> {t('overview.dlFab')}
 							</a>
+							{#if data.commit.converted_from}
+								<p class="text-[0.6875rem] leading-snug text-[var(--warn)]">{t('overview.convertedGerbers', { from: data.commit.converted_from })}</p>
+							{/if}
 						</div>
 					</div>
 				{/if}

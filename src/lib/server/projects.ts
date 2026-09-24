@@ -57,6 +57,7 @@ const CARD_SELECT = `
 	  hc.render_status AS head_status,
 	  hc.board_width, hc.board_height, hc.layer_count, hc.part_count,
 	  COALESCE(hc.drc_errors, 0) AS drc_errors,
+	  COALESCE(hc.converted_from, '') AS converted_from,
 	  EXISTS (SELECT 1 FROM artifacts a WHERE a.commit_id = p.head_commit_id AND a.kind = 'schematic_svg') AS has_schematic,
 	  EXISTS (SELECT 1 FROM artifacts a WHERE a.commit_id = p.head_commit_id AND a.kind = 'pcb_layer_svg') AS has_pcb,
 	  EXISTS (SELECT 1 FROM bom_items b WHERE b.commit_id = p.head_commit_id) AS has_bom

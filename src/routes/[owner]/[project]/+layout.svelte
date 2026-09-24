@@ -90,6 +90,11 @@
 					{#if data.project.license}
 						<span class="chip">{licenseName(data.project.license, t('license.proprietary'))}</span>
 					{/if}
+					{#if data.commit}
+						<span class="chip" title={data.commit.converted_from ? t('source.convertedFrom', { from: data.commit.converted_from }) : t('source.nativeKicad')}>
+							{data.commit.converted_from ? t('source.converted') : t('source.native')}
+						</span>
+					{/if}
 				</div>
 				{#if data.project.description}
 					<p class="mt-1.5 max-w-3xl text-sm leading-relaxed text-[var(--text-secondary)]">

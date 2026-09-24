@@ -1,5 +1,6 @@
 import { execFile } from 'node:child_process';
 import net from 'node:net';
+import path from 'node:path';
 import { promisify } from 'node:util';
 
 const exec = promisify(execFile);
@@ -38,6 +39,22 @@ export async function runKicad(args: string[], timeoutMs = 240_000): Promise<Run
 
 /** Interactive HTML BOM script; unset (e.g. in development) skips the iBOM step. */
 export const IBOM_SCRIPT = process.env.PCBGIT_IBOM ?? '';
+
+/**
+ * The Eagle schematic converter. It parses untrusted files, so like the other
+ * tools it runs in the renderer; app and renderer share the image and /app.
+ */
+export const EAGLE_CONVERTER = path.resolve(process.env.PCBGIT_EAGLE_CONVERTER ?? 'scripts/eagle-convert.ts');
+
+/** Writes KiCad schematic files for an Eagle .sch into `outDir` (scripts/eagle-convert.ts). */
+export async function runEagleConvert(schPath: string, outDir: string): Promise<RunResult> {
+	return runTool('node', [EAGLE_CONVERTER, schPath, outDir], 120_000);
+}
+
+/** Eagle board → KiCad board; kicad-cli has the importer built in. */
+export function pcbImportEagleArgs(brdPath: string, outFile: string) {
+	return ['pcb', 'import', '--format', 'eagle', '--output', outFile, brdPath];
+}
 
 /** Writes `<outDir>/ibom.html` with iBOM, which loads the board through KiCad's Python module. */
 export async function runIbom(pcbPath: string, outDir: string): Promise<RunResult> {
@@ -158,8 +175,9 @@ export function resetKicadVersionCache() {
 
 /* -------------------------------------------------------------- exports */
 
-export function schSvgArgs(schPath: string, outDir: string) {
-	return ['sch', 'export', 'svg', '--output', outDir, schPath];
+/** `ownFrame`: the drawing brings its own frame (converted Eagle), so KiCad's stays out. */
+export function schSvgArgs(schPath: string, outDir: string, ownFrame = false) {
+	return ['sch', 'export', 'svg', '--output', outDir, ...(ownFrame ? ['--exclude-drawing-sheet'] : []), schPath];
 }
 
 /**
@@ -174,8 +192,8 @@ export function orderSchematicSheets(files: string[], schPath: string) {
 }
 
 /** Every sheet in one PDF, with KiCad's clickable links between hierarchical sheets. */
-export function schPdfArgs(schPath: string, outFile: string) {
-	return ['sch', 'export', 'pdf', '--output', outFile, schPath];
+export function schPdfArgs(schPath: string, outFile: string, ownFrame = false) {
+	return ['sch', 'export', 'pdf', '--output', outFile, ...(ownFrame ? ['--exclude-drawing-sheet'] : []), schPath];
 }
 
 export function schBomArgs(schPath: string, outFile: string) {

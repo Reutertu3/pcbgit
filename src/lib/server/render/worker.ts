@@ -9,7 +9,9 @@ import { exportTree } from '../git';
 import { DATA_DIR, RENDER_DIR, repoPath } from '../paths';
 import { rerenderFlag } from '../restore';
 import { clearArtifacts, listArtifacts, storeArtifact, svgGeometry } from './artifacts';
-import { analyzeBoard, type BoardStats } from './board';
+import { analyzeBoardText, type BoardStats } from './board';
+import { discoverEagleFiles } from './eagle/detect';
+import { convertEagleProject } from './eagleimport';
 import { readOutput } from './outputs';
 import { bomToCsv, groupBom, parseBomCsv, type BomLine } from './bom';
 import {
@@ -189,22 +191,33 @@ async function renderCommit(job: JobRow, log: string[]) {
 	const outDir = await fsp.mkdtemp(path.join(RENDER_DIR, 'out-'));
 
 	try {
-		const files = discoverKicadFiles(checkout);
-		if (!hasKicadContent(files)) {
+		// A native KiCad project wins; only a commit without one is looked at for Eagle files.
+		const native = discoverKicadFiles(checkout);
+		const eagle = hasKicadContent(native) ? null : discoverEagleFiles(checkout);
+		if (eagle && !eagle.sch && !eagle.brd) {
 			throw new Error(
-				'No KiCad project found in this commit. Expected a .kicad_pcb or .kicad_sch file.'
+				eagle.legacy.length
+					? 'These Eagle files are from before Eagle 6 (binary format) and cannot be converted. Open them in Eagle 6 or newer and save them again.'
+					: 'No KiCad project found in this commit. Expected a .kicad_pcb or .kicad_sch file, or an Eagle .sch/.brd (Eagle 6 or newer).'
 			);
 		}
-		log.push(`Found: ${files.pcb ? path.relative(checkout, files.pcb) : 'no board'} / ${files.rootSch ? path.relative(checkout, files.rootSch) : 'no schematic'}`);
 
 		await clearArtifacts(commit.id);
 
-		const board = files.pcb ? analyzeBoard(files.pcb) : null;
-		const bom = await buildBom(files, checkout, outDir, commit.id, log, Boolean(version));
+		const convertedFrom = eagle ? `Eagle ${eagle.version ?? ''}`.trim() : '';
+		run('UPDATE commits SET converted_from = ? WHERE id = ?', convertedFrom, commit.id);
+		if (eagle) log.push(`Converting ${convertedFrom}: ${[eagle.sch, eagle.brd].filter(Boolean).map((f) => path.relative(checkout, f!)).join(' / ')}`);
+		const files = eagle ? await convertEagleProject(eagle, outDir, commit.id, log) : native;
+		if (!hasKicadContent(files)) throw new Error('The Eagle project could not be converted; see the render log.');
+		log.push(`Found: ${files.pcb ? path.relative(files.root, files.pcb) : 'no board'} / ${files.rootSch ? path.relative(files.root, files.rootSch) : 'no schematic'}`);
+
+		// The checkout and converted files sit in the shared render directory: read them as renderer output.
+		const board = files.pcb ? analyzeBoardText((await readOutput(files.pcb, files.root)).toString('utf8')) : null;
+		const bom = await buildBom(files, outDir, commit.id, log, Boolean(version));
 		const violations: Violation[] = [];
 
 		if (version) {
-			if (files.rootSch) await renderSchematic(files.rootSch, outDir, commit.id, log, violations);
+			if (files.rootSch) await renderSchematic(files.rootSch, outDir, commit.id, log, violations, Boolean(eagle));
 			if (files.pcb) await renderBoard(files.pcb, board, outDir, commit.id, log, violations);
 		}
 
@@ -236,7 +249,6 @@ async function renderCommit(job: JobRow, log: string[]) {
 
 async function buildBom(
 	files: ReturnType<typeof discoverKicadFiles>,
-	checkout: string,
 	outDir: string,
 	commitId: string,
 	log: string[],
@@ -261,7 +273,7 @@ async function buildBom(
 
 	// Fallback: parse the schematic ourselves so the BOM tab is never empty.
 	const { analyzeSchematic } = await import('./schematic');
-	const lines = groupBom(analyzeSchematic(files.rootSch, checkout).symbols);
+	const lines = groupBom(analyzeSchematic(files.rootSch, files.root).symbols);
 	log.push(`bom: built from schematic parser (${lines.length} lines)`);
 	if (lines.length) {
 		await storeArtifact({ commitId, kind: 'bom_csv', name: 'bom.csv', data: Buffer.from(bomToCsv(lines)), targetName: 'bom.csv' });
@@ -274,12 +286,14 @@ async function renderSchematic(
 	outDir: string,
 	commitId: string,
 	log: string[],
-	violations: Violation[]
+	violations: Violation[],
+	/** Converted from Eagle: the drawing has its own frame and title block. */
+	ownFrame: boolean
 ) {
 	const svgDir = path.join(outDir, 'sch-svg');
 	await fsp.mkdir(svgDir, { recursive: true });
 
-	const svg = await runKicad(schSvgArgs(schPath, svgDir));
+	const svg = await runKicad(schSvgArgs(schPath, svgDir, ownFrame));
 	log.push(`schematic svg: ${svg.ok ? 'ok' : `failed (${svg.code}) ${svg.stderr.trim()}`}`);
 
 	if (svg.ok) {
@@ -301,7 +315,7 @@ async function renderSchematic(
 
 	// All sheets as one PDF, for printing and archiving.
 	const pdfPath = path.join(outDir, 'schematic.pdf');
-	const pdf = await runKicad(schPdfArgs(schPath, pdfPath));
+	const pdf = await runKicad(schPdfArgs(schPath, pdfPath, ownFrame));
 	log.push(`schematic pdf: ${pdf.ok ? 'ok' : `failed (${pdf.code}) ${pdf.stderr.trim()}`}`);
 	if (pdf.ok && fs.existsSync(pdfPath)) {
 		await storeArtifact({ commitId, kind: 'schematic_pdf', name: 'schematic.pdf', data: await readOutput(pdfPath, outDir), targetName: 'schematic.pdf' });

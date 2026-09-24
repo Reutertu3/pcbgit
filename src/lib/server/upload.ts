@@ -2,6 +2,7 @@ import AdmZip from 'adm-zip';
 import path from 'node:path';
 import type { UploadFile } from './git';
 import { UserError } from '../i18n';
+import { classifyEagleHead } from './render/eagle/detect';
 
 export const MAX_UPLOAD_BYTES = 200 * 1024 * 1024;
 const MAX_FILES = 4000;
@@ -73,7 +74,15 @@ function stripCommonPrefix(files: UploadFile[]): UploadFile[] {
 	return shared ? files.map((file) => ({ ...file, path: file.path.slice(prefix.length + 1) })) : files;
 }
 
-/** True when the upload looks like a KiCad project, so we can warn early. */
-export function containsKicadProject(files: UploadFile[]) {
-	return files.some((file) => /\.kicad_(pcb|sch|pro)$/.test(file.path));
+/**
+ * Why an upload holds no renderable project, as a translation key, or null when it
+ * does: a KiCad project, or an Eagle 6+ schematic or board (recognised by content).
+ */
+export function projectProblem(files: UploadFile[]) {
+	if (files.some((file) => /\.kicad_(pcb|sch|pro)$/.test(file.path))) return null;
+	const eagle = files
+		.filter((file) => /\.(sch|brd)$/i.test(file.path))
+		.map((file) => classifyEagleHead(file.data.subarray(0, 4096)).type);
+	if (eagle.includes('eagle')) return null;
+	return eagle.includes('legacy') ? ('upload.error.eagleLegacy' as const) : ('upload.error.noKicad' as const);
 }

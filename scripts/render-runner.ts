@@ -13,7 +13,7 @@
 import fs from 'node:fs';
 import net from 'node:net';
 import path from 'node:path';
-import { runLocalTool, type RunnerRequest, type RunnerResponse } from '../src/lib/server/render/kicad.ts';
+import { EAGLE_CONVERTER, runLocalTool, type RunnerRequest, type RunnerResponse } from '../src/lib/server/render/kicad.ts';
 
 const SOCKET = process.env.PCBGIT_RENDER_SOCKET;
 const RENDER_DIR = path.resolve(process.env.PCBGIT_RENDER_DIR ?? '');
@@ -48,6 +48,10 @@ function resolveRequest(request: RunnerRequest): { bin: string } | { error: stri
 	} else if (request.bin === 'rsvg-convert' || request.bin === 'cwebp') {
 		// Card thumbnails: they decode images embedded in schematics.
 		bin = request.bin;
+	} else if (request.bin === 'node' && request.args[0] === EAGLE_CONVERTER) {
+		// Node only ever runs the Eagle converter, never a script of the caller's choosing.
+		bin = process.execPath;
+		fileArgs = request.args.slice(1);
 	} else if (request.bin === 'python3' && IBOM_SCRIPT && request.args[0] === IBOM_SCRIPT) {
 		// Python only ever runs iBOM, never a script of the caller's choosing.
 		bin = 'python3';

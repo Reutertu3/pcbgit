@@ -8,7 +8,7 @@ import { LICENSES, createProject, listTags, slugify, syncCommits, validateSlug }
 import {
 	MAX_UPLOAD_BYTES,
 	UploadError,
-	containsKicadProject,
+	projectProblem,
 	filesFromZip
 } from '$lib/server/upload';
 
@@ -64,12 +64,8 @@ export const actions: Actions = {
 				const message = error instanceof UploadError ? error.in(locals.locale) : translate(locals.locale, 'upload.error.unreadable');
 				return fail(400, { error: message, ...values });
 			}
-			if (!containsKicadProject(files)) {
-				return fail(400, {
-					error: translate(locals.locale, 'upload.error.noKicad'),
-					...values
-				});
-			}
+			const problem = projectProblem(files);
+			if (problem) return fail(400, { error: translate(locals.locale, problem), ...values });
 		}
 
 		const project = await createProject({

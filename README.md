@@ -49,6 +49,7 @@
 | **BOM** | Interactive view with placement highlighting ([iBOM]), grouped line items, CSV export, diff between any two versions |
 | **Checks** | KiCad DRC and ERC, grouped by severity, linked to their spot on the board |
 | **Fabrication** *(experimental)* | Gerbers and drill files ready for a board house: **JLCPCB**, **AISLER** or generic KiCad names |
+| **Eagle import** | Eagle 6+ projects are converted on upload or push and marked *Converted*; the converted KiCad project is a download |
 | **History** | Renders and logs per commit, source ZIP downloads |
 
 ### Hosting

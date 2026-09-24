@@ -115,6 +115,9 @@
 				{project.owner_username}
 			</a>
 			{#if collaborator}<span class="chip !px-1.5 !py-0 !text-[0.625rem]">{t('collaborators.chip')}</span>{/if}
+			{#if project.converted_from}
+				<span class="chip !px-1.5 !py-0 !text-[0.625rem]" title={t('source.convertedFrom', { from: project.converted_from })}>{t('source.converted')}</span>
+			{/if}
 		</div>
 
 		{#if project.description}
