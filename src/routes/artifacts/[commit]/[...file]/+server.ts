@@ -4,6 +4,7 @@ import path from 'node:path';
 import type { RequestHandler } from './$types';
 import { SVG_POLICY, artifactAccess, artifactCacheControl } from '$lib/server/artifactaccess';
 import { ARTIFACT_DIR } from '$lib/server/paths';
+import { fileBody } from '$lib/server/filebody';
 import { ibomThemeCss } from '$lib/ibomtheme';
 import { darkSchematicSvg, isSchematicSheet } from '$lib/server/render/schematictheme';
 
@@ -83,5 +84,5 @@ export const GET: RequestHandler = async ({ params, locals, setHeaders, url }) =
 	}
 
 	setHeaders({ 'Content-Length': String(stat.size) });
-	return new Response(fs.createReadStream(target) as unknown as ReadableStream);
+	return new Response(fileBody(target));
 };

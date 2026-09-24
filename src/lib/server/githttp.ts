@@ -112,15 +112,25 @@ function cgiToResponse(
 			const { status, headers } = parseCgiHeaders(buffered.subarray(0, headerEnd));
 			const leftover = buffered.subarray(skipSeparator(buffered, headerEnd));
 
-			// Replay what we already consumed, then hand over the live stream.
+			// Replay what we already consumed, then hand over the live stream. Output that
+			// arrives after the client hung up is dropped: touching a cancelled stream
+			// throws inside an event handler, which would end the process.
+			let open = true;
 			const stream = new ReadableStream<Uint8Array>({
 				start(controller) {
 					if (leftover.length) controller.enqueue(new Uint8Array(leftover));
-					child.stdout!.on('data', (next: Buffer) => controller.enqueue(new Uint8Array(next)));
-					child.stdout!.on('end', () => controller.close());
-					child.stdout!.on('error', (error) => controller.error(error));
+					child.stdout!.on('data', (next: Buffer) => open && controller.enqueue(new Uint8Array(next)));
+					child.stdout!.on('end', () => {
+						if (open) controller.close();
+						open = false;
+					});
+					child.stdout!.on('error', (error) => {
+						if (open) controller.error(error);
+						open = false;
+					});
 				},
 				cancel() {
+					open = false;
 					child.kill('SIGTERM');
 				}
 			});

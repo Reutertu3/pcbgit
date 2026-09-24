@@ -4,6 +4,7 @@ import path from 'node:path';
 import type { RequestHandler } from './$types';
 import { SVG_POLICY, artifactAccess, artifactCacheControl } from '$lib/server/artifactaccess';
 import { artifactDir } from '$lib/server/paths';
+import { fileBody } from '$lib/server/filebody';
 import { ensureThumbnail, isThumbnailName } from '$lib/server/thumbnails';
 
 /** GET /artifacts/<commit>/thumb/<name> — raster thumbnail of <name>.svg. */
@@ -17,7 +18,7 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 	const file = thumbnail?.file ?? path.join(artifactDir(params.commit), `${params.name}.svg`);
 	if (!fs.existsSync(file)) error(404, 'Not found');
 
-	return new Response(fs.createReadStream(file) as unknown as ReadableStream, {
+	return new Response(fileBody(file), {
 		headers: {
 			'Content-Type': thumbnail?.type ?? 'image/svg+xml',
 			'Content-Length': String(fs.statSync(file).size),
