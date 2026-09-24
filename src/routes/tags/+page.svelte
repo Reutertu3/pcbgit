@@ -2,18 +2,9 @@
 	import Icon from '$lib/components/Icon.svelte';
 	import TagChip from '$lib/components/TagChip.svelte';
 	import { t } from '$lib/i18n/t';
-	import type { MessageKey } from '$lib/i18n';
+	import { categoryLabel } from '$lib/tagcategory';
 
 	let { data } = $props();
-
-	const LABELS: Record<string, MessageKey> = {
-		component: 'tagCategory.component',
-		interface: 'tagCategory.interface',
-		domain: 'tagCategory.domain',
-		process: 'tagCategory.process',
-		general: 'tagCategory.general'
-	};
-
 </script>
 
 <svelte:head><title>{t('nav.tags')} · {data.site.name}</title></svelte:head>
@@ -28,7 +19,7 @@
 		<section class="mt-6">
 			<h2 class="mb-2.5 flex items-center gap-1.5 text-sm font-semibold">
 				<Icon name="tag" size={14} class="text-[var(--text-muted)]" />
-				{LABELS[group.category] ? t(LABELS[group.category]) : group.category}
+				{categoryLabel(group.category, group.name)}
 				<span class="chip">{group.tags.length}</span>
 			</h2>
 			<div class="flex flex-wrap gap-2">

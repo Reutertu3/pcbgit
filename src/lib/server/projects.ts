@@ -383,20 +383,23 @@ export interface Tag {
 	slug: string;
 	name: string;
 	category: string;
+	/** The category's own name; empty for a built-in one, whose name is translated. */
+	category_name: string;
 	color: string;
 	description: string;
 	created_at: number;
 	project_count: number;
 }
 
+/** Every tag, grouped in the categories' order. */
 export function listTags() {
 	return all<Tag>(
-		`SELECT t.*,
+		`SELECT t.*, COALESCE(c.name, '') AS category_name,
 		   (SELECT COUNT(*) FROM project_tags pt
 		      JOIN projects p ON p.id = pt.project_id
 		    WHERE pt.tag_id = t.id AND p.visibility = 'public') AS project_count
-		 FROM tags t
-		 ORDER BY t.category, t.name`
+		 FROM tags t LEFT JOIN tag_categories c ON c.id = t.category
+		 ORDER BY COALESCE(c.position, 1e9), t.name`
 	);
 }
 
@@ -408,21 +411,76 @@ export function popularTags(limit = 40) {
 		.slice(0, limit);
 }
 
-/** Colour a tag gets when none is chosen; also used to backfill old rows. */
-export const CATEGORY_COLORS: Record<string, string> = {
-	component: '#6ba4e8',
-	interface: '#9cb080',
-	domain: '#e2b862',
-	process: '#c4829a',
-	general: '#8a9a8b'
-};
+/* ------------------------------------------------------- tag categories */
+
+/** Where tags go when their category is deleted; it cannot be deleted itself. */
+export const FALLBACK_CATEGORY = 'general';
+
+export interface TagCategory {
+	id: string;
+	/** Empty for a built-in category until renamed: its name is translated then. */
+	name: string;
+	/** The colour new tags in it start with. */
+	color: string;
+	position: number;
+	tag_count: number;
+}
+
+export function listTagCategories() {
+	return all<TagCategory>(
+		`SELECT c.*, (SELECT COUNT(*) FROM tags t WHERE t.category = c.id) AS tag_count
+		 FROM tag_categories c ORDER BY c.position`
+	);
+}
+
+export function isTagCategory(id: string) {
+	return Boolean(get('SELECT 1 AS x FROM tag_categories WHERE id = ?', id));
+}
+
+function categoryColor(id: string) {
+	return get<{ color: string }>('SELECT color FROM tag_categories WHERE id = ?', id)?.color ?? '#8a9a8b';
+}
+
+/** The new category's id, or why it was refused (a translation key). */
+export function createTagCategory(name: string, color: string) {
+	const id = slugify(name);
+	if (!id) return { error: 'adminTags.error.categoryName' as const };
+	if (isTagCategory(id)) return { error: 'adminTags.error.categoryExists' as const };
+	const position = get<{ n: number }>('SELECT COALESCE(MAX(position), -1) + 1 AS n FROM tag_categories')!.n;
+	run('INSERT INTO tag_categories (id, name, color, position) VALUES (?,?,?,?)', id, name.trim().slice(0, 40), color, position);
+	return { id };
+}
+
+export function updateTagCategory(id: string, name: string, color: string) {
+	run('UPDATE tag_categories SET name = ?, color = ? WHERE id = ?', name.trim().slice(0, 40), color, id);
+}
+
+/** Deletes a category; its tags move to the fallback category. */
+export function deleteTagCategory(id: string) {
+	if (id === FALLBACK_CATEGORY) return false;
+	tx(() => {
+		run('UPDATE tags SET category = ? WHERE category = ?', FALLBACK_CATEGORY, id);
+		run('DELETE FROM tag_categories WHERE id = ?', id);
+	});
+	return true;
+}
+
+/** Swaps a category with its neighbour above (-1) or below (+1). */
+export function moveTagCategory(id: string, direction: -1 | 1) {
+	const order = listTagCategories().map((c) => c.id);
+	const from = order.indexOf(id);
+	const to = from + direction;
+	if (from < 0 || to < 0 || to >= order.length) return;
+	[order[from], order[to]] = [order[to], order[from]];
+	tx(() => order.forEach((category, position) => run('UPDATE tag_categories SET position = ? WHERE id = ?', position, category)));
+}
 
 export function isTagColor(value: string) {
 	return /^#[0-9a-f]{6}$/i.test(value);
 }
 
 /** Creates a tag if it does not exist. Admin and bootstrap only; users never create tags. */
-export function ensureTag(name: string, category = 'general', color?: string) {
+export function ensureTag(name: string, category = FALLBACK_CATEGORY, color?: string) {
 	const slug = slugify(name);
 	if (!slug) return null;
 	const existing = get<{ id: string }>('SELECT id FROM tags WHERE slug = ?', slug);
@@ -434,7 +492,7 @@ export function ensureTag(name: string, category = 'general', color?: string) {
 		slug,
 		name.trim().slice(0, 40),
 		category,
-		color && isTagColor(color) ? color : (CATEGORY_COLORS[category] ?? CATEGORY_COLORS.general),
+		color && isTagColor(color) ? color : categoryColor(category),
 		now()
 	);
 	return id;

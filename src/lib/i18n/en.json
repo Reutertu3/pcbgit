@@ -893,6 +893,28 @@
 		"one": "Removed {count} unused tag.",
 		"other": "Removed {count} unused tags."
 	},
+	"adminTags.categories": "Categories",
+	"adminTags.categoriesHint": "Group tags on the Tags page and in the tag picker, in this order. The colour is what new tags in a category start with. Leave a built-in name empty to keep its translated name.",
+	"adminTags.categoryTags": {
+		"one": "{count} tag",
+		"other": "{count} tags"
+	},
+	"adminTags.moveUp": "Move up",
+	"adminTags.moveDown": "Move down",
+	"adminTags.deleteCategory": "Delete category",
+	"adminTags.confirmDeleteCategory": {
+		"one": "Delete \"{name}\"? Its {count} tag moves to \"{fallback}\".",
+		"other": "Delete \"{name}\"? Its {count} tags move to \"{fallback}\"."
+	},
+	"adminTags.newCategory": "New category name",
+	"adminTags.createCategory": "Add category",
+	"adminTags.categoryCreated": "Category \"{name}\" added.",
+	"adminTags.categoryUpdated": "Category saved.",
+	"adminTags.categoryDeleted": "Category deleted.",
+	"adminTags.error.categoryName": "Give the category a name.",
+	"adminTags.error.categoryExists": "A category called \"{name}\" already exists.",
+	"adminTags.error.noCategory": "That category no longer exists.",
+	"adminTags.error.fallbackCategory": "This category collects the tags of deleted ones and cannot be deleted.",
 	"users.created": "Created {name}.",
 	"users.error.lastAdmin": "This is the only active administrator.",
 	"users.roleUpdated": "Role updated.",

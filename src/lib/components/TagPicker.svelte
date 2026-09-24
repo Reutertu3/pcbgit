@@ -1,12 +1,13 @@
 <script lang="ts">
 	import { t } from '$lib/i18n/t';
-	import type { MessageKey } from '$lib/i18n';
+	import { categoryLabel } from '$lib/tagcategory';
 
 	interface PickerTag {
 		slug: string;
 		name: string;
 		color: string;
 		category: string;
+		category_name?: string;
 	}
 
 	interface Props {
@@ -16,24 +17,20 @@
 	}
 	let { tags, selected, name = 'tags' }: Props = $props();
 
-	const LABELS: Record<string, MessageKey> = {
-		component: 'tagCategory.component',
-		interface: 'tagCategory.interface',
-		domain: 'tagCategory.domain',
-		process: 'tagCategory.process',
-		general: 'tagCategory.general'
-	};
-
 	// Seeded from the prop; after that the checkboxes are the source of truth.
 	let chosen = $state<string[]>([]);
 	$effect.pre(() => {
 		chosen = [...selected];
 	});
 
+	// Tags arrive in the categories' order (listTags), so consecutive runs are the groups.
 	const groups = $derived(
-		Object.keys(LABELS)
-			.map((category) => ({ category, tags: tags.filter((tag) => tag.category === category) }))
-			.filter((group) => group.tags.length)
+		tags.reduce<{ label: string; tags: PickerTag[] }[]>((out, tag) => {
+			const label = categoryLabel(tag.category, tag.category_name);
+			if (out.at(-1)?.label === label) out.at(-1)!.tags.push(tag);
+			else out.push({ label, tags: [tag] });
+			return out;
+		}, [])
 	);
 </script>
 
@@ -44,7 +41,7 @@
 		{#each groups as group}
 			<fieldset>
 				<legend class="mb-1 text-[0.625rem] uppercase tracking-wide text-[var(--text-muted)]">
-					{t(LABELS[group.category])}
+					{group.label}
 				</legend>
 				<div class="flex flex-wrap gap-1.5">
 					{#each group.tags as tag}

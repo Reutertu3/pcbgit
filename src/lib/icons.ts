@@ -33,6 +33,7 @@ export const ICONS = {
 	file: 'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z M14 2v6h6',
 	folder: 'M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.7-.9L9.6 3.9A2 2 0 0 0 7.9 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2z',
 	chevronDown: 'M6 9l6 6 6-6',
+	chevronUp: 'M18 15l-6-6-6 6',
 	chevronRight: 'M9 18l6-6-6-6',
 	chevronLeft: 'M15 18l-6-6 6-6',
 	external: 'M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6 M15 3h6v6 M10 14 21 3',

@@ -18,6 +18,8 @@ function open() {
 	// The schema is written to be idempotent, so replaying it on every boot is the migration.
 	database.exec(SCHEMA_SQL);
 	rebuildNotifications(database);
+	rebuildTags(database);
+	seedTagCategories(database);
 	addMissingColumns(database);
 	database.exec(POST_MIGRATION_SQL);
 	return database;
@@ -53,6 +55,57 @@ function rebuildNotifications(database: DatabaseSync) {
 		throw error;
 	}
 }
+
+/**
+ * Tag categories used to be fixed by a CHECK on tags.category; they are a table
+ * now (tag_categories). A tags table in the old shape is copied into the new one
+ * once. Foreign keys are off meanwhile: project_tags cascades from tags, and
+ * dropping the old table with them on would untag every board.
+ */
+function rebuildTags(database: DatabaseSync) {
+	const current = database.prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'tags'").get() as
+		| { sql: string }
+		| undefined;
+	if (!current || !current.sql.includes('CHECK')) return;
+
+	const create = /CREATE TABLE IF NOT EXISTS tags \(([\s\S]*?)\n\);/.exec(SCHEMA_SQL)?.[1];
+	if (!create) throw new Error('tags table missing from schema.sql');
+	database.exec('PRAGMA foreign_keys = OFF');
+	database.exec('BEGIN');
+	try {
+		database.exec(`CREATE TABLE tags_next (${create}\n)`);
+		database.exec(
+			`INSERT INTO tags_next (id, slug, name, category, color, description, created_at)
+			 SELECT id, slug, name, category, color, description, created_at FROM tags`
+		);
+		database.exec('DROP TABLE tags');
+		database.exec('ALTER TABLE tags_next RENAME TO tags');
+		if ((database.prepare('PRAGMA foreign_key_check').all() as unknown[]).length) throw new Error('tag rebuild broke references');
+		database.exec('COMMIT');
+		console.log('[db] tags table rebuilt for editable categories');
+	} catch (error) {
+		database.exec('ROLLBACK');
+		throw error;
+	} finally {
+		database.exec('PRAGMA foreign_keys = ON');
+	}
+}
+
+/** The categories that used to be built in, written once into an empty table. */
+function seedTagCategories(database: DatabaseSync) {
+	const { n } = database.prepare('SELECT COUNT(*) AS n FROM tag_categories').get() as { n: number };
+	if (n) return;
+	const insert = database.prepare("INSERT INTO tag_categories (id, name, color, position) VALUES (?, '', ?, ?)");
+	for (const [position, [id, color]] of DEFAULT_TAG_CATEGORIES.entries()) insert.run(id, color, position);
+}
+
+const DEFAULT_TAG_CATEGORIES = [
+	['component', '#6ba4e8'],
+	['interface', '#9cb080'],
+	['domain', '#e2b862'],
+	['process', '#c4829a'],
+	['general', '#8a9a8b']
+] as const;
 
 /**
  * CREATE TABLE IF NOT EXISTS cannot add a column to a table that already

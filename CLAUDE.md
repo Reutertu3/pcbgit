@@ -54,7 +54,11 @@ with `readOutput(file, jobDir)`, create files there only with `writeNew()` /
   imports (e.g. `render/kicad.ts`, `render/schematictheme.ts`); tests import them
   with explicit `.ts` extensions.
 - **Schema changes:** a new column on an existing table also needs an entry in
-  `ADDED_COLUMNS` (db/index.ts), or existing instances never get it.
+  `ADDED_COLUMNS` (db/index.ts), or existing instances never get it. Changing a
+  CHECK or NOT NULL means rebuilding the table once at boot (`rebuildTags`,
+  `rebuildNotifications`); if other tables reference it with `ON DELETE CASCADE`,
+  turn foreign keys off around the rebuild, or dropping the old table deletes
+  their rows.
 - **Admin actions** that change data call `audit(...)`.
 - **Permissions** go through `canView` / `canEdit` / `isOwner` (projects.ts). Collaborators
   (`project_members`) can do everything an owner can except delete the board and manage

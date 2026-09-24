@@ -141,3 +141,14 @@ parallel downloads (2 crashes). Files are now converted with `Readable.toWeb()`
 aborted clone and now drops output that arrives after a cancel. Checked with 120
 parallel and 20 aborted downloads: no crash. The bug dated from the PDF export
 commit (2026-09-23), not from the render hardening.
+
+### Editable tag categories
+Tag categories were five fixed values, enforced by a CHECK on the tags table.
+They are a table now (`tag_categories`), managed under Admin → Tags: add, rename,
+recolour, reorder, delete. Built-in categories keep their translated names until
+renamed. "Other" collects the tags of deleted categories and cannot be deleted.
+The tags table is rebuilt once on boot with foreign keys off, since dropping it
+with them on would have untagged every board. Checked on the local instance:
+23 tags and 20 board links before and after.
+
+Eagle support was scoped the same day: Eagle 6 and newer only (see TODO.md).

@@ -45,6 +45,25 @@ All profiles: only manufacturing layers (`fabricationLayers()`), zones refilled
   library. That cannot be fixed generically; JLCPCB corrects it in its order
   preview. Say so next to the download.
 
+### Eagle projects (for archiving)
+Decided: Eagle 6 and newer only (XML files); older binary files are refused.
+Tested 2026-09-24 with KiCad 10.0.6 on an Eagle 9.1 project:
+- Board: `kicad-cli pcb import --format eagle` works. Items on Eagle layers
+  without a KiCad equivalent (dimensions, documentation) land on `UNDEFINED`, and
+  the board then refuses to load; moving them to `Dwgs.User` fixes it. After that
+  layers, preview, Gerbers, drill, GLB (bare board, no part models) and DRC work.
+- Schematic: `kicad-cli` cannot read Eagle schematics (only the GUI importer
+  can). Show a placeholder and the original file; build the BOM from the
+  schematic's XML parts list instead.
+- [ ] Detect Eagle-only commits (`.brd`/`.sch` starting with `<eagle`), ignore
+      backups (`.b#1`, `.s#1`), refuse pre-6 binary files with a clear message.
+- [ ] Import step in the renderer before the normal pipeline; layer fix through
+      `readOutput`/`writeNew`.
+- [ ] BOM from the Eagle schematic XML.
+- [ ] Mark such boards "converted from Eagle"; warn on Gerbers (Eagle poured
+      copper at CAM time, KiCad refills zones with its own rules) and on DRC
+      (KiCad default rules, not the project's).
+
 ## Security
 
 Done in the audit of 2026-09-23 and after: open redirect after sign-in, sign-in

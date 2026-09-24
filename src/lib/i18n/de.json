@@ -893,6 +893,28 @@
 		"one": "{count} unbenutzter Tag entfernt.",
 		"other": "{count} unbenutzte Tags entfernt."
 	},
+	"adminTags.categories": "Kategorien",
+	"adminTags.categoriesHint": "Kategorien gruppieren die Tags auf der Tag-Seite und in der Tag-Auswahl, in dieser Reihenfolge. Die Farbe ist die Startfarbe neuer Tags der Kategorie. Lass den Namen einer eingebauten Kategorie leer, um ihren übersetzten Namen zu behalten.",
+	"adminTags.categoryTags": {
+		"one": "{count} Tag",
+		"other": "{count} Tags"
+	},
+	"adminTags.moveUp": "Nach oben",
+	"adminTags.moveDown": "Nach unten",
+	"adminTags.deleteCategory": "Kategorie löschen",
+	"adminTags.confirmDeleteCategory": {
+		"one": "„{name}“ löschen? Ihr {count} Tag wandert nach „{fallback}“.",
+		"other": "„{name}“ löschen? Ihre {count} Tags wandern nach „{fallback}“."
+	},
+	"adminTags.newCategory": "Name der neuen Kategorie",
+	"adminTags.createCategory": "Kategorie hinzufügen",
+	"adminTags.categoryCreated": "Kategorie „{name}“ hinzugefügt.",
+	"adminTags.categoryUpdated": "Kategorie gespeichert.",
+	"adminTags.categoryDeleted": "Kategorie gelöscht.",
+	"adminTags.error.categoryName": "Gib der Kategorie einen Namen.",
+	"adminTags.error.categoryExists": "Eine Kategorie „{name}“ gibt es bereits.",
+	"adminTags.error.noCategory": "Diese Kategorie gibt es nicht mehr.",
+	"adminTags.error.fallbackCategory": "Diese Kategorie sammelt die Tags gelöschter Kategorien und kann nicht gelöscht werden.",
 	"users.created": "{name} angelegt.",
 	"users.error.lastAdmin": "Dies ist der einzige aktive Administrator.",
 	"users.roleUpdated": "Rolle aktualisiert.",

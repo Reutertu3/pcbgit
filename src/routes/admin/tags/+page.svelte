@@ -1,18 +1,15 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import { keepValues } from '$lib/forms';
 	import Icon from '$lib/components/Icon.svelte';
 	import FormError from '$lib/components/FormError.svelte';
 	import TagChip from '$lib/components/TagChip.svelte';
 	import { t } from '$lib/i18n/t';
-	import type { MessageKey } from '$lib/i18n';
-
-	const categoryLabel = (category: string) => {
-		const key = `tagCategory.${category}` as MessageKey;
-		const text = t(key);
-		return text === key ? category : text;
-	};
+	import { categoryLabel } from '$lib/tagcategory';
 
 	let { data, form } = $props();
+
+	const categoryName = (id: string) => categoryLabel(id, data.categories.find((c) => c.id === id)?.name);
 
 	/** Quick picks; the colour input still allows any colour. */
 	const PRESETS = [
@@ -29,7 +26,7 @@
 
 	// Until the admin picks a colour, follow the category's default.
 	$effect(() => {
-		if (!colorTouched) newColor = data.categoryColors[newCategory] ?? '#8a9a8b';
+		if (!colorTouched) newColor = data.categories.find((c) => c.id === newCategory)?.color ?? '#8a9a8b';
 	});
 
 	function startEdit(tag: { id: string; color: string }) {
@@ -72,6 +69,61 @@
 {/snippet}
 
 <section class="surface mb-4 p-4">
+	<h3 class="mb-1 text-sm font-semibold">{t('adminTags.categories')}</h3>
+	<p class="mb-3 text-xs text-[var(--text-muted)]">{t('adminTags.categoriesHint')}</p>
+	<ul class="mb-3 divide-y rounded-lg border">
+		{#each data.categories as category, index (category.id)}
+			<li class="flex flex-wrap items-center gap-2 px-3 py-2">
+				<form method="POST" action="?/updateCategory" use:enhance={keepValues} class="flex flex-1 flex-wrap items-center gap-2">
+					<input type="hidden" name="id" value={category.id} />
+					<input type="color" name="color" value={category.color} class="h-7 w-9 cursor-pointer rounded border bg-transparent" aria-label={t('adminTags.colour')} />
+					<input
+						class="input !w-auto min-w-40 flex-1 !py-1"
+						name="name"
+						value={category.name}
+						placeholder={categoryLabel(category.id)}
+						maxlength="40"
+						aria-label={t('boardForm.name')}
+					/>
+					<span class="text-xs text-[var(--text-muted)]">{t('adminTags.categoryTags', { count: category.tag_count })}</span>
+					<button class="btn btn-sm" type="submit">{t('common.save')}</button>
+				</form>
+				<div class="flex gap-1">
+					{#each [['up', index === 0, 'chevronUp'], ['down', index === data.categories.length - 1, 'chevronDown']] as const as [direction, edge, icon]}
+						<form method="POST" action="?/moveCategory" use:enhance>
+							<input type="hidden" name="id" value={category.id} />
+							<input type="hidden" name="direction" value={direction} />
+							<button class="btn btn-sm" type="submit" disabled={edge} aria-label={t(direction === 'up' ? 'adminTags.moveUp' : 'adminTags.moveDown')}>
+								<Icon name={icon} size={12} />
+							</button>
+						</form>
+					{/each}
+					{#if category.id !== data.fallbackCategory}
+						<form
+							method="POST"
+							action="?/deleteCategory"
+							use:enhance={({ cancel }) => {
+								if (category.tag_count && !confirm(t('adminTags.confirmDeleteCategory', { name: categoryLabel(category.id, category.name), count: category.tag_count, fallback: categoryName(data.fallbackCategory) }))) cancel();
+							}}
+						>
+							<input type="hidden" name="id" value={category.id} />
+							<button class="btn btn-danger btn-sm" type="submit" aria-label={t('adminTags.deleteCategory')}>
+								<Icon name="trash" size={12} />
+							</button>
+						</form>
+					{/if}
+				</div>
+			</li>
+		{/each}
+	</ul>
+	<form method="POST" action="?/createCategory" use:enhance class="flex flex-wrap items-center gap-2">
+		<input type="color" name="color" value="#8a9a8b" class="h-7 w-9 cursor-pointer rounded border bg-transparent" aria-label={t('adminTags.colour')} />
+		<input class="input !w-auto min-w-40 flex-1 !py-1.5" name="name" maxlength="40" placeholder={t('adminTags.newCategory')} required aria-label={t('boardForm.name')} />
+		<button class="btn btn-sm" type="submit"><Icon name="plus" size={13} /> {t('adminTags.createCategory')}</button>
+	</form>
+</section>
+
+<section class="surface mb-4 p-4">
 	<h3 class="mb-3 text-sm font-semibold">{t('adminTags.create')}</h3>
 	<form
 		method="POST"
@@ -93,7 +145,7 @@
 			<div>
 				<label class="label" for="tag-category">{t('adminTags.category')}</label>
 				<select class="select !w-auto !py-1.5" id="tag-category" name="category" bind:value={newCategory}>
-					{#each data.categories as category}<option value={category}>{categoryLabel(category)}</option>{/each}
+					{#each data.categories as category}<option value={category.id}>{categoryLabel(category.id, category.name)}</option>{/each}
 				</select>
 			</div>
 			<div class="min-w-48 flex-[2]">
@@ -157,7 +209,7 @@
 									<div>
 										<label class="label" for="edit-cat-{tag.id}">{t('adminTags.category')}</label>
 										<select class="select !w-auto !py-1.5" id="edit-cat-{tag.id}" name="category" value={tag.category}>
-											{#each data.categories as category}<option value={category}>{categoryLabel(category)}</option>{/each}
+											{#each data.categories as category}<option value={category.id}>{categoryLabel(category.id, category.name)}</option>{/each}
 										</select>
 									</div>
 									<div class="min-w-48 flex-[2]">
@@ -190,7 +242,7 @@
 							<TagChip {tag} href="/?tag={tag.slug}" />
 							<span class="mono block pt-0.5 text-[0.6875rem] text-[var(--text-muted)]">{tag.slug} · {tag.color}</span>
 						</td>
-						<td class="px-3 py-2"><span class="chip">{categoryLabel(tag.category)}</span></td>
+						<td class="px-3 py-2"><span class="chip">{categoryName(tag.category)}</span></td>
 						<td class="px-3 py-2 tabular-nums">{tag.project_count}</td>
 						<td class="max-w-sm truncate px-3 py-2 text-xs text-[var(--text-secondary)]">{tag.description}</td>
 						<td class="px-3 py-2">

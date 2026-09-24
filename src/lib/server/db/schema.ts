@@ -60,11 +60,19 @@ CREATE TABLE IF NOT EXISTS tags (
   id          TEXT PRIMARY KEY,
   slug        TEXT NOT NULL UNIQUE COLLATE NOCASE,
   name        TEXT NOT NULL,
-  category    TEXT NOT NULL DEFAULT 'general'
-                CHECK (category IN ('general','component','interface','domain','process')),
+  category    TEXT NOT NULL DEFAULT 'general',
   color       TEXT NOT NULL DEFAULT '#8a9a8b',
   description TEXT NOT NULL DEFAULT '',
   created_at  INTEGER NOT NULL
+);
+
+-- Tag categories, managed in the admin panel. An empty name means the built-in,
+-- translated one (tagCategory.<id>). 'general' is the fallback and cannot be deleted.
+CREATE TABLE IF NOT EXISTS tag_categories (
+  id       TEXT PRIMARY KEY,
+  name     TEXT NOT NULL DEFAULT '',
+  color    TEXT NOT NULL,
+  position INTEGER NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS project_tags (
