@@ -105,6 +105,10 @@ copy results out (see `thumbnails.ts`).
   (`[owner]/[project]/raw/[sha]/[...path]`): images by extension, commits of that
   board only, SVG with `SVG_POLICY`. Never widen it to other types: a repo's HTML
   served from this origin would run as pcbgit.
+- **Profile pictures** are BLOBs in the `avatars` table (so snapshots cover them),
+  only ever served as our own re-encoding: `avatarimage.ts` checks the header, then
+  rsvg-convert crops and cwebp encodes in the renderer. rsvg-convert ignores EXIF
+  orientation, so the crop SVG applies it. URLs carry `?v=<updated_at>`.
 - `docker compose exec` reads stdin: in scripts, give it `</dev/null`, or it
   swallows the rest of the script.
 - **Sign-in limits** (`loginguard.ts`) count failures per client address and per

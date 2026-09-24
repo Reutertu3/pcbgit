@@ -39,6 +39,13 @@ async function push(message: string, files: string[]) {
 	);
 }
 
+test('candidates are active non-admin users other than the owner', () => {
+	assert.deepEqual(
+		projects.collaboratorCandidates(project).map((u) => u.username),
+		['carol', 'stranger']
+	);
+});
+
 test('adding a collaborator is refused for unknown users, the owner and duplicates', () => {
 	assert.equal(projects.addCollaborator(project, 'nobody', owner.id), 'collaborators.error.noUser');
 	assert.equal(projects.addCollaborator(project, 'owner', owner.id), 'collaborators.error.owner');
@@ -47,6 +54,11 @@ test('adding a collaborator is refused for unknown users, the owner and duplicat
 	assert.deepEqual(
 		projects.listCollaborators(project.id).map((c) => c.username),
 		['carol']
+	);
+	assert.deepEqual(
+		projects.collaboratorCandidates(project).map((u) => u.username),
+		['stranger'],
+		'current collaborators are not offered again'
 	);
 });
 
