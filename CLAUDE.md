@@ -80,6 +80,9 @@ with `readOutput(file, jobDir)`, create files there only with `writeNew()` /
   lose to Tailwind utilities (a later layer) whatever their specificity, so a
   property a component rule changes on hover must not also be set by a utility.
 - Comments explain *why*, briefly, matching the existing style. No dead code.
+- **NOTES.md** is the history of major features and fixes: newest first, with
+  date, time, commit and the reason. Add an entry when a major change is
+  committed, and a row to its Releases table when a tag is made.
 
 ## Things that bite
 

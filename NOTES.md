@@ -4,9 +4,20 @@ Major features and fixes, newest first, with the reason where it isn't obvious.
 Times are local (CEST) and match the commit. Open work lives in TODO.md; working
 rules for the code live in CLAUDE.md.
 
+## Releases
+
+| Tag | Date | Commit | Summary |
+|---|---|---|---|
+| (unreleased) | 2026-09-24 | `35581ce`, `5f86b22` | Render isolation against symlink tricks, download crash fix |
+| v0.4.0 | 2026-09-24 13:27 | `5578525` | Collaborators, version notifications, messages page, profile pictures |
+| v0.3.1 | 2026-09-24 12:23 | `b9f2aaf` | Port setting, README images; also schematic PDF, license list, front-page filter and sort, settings form fix (not listed in its release notes) |
+| v0.3.0 | 2026-09-23 22:23 | `3cb5cd6` | Production Gerbers, re-render all, isolated renderer, security audit |
+| v0.2.0 | 2026-09-22 21:06 | `b0f0b45` | Ready for deployment in a test environment; many bug fixes, faster 3D |
+| v0.1 | 2026-09-22 13:14 | `45ccf70` | First deployable version |
+
 ## 2026-09-24
 
-### 21:00 · Downloads could crash the server
+### 20:57 · Downloads could crash the server (`5f86b22`)
 Three routes (artifacts, thumbnails, backup download) passed a Node file stream
 straight to `new Response()`. Node's HTTP layer (undici) wraps such a stream in an
 adapter that can close it a second time when the visitor disconnects near the end
@@ -79,3 +90,53 @@ Tested with JLCPCB and AISLER uploads. Schematics also export as one PDF.
 - Boards with renamed copper layers render in 2D.
 - "Re-render all" in the admin panel; Gruvbox Dark schematic colours.
 - 3D viewer capped at 60 fps and loads faster.
+
+## 2026-09-22
+
+### 21:06–21:48 · Local hosting and version in the footer (`b0f0b45`, `32cdbfe`) · v0.2.0
+The site works on `localhost`, a hostname and the machine's plain IP at once.
+SvelteKit's CSRF check allows only the one configured `ORIGIN`; the own check
+(`csrf.ts`) compares a form's `Origin` with the `Host` of the same request, which
+is as strict. Clone URLs show the address the visitor used (`origin.ts`). The footer shows the running
+commit and release tag, linked to the source (AGPL section 13).
+
+### 18:27–19:41 · 3D viewer: daughterboards, speed, scale objects (`96f65e4`, `9a9d57f`, `e6fc8b1`, `f06d9e7`, `9bed873`, `d69f7e0`)
+- A daughterboard model has its own "…_PCB" mesh; the real board is now the
+  shallowest one, so it is no longer mistaken for the main board.
+- Transparent parts no longer render with wrong opacity.
+- GLBs are optimised at render time (`render/glb.ts`, meshopt): primitives joined
+  by material and baked into world space, a fraction of KiCad's size, and the
+  viewer no longer merges tens of thousands of primitives on every load.
+- DRC markers land on the right spot; PCB view presets fixed.
+- Scale comparison objects in the 3D view, including a procedurally modelled
+  banana (Cavendish), for a sense of size.
+
+### 15:59–16:43 · iBOM and languages (`9b45dc6`, `6f791c8`)
+Interactive HTML BOM per render, following the selected colour theme. English and
+German throughout, with a language switcher (`pcbgit-lang` cookie); the i18n test
+keeps both files in step.
+
+### 14:34–15:13 · Comments and uploads (`f8cfb38`, `acc51ce`, `0e247ec`, `5ad9a3d`)
+- Replies to comments, and notifications for comments and replies.
+- Users can only delete their own comments (admins any).
+- Fixed a possible crash on ZIP upload: declared sizes are checked before
+  anything is inflated, so a small archive cannot expand to gigabytes (200 MB cap).
+
+### 13:14–14:24 · Deployment, updates, license (`45ccf70`, `3e921f0`, `6ed4c1b`, `75ec9a4`) · v0.1
+- Production setup: `deploy/` with Caddy (HTTPS), `install.sh` and `update.sh`.
+- Card thumbnails cached as WebP, which fixed slow front-page loads; sharper
+  schematics and an export button.
+- Update notifier in the admin panel, with changelog and one-click update.
+- Licensed AGPL-3.0-or-later; NOTICE.md lists third-party components.
+
+### 08:21–12:03 · Start (`e031ca4` … `e6b2a1b`)
+- 08:21 · First commit: SvelteKit app with SQLite, bare git repositories, ZIP
+  upload and git push, and a render worker (kicad-cli) producing schematic, PCB
+  layers, 3D model, BOM and DRC/ERC. About 14,500 lines in 125 files.
+- 10:03 · Backups: snapshots of the database and repositories, restore on boot.
+- 10:10 · Briefly named "Kupfergit"; renamed to pcbgit at 11:54.
+- 10:47–11:31 · 3D view options: mask, silkscreen and finish colours, SMD/THT
+  visibility, ruler.
+- 11:54 · 2D view fixed.
+- 12:03 · Self-hosting as a personal git server: production compose file,
+  Caddy, in-app updater.
