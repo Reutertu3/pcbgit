@@ -95,6 +95,10 @@ copy results out (see `thumbnails.ts`).
   remove job directories (`checkout-`, `out-`, `thumb-`).
 - **SVG artifacts** are served with a CSP that blocks script (`SVG_POLICY`), in
   case a compromised renderer writes one.
+- **Repository files are served for README images only**
+  (`[owner]/[project]/raw/[sha]/[...path]`): images by extension, commits of that
+  board only, SVG with `SVG_POLICY`. Never widen it to other types: a repo's HTML
+  served from this origin would run as pcbgit.
 - `docker compose exec` reads stdin: in scripts, give it `</dev/null`, or it
   swallows the rest of the script.
 - **Sign-in limits** (`loginguard.ts`) count failures per client address and per

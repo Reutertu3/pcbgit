@@ -36,7 +36,9 @@ export const load: PageServerLoad = async ({ params, locals, url, parent }) => {
 			const entry = tree.find((file) => !file.path.includes('/') && README.test(file.path));
 			if (entry && entry.size < 512 * 1024) {
 				const source = await readBlob(repo, commit.sha, entry.path);
-				readme = { name: entry.path, html: renderMarkdown(source) };
+				// Relative images in it are files of this version, served by the raw route.
+				const imageBase = `/${project.owner_username}/${project.slug}/raw/${commit.sha}/`;
+				readme = { name: entry.path, html: renderMarkdown(source, { imageBase }) };
 			}
 		} catch {
 			// A repository with no commits yet; the empty state covers it.

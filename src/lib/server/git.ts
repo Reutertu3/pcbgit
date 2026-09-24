@@ -99,6 +99,16 @@ export async function readBlob(repo: string, sha: string, filePath: string) {
 	return git(repo, ['show', `${sha}:${filePath}`]);
 }
 
+/** A file's bytes at a commit (readBlob decodes text); throws when missing or over `maxBytes`. */
+export async function readBlobBytes(repo: string, sha: string, filePath: string, maxBytes: number) {
+	const { stdout } = await exec('git', ['--git-dir', repo, 'show', `${sha}:${filePath}`], {
+		encoding: 'buffer',
+		maxBuffer: maxBytes,
+		env: { ...process.env, GIT_TERMINAL_PROMPT: '0' }
+	});
+	return stdout as unknown as Buffer;
+}
+
 /** Extracts a commit's tree into a fresh directory under `parentDir`. Caller removes it. */
 export async function exportTree(repo: string, sha: string, parentDir: string, label = 'work') {
 	const dir = await fsp.mkdtemp(path.join(parentDir, `${label}-`));

@@ -166,6 +166,20 @@ test('markdown renders lists, tables and fenced code', () => {
 	assert.ok(html.includes('x &gt; y'));
 });
 
+test('markdown resolves relative images to the repository, and nothing outside it', () => {
+	const base = '/alice/board/raw/0123456789abcdef0123456789abcdef01234567/';
+	const src = (markdown: string) => /src="([^"]*)"/.exec(renderMarkdown(markdown, { imageBase: base }))?.[1];
+	assert.equal(src('![p](sim/full/pattern_5.80GHz.png)'), `${base}sim/full/pattern_5.80GHz.png`);
+	assert.equal(src('![p](./docs/a.png)'), `${base}docs/a.png`);
+	assert.equal(src('![p](docs/../img/a%20b&c.png)'), `${base}img/a%20b%26c.png`);
+	assert.equal(src('![p](../outside.png)'), '#');
+	assert.equal(src('![p](javascript:alert(1))'), '#');
+	assert.equal(src('![p](https://example.com/a.png)'), 'https://example.com/a.png');
+	assert.equal(src('| ![p](sim/a.png) | x |\n|---|---|\n| 1 | 2 |'), `${base}sim/a.png`);
+	// Without a base (no version to serve from) relative images still go nowhere.
+	assert.equal(/src="([^"]*)"/.exec(renderMarkdown('![p](sim/a.png)'))?.[1], '#');
+});
+
 test('markdown rejects dangerous link schemes', () => {
 	const html = renderMarkdown('[click](javascript:alert(1)) and [ok](https://example.com)');
 	assert.ok(!html.includes('javascript:'));
