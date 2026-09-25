@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import { invalidateAll } from '$app/navigation';
 	import Icon from '$lib/components/Icon.svelte';
 	import Switch from '$lib/components/Switch.svelte';
 	import FormError from '$lib/components/FormError.svelte';
@@ -13,6 +14,75 @@
 	let restoreTarget = $state<string | null>(null);
 	let confirmText = $state('');
 	let upload = $state<File | null>(null);
+
+	// Piecewise upload (routes/admin/backups/upload): works for any size, a piece at a time.
+	let progress = $state<{ sent: number; total: number } | null>(null);
+	let joining = $state(false);
+	let uploadResult = $state<{ kind: 'success' | 'error'; text: string } | null>(null);
+	const percent = $derived(progress ? Math.floor((progress.sent / Math.max(1, progress.total)) * 100) : 0);
+
+	// Leaving the page would abandon the upload.
+	$effect(() => {
+		if (!uploading) return;
+		const warn = (event: BeforeUnloadEvent) => event.preventDefault();
+		window.addEventListener('beforeunload', warn);
+		return () => window.removeEventListener('beforeunload', warn);
+	});
+
+	// crypto.randomUUID() needs HTTPS; a LAN install is often plain HTTP.
+	function uploadId() {
+		const bytes = crypto.getRandomValues(new Uint8Array(16));
+		return Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('');
+	}
+
+	/** Posts to the upload route; a piece lost on the way (network, restart) is sent again, a refusal is not. */
+	async function send(url: string, body: Blob | null) {
+		for (let attempt = 1; ; attempt++) {
+			let response: Response | null = null;
+			try {
+				response = await fetch(url, { method: 'POST', headers: { 'content-type': 'application/octet-stream' }, body });
+			} catch {
+				// Network error: retried below.
+			}
+			const result = response ? await response.json().catch(() => ({})) : {};
+			if (response?.ok) return result as { message?: string };
+			if (response && response.status < 500) throw new Error(result.error ?? t('backups.uploadFailed'));
+			if (attempt === 3) throw new Error(result.error ?? t('backups.uploadFailed'));
+			await new Promise((resolve) => setTimeout(resolve, 2000 * attempt));
+		}
+	}
+
+	async function uploadInPieces(event: SubmitEvent) {
+		event.preventDefault();
+		if (!upload) return;
+		// currentTarget is only set while the event is dispatched, not after an await.
+		const formElement = event.currentTarget as HTMLFormElement;
+		const file = upload;
+		const size = data.pieceSize;
+		const parts = Math.max(1, Math.ceil(file.size / size));
+		const query = `id=${uploadId()}&name=${encodeURIComponent(file.name)}&parts=${parts}`;
+		uploading = true;
+		uploadResult = null;
+		progress = { sent: 0, total: file.size };
+		try {
+			for (let part = 1; part <= parts; part++) {
+				await send(`/admin/backups/upload?${query}&part=${part}`, file.slice((part - 1) * size, part * size));
+				progress = { sent: Math.min(part * size, file.size), total: file.size };
+			}
+			joining = true;
+			const result = await send(`/admin/backups/upload?${query}&join`, null);
+			uploadResult = { kind: 'success', text: result.message ?? '' };
+			upload = null;
+			formElement.reset();
+			await invalidateAll();
+		} catch (error) {
+			uploadResult = { kind: 'error', text: (error as Error).message };
+		} finally {
+			uploading = false;
+			joining = false;
+			progress = null;
+		}
+	}
 </script>
 
 <svelte:head><title>{t('admin.nav.backups')} · {t('admin.title')} · {data.site.name}</title></svelte:head>
@@ -73,26 +143,10 @@
 		<h3 class="mb-1 text-sm font-semibold">{t('backups.import')}</h3>
 		<div class="mb-3 space-y-1 text-xs leading-relaxed text-[var(--text-secondary)]">
 			<p>{t('backups.importHint')}</p>
-			{#if data.uploadLimit}
-				<p>
-					{#each tParts('backups.importLimit', { limit: formatBytes(data.uploadLimit) }) as part}{#if typeof part === 'string'}{part}{:else}<code class="mono mt-1 block overflow-x-auto whitespace-nowrap rounded border bg-[var(--surface-0)] px-2 py-1">docker compose cp snapshot.tar.gz pcbgit:/data/backups/</code>{/if}{/each}
-				</p>
-			{/if}
+			<p>{t('backups.importAnySize', { free: formatBytes(data.freeSpace) })}</p>
 		</div>
-		<form
-			method="POST"
-			action="?/upload"
-			enctype="multipart/form-data"
-			use:enhance={() => {
-				uploading = true;
-				return async ({ update }) => {
-					await update();
-					uploading = false;
-					upload = null;
-				};
-			}}
-			class="flex flex-wrap items-center gap-2"
-		>
+		<!-- Without JavaScript the form posts the whole file at once (?/upload), up to the body limit. -->
+		<form method="POST" action="?/upload" enctype="multipart/form-data" onsubmit={uploadInPieces} class="flex flex-wrap items-center gap-2">
 			<label class="btn btn-sm cursor-pointer">
 				<Icon name="upload" size={13} />
 				{upload ? upload.name : t('backups.choose')}
@@ -106,9 +160,22 @@
 			</label>
 			{#if upload}<span class="text-xs text-[var(--text-muted)]">{formatBytes(upload.size)}</span>{/if}
 			<button class="btn btn-primary btn-sm" type="submit" disabled={!upload || uploading}>
-				{uploading ? t('backups.verifying') : t('backups.upload')}
+				{uploading ? t('backups.uploading') : t('backups.upload')}
 			</button>
 		</form>
+		{#if progress}
+			<div class="mt-3" role="status">
+				<div class="h-1.5 overflow-hidden rounded-full bg-[var(--surface-2)]">
+					<div class="h-full bg-[var(--accent)] transition-[width]" style:width="{percent}%"></div>
+				</div>
+				<p class="mt-1 text-xs text-[var(--text-muted)]">
+					{joining ? t('backups.joining') : t('backups.uploadProgress', { sent: formatBytes(progress.sent), total: formatBytes(progress.total), percent })}
+				</p>
+			</div>
+		{/if}
+		{#if uploadResult}
+			<div class="mt-3 -mb-4"><FormError message={uploadResult.text} kind={uploadResult.kind} /></div>
+		{/if}
 	</section>
 </div>
 

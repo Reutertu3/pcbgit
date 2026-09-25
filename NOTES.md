@@ -256,3 +256,13 @@ Catppuccin Latte (light) and Frappé (dark) join the theme picker, with the colo
 from the official palette and mauve as the accent. Unlike the other added themes,
 they set their own button hover colour; the others still inherit the default
 theme's green there. The default theme, Forest, is now called PCBgit.
+
+### Snapshots of any size can be uploaded
+With 200 boards a snapshot runs to several GB, far above the 210 MB request
+limit, and the old upload also held the whole file in memory twice, which a
+4 GB server cannot do. Raising the limit would have applied to every request,
+from anyone. Instead the browser now sends a snapshot in pieces of up to 32 MB
+(`<name>.part-N` on the server), and the server joins them once all are in,
+deleting each piece as it is appended, then checks the archive without blocking
+other requests. Tested with a 324 MB snapshot: refused as one request, uploaded
+in 10 pieces, byte-identical after joining, 97 MB peak memory.

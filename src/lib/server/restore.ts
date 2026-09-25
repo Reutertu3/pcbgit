@@ -7,9 +7,10 @@
  * state. This module deliberately does not import the db module: it runs
  * before the database exists.
  */
-import { execFileSync } from 'node:child_process';
+import { execFile, execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
+import { promisify } from 'node:util';
 import { DatabaseSync } from 'node:sqlite';
 import { UserError } from '../i18n';
 
@@ -49,16 +50,40 @@ export function isSnapshotName(name: string) {
  * Rejects anything that could write outside the extraction directory:
  * absolute paths, "..", and links (a link plus a file through it escapes).
  */
+const LIST_BUFFER = 256 * 1024 * 1024;
+const execAsync = promisify(execFile);
+
 export function checkArchive(file: string) {
-	let names: string[];
-	let verbose: string[];
+	let names: string;
+	let verbose: string;
 	try {
-		names = execFileSync('tar', ['-tzf', file], { maxBuffer: 256 * 1024 * 1024 }).toString().split('\n').filter(Boolean);
-		verbose = execFileSync('tar', ['-tvzf', file], { maxBuffer: 256 * 1024 * 1024 }).toString().split('\n').filter(Boolean);
+		names = execFileSync('tar', ['-tzf', file], { maxBuffer: LIST_BUFFER }).toString();
+		verbose = execFileSync('tar', ['-tvzf', file], { maxBuffer: LIST_BUFFER }).toString();
 	} catch {
 		throw new SnapshotError('snapshot.error.notTar');
 	}
+	checkListing(names, verbose);
+}
 
+/**
+ * checkArchive() without blocking the server: listing a snapshot of several GB
+ * takes a while, and the synchronous version stops every other request meanwhile.
+ */
+export async function checkArchiveAsync(file: string) {
+	let names: string;
+	let verbose: string;
+	try {
+		names = (await execAsync('tar', ['-tzf', file], { maxBuffer: LIST_BUFFER })).stdout;
+		verbose = (await execAsync('tar', ['-tvzf', file], { maxBuffer: LIST_BUFFER })).stdout;
+	} catch {
+		throw new SnapshotError('snapshot.error.notTar');
+	}
+	checkListing(names, verbose);
+}
+
+function checkListing(listing: string, verboseListing: string) {
+	const names = listing.split('\n').filter(Boolean);
+	const verbose = verboseListing.split('\n').filter(Boolean);
 	for (const name of names) {
 		const clean = name.replace(/^\.\//, '');
 		if (clean.startsWith('/') || clean.split('/').includes('..')) {
@@ -78,13 +103,30 @@ export function checkArchive(file: string) {
 	}
 }
 
+// The manifest is written first, so tar can stop there instead of reading the whole archive.
+const manifestArgs = (file: string) => ['-xzOf', file, '--occurrence=1', 'manifest.json'];
+
 export function readManifest(file: string): SnapshotManifest {
 	let raw: string;
 	try {
-		raw = execFileSync('tar', ['-xzOf', file, 'manifest.json']).toString();
+		raw = execFileSync('tar', manifestArgs(file)).toString();
 	} catch {
 		throw new SnapshotError('snapshot.error.manifestRead');
 	}
+	return parseManifest(raw);
+}
+
+export async function readManifestAsync(file: string): Promise<SnapshotManifest> {
+	let raw: string;
+	try {
+		raw = (await execAsync('tar', manifestArgs(file))).stdout;
+	} catch {
+		throw new SnapshotError('snapshot.error.manifestRead');
+	}
+	return parseManifest(raw);
+}
+
+function parseManifest(raw: string): SnapshotManifest {
 	let manifest: SnapshotManifest;
 	try {
 		manifest = JSON.parse(raw);

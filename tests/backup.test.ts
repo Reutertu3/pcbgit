@@ -16,12 +16,12 @@ const target = fs.mkdtempSync(path.join(os.tmpdir(), 'pcbgit-snap-dst-'));
 const scratch = fs.mkdtempSync(path.join(os.tmpdir(), 'pcbgit-snap-bad-'));
 process.env.PCBGIT_DATA_DIR = source;
 
-const { count } = await import('../src/lib/server/db/index.ts');
+const { count, get } = await import('../src/lib/server/db/index.ts');
 const { createUser } = await import('../src/lib/server/auth.ts');
 const { createProject } = await import('../src/lib/server/projects.ts');
 const { commitFiles } = await import('../src/lib/server/git.ts');
 const { repoPath } = await import('../src/lib/server/paths.ts');
-const { createSnapshot, listSnapshots, snapshotPath } = await import('../src/lib/server/backups.ts');
+const { createSnapshot, joinSnapshotPieces, listSnapshots, saveSnapshotPiece, snapshotPath } = await import('../src/lib/server/backups.ts');
 const restore = await import('../src/lib/server/restore.ts');
 
 after(() => {
@@ -178,4 +178,41 @@ test('archives that are not pcbgit snapshots are refused', () => {
 	const dest = fs.mkdtempSync(path.join(scratch, 'dest-'));
 	assert.throws(() => restore.stageSnapshot(corruptDb, dest), /Database/);
 	assert.equal(restore.pendingRestore(dest), null, 'a failed stage leaves nothing pending');
+});
+
+// The audit log wants a real user: the one the first test created.
+const actorId = () => get<{ id: string }>("SELECT id FROM users WHERE username = 'snapper'")!.id;
+
+test('a snapshot uploaded in pieces is stored as part files, joined and listed', async () => {
+	const original = listSnapshots().snapshots[0];
+	assert.ok(original, 'the first test left a snapshot');
+	const bytes = fs.readFileSync(snapshotPath(original.name));
+	const id = 'a'.repeat(32);
+	const size = Math.ceil(bytes.length / 3);
+	// Out of order and with a retried piece, as a flaky connection would send them.
+	for (const part of [2, 1, 3, 2]) {
+		const data = bytes.subarray((part - 1) * size, part * size);
+		await saveSnapshotPiece({ id, name: 'moved.tar.gz', part, parts: 3, data });
+	}
+	const incoming = path.join(source, 'backups', 'incoming', id);
+	assert.deepEqual(fs.readdirSync(incoming).sort(), ['moved.tar.gz.part-1', 'moved.tar.gz.part-2', 'moved.tar.gz.part-3']);
+
+	const name = await joinSnapshotPieces({ id, name: 'moved.tar.gz', parts: 3, actorId: actorId() });
+	assert.equal(name, 'moved.tar.gz');
+	assert.deepEqual(fs.readFileSync(snapshotPath(name)), bytes);
+	assert.ok(!fs.existsSync(incoming), 'pieces are removed after joining');
+	assert.equal(listSnapshots().snapshots.find((snap) => snap.name === name)?.manifest?.counts.projects, 1);
+});
+
+test('piecewise uploads refuse missing pieces, bad ids and broken archives', async () => {
+	const id = 'b'.repeat(32);
+	await saveSnapshotPiece({ id, name: 'gap.tar.gz', part: 1, parts: 2, data: Buffer.from('x') });
+	await assert.rejects(joinSnapshotPieces({ id, name: 'gap.tar.gz', parts: 2, actorId: actorId() }), /Piece 2/);
+	await assert.rejects(saveSnapshotPiece({ id: '../../etc', name: 'x', part: 1, parts: 1, data: Buffer.from('x') }), /Invalid upload/);
+	await assert.rejects(saveSnapshotPiece({ id, name: 'x', part: 3, parts: 2, data: Buffer.from('x') }), /Invalid upload/);
+
+	const junk = 'c'.repeat(32);
+	await saveSnapshotPiece({ id: junk, name: 'junk.tar.gz', part: 1, parts: 1, data: Buffer.from('not a tar') });
+	await assert.rejects(joinSnapshotPieces({ id: junk, name: 'junk.tar.gz', parts: 1, actorId: actorId() }), /tar/i);
+	assert.ok(!listSnapshots().snapshots.some((snap) => snap.name === 'junk.tar.gz'), 'a broken archive is not kept');
 });

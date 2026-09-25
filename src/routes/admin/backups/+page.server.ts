@@ -2,7 +2,7 @@ import { fail } from '@sveltejs/kit';
 import { translate, type Locale } from '$lib/i18n';
 import type { Actions, PageServerLoad } from './$types';
 import { audit } from '$lib/server/db';
-import { createSnapshot, deleteBackupEntry, listSnapshots, saveUploadedSnapshot, snapshotPath } from '$lib/server/backups';
+import { PIECE_MAX, createSnapshot, deleteBackupEntry, freeDiskSpace, listSnapshots, saveUploadedSnapshot, snapshotPath } from '$lib/server/backups';
 import { DATA_DIR } from '$lib/server/paths';
 import { bodySizeLimit } from '$lib/server/upload';
 import { SnapshotError, cancelPendingRestore, pendingRestore, stageSnapshot } from '$lib/server/restore';
@@ -20,8 +20,15 @@ export const load: PageServerLoad = async () => ({
 	...listSnapshots(),
 	pending: pendingRestore(DATA_DIR),
 	autoRestart: AUTO_RESTART,
-	uploadLimit: bodySizeLimit()
+	pieceSize: pieceSize(),
+	freeSpace: await freeDiskSpace()
 });
+
+/** Upload pieces must fit in one request, with room for the headers. */
+function pieceSize() {
+	const limit = bodySizeLimit();
+	return limit === null ? PIECE_MAX : Math.max(64 * 1024, Math.min(PIECE_MAX, limit - 64 * 1024));
+}
 
 export const actions: Actions = {
 	create: async ({ request, locals }) => {

@@ -9,9 +9,10 @@ import {
 	SNAPSHOT_FORMAT,
 	SNAPSHOT_VERSION,
 	SnapshotError,
-	checkArchive,
+	checkArchiveAsync,
 	isSnapshotName,
 	readManifest,
+	readManifestAsync,
 	type SnapshotManifest
 } from './restore';
 
@@ -145,19 +146,127 @@ export function deleteBackupEntry(name: string, actorId: string) {
 
 /** Stores an uploaded archive in the backups folder after validating it. */
 export async function saveUploadedSnapshot(file: File, actorId: string) {
-	const base = file.name.replace(/[^A-Za-z0-9._-]/g, '_').replace(/^[._-]+/, '') || 'uploaded';
-	const name = uniqueName(base.endsWith('.tar.gz') ? base : `${base}.tar.gz`);
+	const name = uniqueName(snapshotFileName(file.name));
 	const target = path.join(BACKUP_DIR, name);
 	await fsp.writeFile(target, Buffer.from(await file.arrayBuffer()));
+	return adoptSnapshot(target, name, actorId);
+}
 
+function snapshotFileName(original: string) {
+	const base = original.replace(/[^A-Za-z0-9._-]/g, '_').replace(/^[._-]+/, '') || 'uploaded';
+	return base.endsWith('.tar.gz') ? base : `${base}.tar.gz`;
+}
+
+/** Validates an archive now in the backups folder and lists it, or removes it. */
+async function adoptSnapshot(target: string, name: string, actorId: string) {
 	try {
-		checkArchive(target);
-		writeSidecar(name, readManifest(target));
+		// Asynchronous: listing a large snapshot takes a while, and must not stall the server.
+		await checkArchiveAsync(target);
+		writeSidecar(name, await readManifestAsync(target));
 	} catch (error) {
 		await fsp.rm(target, { force: true });
 		throw error;
 	}
 	audit(actorId, 'admin.snapshot_upload', name);
 	return name;
+}
+
+/*
+ * Snapshots of any size are uploaded in pieces: each request stays under the
+ * server's body limit, and memory holds one piece at a time. Pieces are kept as
+ * <name>.part-<n> in incoming/<upload id>/ until the last one arrives.
+ */
+export const PIECE_MAX = 32 * 1024 * 1024;
+const MAX_PIECES = 100_000;
+const INCOMING_DIR = path.join(BACKUP_DIR, 'incoming');
+// Left free while a large upload fills the disk, so the server keeps working.
+const DISK_RESERVE = 1024 ** 3;
+// Uploads abandoned for this long are removed when the next one starts.
+const STALE_UPLOAD_MS = 24 * 60 * 60 * 1000;
+
+export async function freeDiskSpace() {
+	const stats = await fsp.statfs(BACKUP_DIR);
+	return stats.bavail * stats.bsize;
+}
+
+function uploadDir(id: string) {
+	if (!/^[0-9a-f]{32}$/.test(id)) throw new SnapshotError('snapshot.error.badUpload');
+	return path.join(INCOMING_DIR, id);
+}
+
+function pieceFile(dir: string, name: string, part: number) {
+	return path.join(dir, `${snapshotFileName(name)}.part-${part}`);
+}
+
+function checkPieceNumbers(part: number, parts: number) {
+	if (!Number.isInteger(parts) || parts < 1 || parts > MAX_PIECES || !Number.isInteger(part) || part < 1 || part > parts) {
+		throw new SnapshotError('snapshot.error.badUpload');
+	}
+}
+
+async function removeStaleUploads() {
+	let entries: string[];
+	try {
+		entries = await fsp.readdir(INCOMING_DIR);
+	} catch {
+		return;
+	}
+	for (const entry of entries) {
+		const dir = path.join(INCOMING_DIR, entry);
+		const stat = await fsp.stat(dir).catch(() => null);
+		if (stat && Date.now() - stat.mtimeMs > STALE_UPLOAD_MS) await fsp.rm(dir, { recursive: true, force: true });
+	}
+}
+
+/** Stores piece `part` of `parts`; sending a piece again replaces the earlier attempt. */
+export async function saveSnapshotPiece(opts: { id: string; name: string; part: number; parts: number; data: Uint8Array }) {
+	const dir = uploadDir(opts.id);
+	checkPieceNumbers(opts.part, opts.parts);
+	if (opts.data.byteLength === 0 || opts.data.byteLength > PIECE_MAX) throw new SnapshotError('snapshot.error.badUpload');
+	const free = await freeDiskSpace();
+	if (free < opts.data.byteLength + DISK_RESERVE) {
+		throw new SnapshotError('snapshot.error.diskFull', { free: `${Math.floor(free / 1024 ** 2)} MB` });
+	}
+	if (opts.part === 1) await removeStaleUploads();
+
+	await fsp.mkdir(dir, { recursive: true });
+	const piece = pieceFile(dir, opts.name, opts.part);
+	await fsp.writeFile(`${piece}.tmp`, opts.data);
+	await fsp.rename(`${piece}.tmp`, piece);
+}
+
+/**
+ * Joins the pieces into one archive in the backups folder, then validates it as
+ * an upload. Each piece is deleted once appended, so the disk holds the snapshot
+ * plus one piece, not the snapshot twice.
+ */
+export async function joinSnapshotPieces(opts: { id: string; name: string; parts: number; actorId: string }) {
+	const dir = uploadDir(opts.id);
+	checkPieceNumbers(1, opts.parts);
+	for (let part = 1; part <= opts.parts; part++) {
+		if (!fs.existsSync(pieceFile(dir, opts.name, part))) throw new SnapshotError('snapshot.error.pieceMissing', { part });
+	}
+
+	const name = uniqueName(snapshotFileName(opts.name));
+	const target = path.join(BACKUP_DIR, name);
+	const out = await fsp.open(target, 'wx');
+	try {
+		try {
+			for (let part = 1; part <= opts.parts; part++) {
+				const piece = pieceFile(dir, opts.name, part);
+				for await (const chunk of fs.createReadStream(piece)) await out.write(chunk);
+				await fsp.rm(piece);
+			}
+		} finally {
+			await out.close();
+		}
+	} catch (error) {
+		await fsp.rm(target, { force: true });
+		throw error;
+	} finally {
+		// Pieces already appended are gone, so a failed join cannot be resumed.
+		await fsp.rm(dir, { recursive: true, force: true });
+	}
+	return adoptSnapshot(target, name, opts.actorId);
 }
 

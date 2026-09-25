@@ -204,9 +204,9 @@ on the server always use the production setup.
    with the old server's users, boards and settings; from then on, sign in with
    the old server's accounts.
 
-A snapshot larger than the upload limit (210 MB) can be copied in instead of
-uploaded: `docker compose cp snapshot.tar.gz pcbgit:/data/backups/`. It then
-appears in the list.
+Snapshots of any size can be uploaded: the browser sends them in pieces. They
+can also be copied in on the server: `docker compose cp snapshot.tar.gz
+pcbgit:/data/backups/`. Either way they then appear in the list.
 
 </details>
 
@@ -290,7 +290,10 @@ ordering.
 
 Under **Admin → Backups** you can create, download, upload and restore snapshots.
 A snapshot is one `.tar.gz` with the database, all repositories and, optionally,
-the rendered output. Snapshots too large to upload can be copied in directly:
+the rendered output. Uploads of any size work: the browser sends the file in
+pieces of up to 32 MB, which the server keeps as `<name>.part-N` and joins once
+all have arrived. The only limit is free disk space (1 GB is always left free).
+Snapshots can also be copied in directly:
 `docker compose cp snapshot.tar.gz pcbgit:/data/backups/`
 
 > [!WARNING]
@@ -324,7 +327,7 @@ Set these in `.env`:
 | `PCBGIT_CONTROL_DIR` | `/control` (production) | Folder shared with the host for updates. Unset disables in-app updates. |
 | `PCBGIT_KICAD_CLI` | `kicad-cli` | Path to the KiCad CLI |
 | `PCBGIT_IBOM` | set in the image | iBOM's `generate_interactive_bom.py`. Unset skips the interactive BOM. |
-| `BODY_SIZE_LIMIT` | `210M` | Maximum upload and push size |
+| `BODY_SIZE_LIMIT` | `210M` | Maximum size of one request: board uploads and pushes (snapshots are sent in pieces below it) |
 | `PCBGIT_RESTART_ON_RESTORE` | `true` | Restart after staging a restore |
 | `PCBGIT_RENDER_DIR` | `/work` | Render checkouts and output, shared with the `renderer` container |
 | `PCBGIT_RENDER_SOCKET` | `/work/runner.sock` | Where the app reaches the renderer. Unset runs the render tools in the app itself. |
