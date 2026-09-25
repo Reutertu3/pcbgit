@@ -14,6 +14,9 @@ CREATE TABLE IF NOT EXISTS users (
   is_active     INTEGER NOT NULL DEFAULT 1,
   -- 0 while a new account waits for an admin (is_active is 0 then too).
   approved      INTEGER NOT NULL DEFAULT 1,
+  -- The instance's owner: an admin other admins cannot demote, disable, delete
+  -- or reset. One account; see bootstrap.ts.
+  is_owner      INTEGER NOT NULL DEFAULT 0,
   -- Per-user limits; NULL means the instance default (settings limit_*).
   limit_boards     INTEGER,
   limit_storage_mb INTEGER,
@@ -208,8 +211,9 @@ CREATE INDEX IF NOT EXISTS idx_comments_project ON comments(project_id, created_
 CREATE TABLE IF NOT EXISTS notifications (
   id            TEXT PRIMARY KEY,
   user_id       TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  kind          TEXT NOT NULL CHECK (kind IN ('comment','reply','version')),
-  project_id    TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  -- 'signup': a new account, sent to admins; it has no board, actor_id is the account.
+  kind          TEXT NOT NULL CHECK (kind IN ('comment','reply','version','signup')),
+  project_id    TEXT REFERENCES projects(id) ON DELETE CASCADE,
   comment_id    TEXT REFERENCES comments(id) ON DELETE CASCADE,
   commit_id     TEXT REFERENCES commits(id) ON DELETE CASCADE,
   version_count INTEGER NOT NULL DEFAULT 1,

@@ -277,3 +277,13 @@ the reason in git itself ("remote error: …"). New registrations wait for an
 admin's approval by default; the Users page lists them first and the admin
 navigation counts them. Tested with real pushes: a 1 MB storage limit, 1 push
 per hour, 2 boards, and a registration through approval to sign-in.
+
+### Sign-up notifications and a protected owner account
+Admins learned about new accounts only from the marker next to Users. Every
+registration now sends active admins a notification ("… registered and waits
+for your approval"), linking to the account; the notifications table was rebuilt
+once so a notification can exist without a board. Any admin could also demote,
+disable, delete or reset the password of the admin who set the instance up. That
+account is now the owner (the `.env` admin, or the oldest admin on existing
+instances): no one can demote, disable or delete it, and only the owner resets
+its password. A separate "super admin" role was not needed for that.

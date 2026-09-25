@@ -21,6 +21,7 @@ interface AdminUserRow {
 	role: 'user' | 'admin';
 	is_active: number;
 	approved: number;
+	is_owner: number;
 	limit_boards: number | null;
 	limit_storage_mb: number | null;
 	created_at: number;
@@ -29,13 +30,13 @@ interface AdminUserRow {
 	last_session: number | null;
 }
 
-export const load: PageServerLoad = async ({ url }) => {
+export const load: PageServerLoad = async ({ url, locals }) => {
 	const search = url.searchParams.get('q') ?? '';
 	const term = `%${search}%`;
 
 	const users = all<AdminUserRow>(
 			`SELECT u.id, u.username, u.email, u.display_name, (SELECT updated_at FROM avatars WHERE user_id = u.id) AS avatar, u.role, u.is_active,
-			   u.approved, u.limit_boards, u.limit_storage_mb, u.created_at,
+			   u.approved, u.is_owner, u.limit_boards, u.limit_storage_mb, u.created_at,
 			   (SELECT COUNT(*) FROM projects p WHERE p.owner_id = u.id) AS project_count,
 			   (SELECT COUNT(*) FROM access_tokens t WHERE t.user_id = u.id) AS token_count,
 			   (SELECT MAX(s.created_at) FROM sessions s WHERE s.user_id = u.id) AS last_session
@@ -57,9 +58,21 @@ export const load: PageServerLoad = async ({ url }) => {
 			})
 		),
 		defaults: instanceLimits(),
+		me: locals.user!.id,
 		search
 	};
 };
+
+/**
+ * The owner (is_owner) is the admin other admins cannot take out: nobody demotes,
+ * disables or deletes it, and only the owner resets its password. Otherwise any
+ * admin could lock out the one who set the instance up.
+ */
+function ownerRefusal(targetId: string, actorId: string, { ownerMay = false } = {}) {
+	const target = getUserById(targetId);
+	if (!target?.is_owner || (ownerMay && targetId === actorId)) return null;
+	return 'users.error.owner' as const;
+}
 
 /** The instance must never be left without a way in. */
 function isLastAdmin(userId: string) {
@@ -95,6 +108,8 @@ export const actions: Actions = {
 		const id = String(form.get('id') ?? '');
 		const role = form.get('role') === 'admin' ? 'admin' : 'user';
 
+		const refused = role === 'user' && ownerRefusal(id, locals.user!.id);
+		if (refused) return fail(403, { error: translate(locals.locale, refused) });
 		if (role === 'user' && isLastAdmin(id)) {
 			return fail(400, { error: translate(locals.locale, 'users.error.lastAdmin') });
 		}
@@ -133,6 +148,8 @@ export const actions: Actions = {
 		const id = String((await request.formData()).get('id') ?? '');
 		const user = getUserById(id);
 		if (!user) return fail(404, { error: translate(locals.locale, 'error.userNotFound') });
+		const refused = ownerRefusal(id, locals.user!.id);
+		if (refused) return fail(403, { error: translate(locals.locale, refused) });
 		if (user.is_active && isLastAdmin(id)) {
 			return fail(400, { error: translate(locals.locale, 'users.error.lastAdmin') });
 		}
@@ -153,6 +170,8 @@ export const actions: Actions = {
 
 		const user = getUserById(id);
 		if (!user) return fail(404, { error: translate(locals.locale, 'error.userNotFound') });
+		const refused = ownerRefusal(id, locals.user!.id, { ownerMay: true });
+		if (refused) return fail(403, { error: translate(locals.locale, refused) });
 
 		run('UPDATE users SET password_hash = ?, updated_at = ? WHERE id = ?', hashPassword(password), now(), id);
 		destroyUserSessions(id);
@@ -165,6 +184,8 @@ export const actions: Actions = {
 		const user = getUserById(id);
 		if (!user) return fail(404, { error: translate(locals.locale, 'error.userNotFound') });
 		if (id === locals.user!.id) return fail(400, { error: translate(locals.locale, 'users.error.self') });
+		const refused = ownerRefusal(id, locals.user!.id);
+		if (refused) return fail(403, { error: translate(locals.locale, refused) });
 		if (isLastAdmin(id)) return fail(400, { error: translate(locals.locale, 'users.error.lastAdmin') });
 
 		// Projects cascade, but their bare repositories must go too.
@@ -172,6 +193,8 @@ export const actions: Actions = {
 		const { deleteRepo } = await import('$lib/server/git');
 		for (const project of projects) await deleteRepo(user.username, project.slug);
 
+		// Sign-up notifications only null their actor when the account goes; they would linger hidden.
+		run("DELETE FROM notifications WHERE kind = 'signup' AND (actor_id = ? OR actor_id IS NULL)", id);
 		run('DELETE FROM users WHERE id = ?', id);
 		audit(locals.user!.id, 'admin.user_delete', user.username, `${projects.length} board(s)`);
 		return { success: true, message: translate(locals.locale, 'users.deleted', { name: user.username, count: projects.length }) };

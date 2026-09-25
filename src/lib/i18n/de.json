@@ -96,6 +96,8 @@
 	"notifications.empty": "Noch keine Benachrichtigungen. Kommentare und neue Versionen deiner Boards sowie Antworten an dich erscheinen hier.",
 	"notifications.comment": "[[actor]] hat [[board]] kommentiert",
 	"notifications.reply": "[[actor]] hat auf deinen Kommentar zu [[board]] geantwortet",
+	"notifications.signupPending": "[[actor]] hat sich registriert und wartet auf deine Freigabe",
+	"notifications.signup": "[[actor]] hat ein Konto angelegt",
 	"notifications.version": {
 		"one": "[[actor]] hat eine neue Version von [[board]] hochgeladen",
 		"other": "[[actor]] hat {count} neue Versionen von [[board]] hochgeladen"
@@ -987,6 +989,9 @@
 	},
 	"users.pendingShort": "{count} neu",
 	"users.pending": "Wartet auf Freigabe",
+	"users.error.owner": "Das Konto des Besitzers ist geschützt: Es kann nicht herabgestuft, gesperrt oder gelöscht werden, und nur der Besitzer selbst kann sein Passwort zurücksetzen.",
+	"users.ownerHint": "Der Besitzer der Instanz: Andere Administratoren können ihn nicht herabstufen, sperren, löschen oder sein Passwort zurücksetzen.",
+	"users.owner": "Besitzer",
 	"users.approve": "Freigeben",
 	"users.reject": "Ablehnen",
 	"users.approved": "{name} ist freigegeben und kann sich jetzt anmelden.",

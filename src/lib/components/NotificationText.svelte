@@ -9,7 +9,9 @@
 	const parts = $derived(
 		item.kind === 'version'
 			? tParts('notifications.version', { count: item.version_count })
-			: tParts(item.kind === 'reply' ? 'notifications.reply' : 'notifications.comment')
+			: item.kind === 'signup'
+				? tParts(item.pending ? 'notifications.signupPending' : 'notifications.signup')
+				: tParts(item.kind === 'reply' ? 'notifications.reply' : 'notifications.comment')
 	);
 </script>
 
@@ -25,7 +27,7 @@
 		<span class="mono">{item.short_sha}</span>
 		{item.excerpt}
 	</span>
-{:else}
+{:else if item.kind !== 'signup'}
 	<span class="excerpt mt-0.5 block text-xs text-[var(--text-muted)]">“{item.excerpt}”</span>
 {/if}
 <span class="mt-0.5 block text-[0.6875rem] text-[var(--text-muted)]">{relativeTime(item.created_at)}</span>

@@ -94,8 +94,14 @@ converter takes untrusted XML: keep its reader entity-free and capped
   (`project_members`) can do everything an owner can except delete the board and manage
   collaborators. SQL that filters by access (`visibleTo`, `VISIBLE` in notifications.ts)
   repeats the rule; keep all of them in step.
-- **Notifications** are `comment`, `reply` or `version`. `syncCommits()` sends a version
-  notification only when it gets an actor (uploads, pushes); re-syncs pass none.
+- **Notifications** are `comment`, `reply`, `version` or `signup`. `syncCommits()` sends a
+  version notification only when it gets an actor (uploads, pushes); re-syncs pass none.
+  `signup` goes to active admins, has no board (`project_id` NULL, `actor_id` is the new
+  account) and is deleted with the account; queries join projects with LEFT JOIN.
+- **The owner** (`users.is_owner`, one account: the `.env` admin, else the first to
+  register or the oldest admin; `ensureOwner()` in bootstrap.ts) cannot be demoted,
+  disabled or deleted, and only the owner resets its password (`ownerRefusal()` in
+  admin/users). Any new admin action on another account needs the same check.
 - **Forms that edit existing values** use `use:enhance={keepValues}` ($lib/forms):
   SvelteKit resets a form after success, and with Svelte 5 that empties every field
   filled via `value={…}`. Forms that should clear (passwords, "create …") keep plain

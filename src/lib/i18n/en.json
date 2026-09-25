@@ -96,6 +96,8 @@
 	"notifications.empty": "No notifications yet. Comments and new versions on your boards, and replies to you, appear here.",
 	"notifications.comment": "[[actor]] commented on [[board]]",
 	"notifications.reply": "[[actor]] replied to your comment on [[board]]",
+	"notifications.signupPending": "[[actor]] registered and waits for your approval",
+	"notifications.signup": "[[actor]] created an account",
 	"notifications.version": {
 		"one": "[[actor]] uploaded a new version of [[board]]",
 		"other": "[[actor]] uploaded {count} new versions of [[board]]"
@@ -987,6 +989,9 @@
 	},
 	"users.pendingShort": "{count} new",
 	"users.pending": "Waiting for approval",
+	"users.error.owner": "The owner's account is protected: it cannot be demoted, disabled or deleted, and only the owner can reset its password.",
+	"users.ownerHint": "The instance's owner: other admins cannot demote, disable, delete it or reset its password.",
+	"users.owner": "Owner",
 	"users.approve": "Approve",
 	"users.reject": "Reject",
 	"users.approved": "Approved {name}. They can sign in now.",

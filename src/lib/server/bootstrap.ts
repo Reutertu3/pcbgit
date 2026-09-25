@@ -1,4 +1,4 @@
-import { count, getSetting, now, run, setSetting } from './db';
+import { count, get, getSetting, now, run, setSetting } from './db';
 import { createUser, getUserByUsername } from './auth';
 import { ensureTag } from './projects';
 
@@ -16,6 +16,22 @@ export function bootstrap() {
 	if (['PCBHub', 'Kupfergit'].includes(getSetting('site_name'))) setSetting('site_name', 'pcbgit');
 	backfillTagColors();
 	ensureAdmin();
+	ensureOwner();
+}
+
+/**
+ * The instance's owner: an admin other admins cannot demote, disable, delete or
+ * reset (admin/users). The one from .env if there is one, else the oldest active
+ * admin; set once, here or when the first account registers.
+ */
+function ensureOwner() {
+	if (count('SELECT COUNT(*) FROM users WHERE is_owner = 1') > 0) return;
+	const preferred = getUserByUsername(process.env.PCBGIT_ADMIN_USER ?? 'admin');
+	const owner =
+		preferred?.role === 'admin' && preferred.is_active
+			? preferred.id
+			: get<{ id: string }>("SELECT id FROM users WHERE role = 'admin' AND is_active = 1 ORDER BY created_at LIMIT 1")?.id;
+	if (owner) run('UPDATE users SET is_owner = 1 WHERE id = ?', owner);
 }
 
 /** Tags created before colours existed hold a placeholder name; give them their category's colour. */

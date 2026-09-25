@@ -27,29 +27,31 @@ function open() {
 
 /**
  * Notifications began as comments only: a CHECK allowing just comment/reply and a
- * required comment_id. SQLite cannot change either in place, so a table in that
- * old shape is copied into the current one (schema.sql) once.
+ * required comment_id; later every one needed a board, until sign-up notifications.
+ * SQLite cannot change either in place, so a table in an older shape is copied into
+ * the current one (schema.sql) once.
  */
 function rebuildNotifications(database: DatabaseSync) {
 	const current = database.prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'notifications'").get() as
 		| { sql: string }
 		| undefined;
-	if (!current || current.sql.includes("'version'")) return;
+	if (!current || current.sql.includes("'signup'")) return;
 
 	const create = /CREATE TABLE IF NOT EXISTS notifications \(([\s\S]*?)\n\);/.exec(SCHEMA_SQL)?.[1];
 	if (!create) throw new Error('notifications table missing from schema.sql');
+	// Older tables lack some columns (commit_id, version_count): copy those both have.
+	const old = new Set((database.prepare('PRAGMA table_info(notifications)').all() as { name: string }[]).map((c) => c.name));
 	database.exec('BEGIN');
 	try {
 		database.exec(`CREATE TABLE notifications_next (${create}\n)`);
-		database.exec(
-			`INSERT INTO notifications_next (id, user_id, kind, project_id, comment_id, actor_id, created_at, read_at)
-			 SELECT id, user_id, kind, project_id, comment_id, actor_id, created_at, read_at FROM notifications`
-		);
+		const next = (database.prepare('PRAGMA table_info(notifications_next)').all() as { name: string }[]).map((c) => c.name);
+		const columns = next.filter((name) => old.has(name)).join(', ');
+		database.exec(`INSERT INTO notifications_next (${columns}) SELECT ${columns} FROM notifications`);
 		database.exec('DROP TABLE notifications');
 		database.exec('ALTER TABLE notifications_next RENAME TO notifications');
 		database.exec('CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id, read_at, created_at DESC)');
 		database.exec('COMMIT');
-		console.log('[db] notifications table rebuilt for version notifications');
+		console.log('[db] notifications table rebuilt (version and sign-up notifications)');
 	} catch (error) {
 		database.exec('ROLLBACK');
 		throw error;
@@ -119,7 +121,8 @@ const ADDED_COLUMNS: [table: string, column: string, definition: string][] = [
 	['users', 'approved', 'INTEGER NOT NULL DEFAULT 1'],
 	['users', 'limit_boards', 'INTEGER'],
 	['users', 'limit_storage_mb', 'INTEGER'],
-	['projects', 'repo_bytes', 'INTEGER NOT NULL DEFAULT -1']
+	['projects', 'repo_bytes', 'INTEGER NOT NULL DEFAULT -1'],
+	['users', 'is_owner', 'INTEGER NOT NULL DEFAULT 0']
 ];
 
 /**

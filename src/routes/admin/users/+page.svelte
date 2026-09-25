@@ -103,6 +103,8 @@
 					<td class="px-3 py-2">
 						{#if !user.approved}
 							<span class="chip !border-[var(--accent)] !text-[var(--accent)]">{t('users.pending')}</span>
+						{:else if user.is_owner}
+							<span class="chip" title={t('users.ownerHint')}>{t('users.owner')}</span>
 						{:else}
 							<form method="POST" action="?/setRole" use:enhance={keepValues}>
 								<input type="hidden" name="id" value={user.id} />
@@ -140,12 +142,14 @@
 									{t('users.reject')}
 								</button>
 							{:else}
-								<form method="POST" action="?/toggleActive" use:enhance>
-									<input type="hidden" name="id" value={user.id} />
-									<button class="btn btn-sm" type="submit" title={user.is_active ? t('users.disable') : t('users.enable')}>
-										<Icon name={user.is_active ? 'lock' : 'check'} size={12} />
-									</button>
-								</form>
+								{#if !user.is_owner}
+									<form method="POST" action="?/toggleActive" use:enhance>
+										<input type="hidden" name="id" value={user.id} />
+										<button class="btn btn-sm" type="submit" title={user.is_active ? t('users.disable') : t('users.enable')}>
+											<Icon name={user.is_active ? 'lock' : 'check'} size={12} />
+										</button>
+									</form>
+								{/if}
 								<button
 									class="btn btn-sm"
 									onclick={() => (editingLimits = editingLimits === user.id ? null : user.id)}
@@ -153,20 +157,24 @@
 								>
 									<Icon name="settings" size={12} />
 								</button>
-								<button
-									class="btn btn-sm"
-									onclick={() => (resetting = resetting === user.id ? null : user.id)}
-									title={t('users.resetPassword')}
-								>
-									<Icon name="refresh" size={12} />
-								</button>
-								<button
-									class="btn btn-danger btn-sm"
-									onclick={() => (confirmDelete = confirmDelete === user.id ? null : user.id)}
-									title={t('users.delete')}
-								>
-									<Icon name="trash" size={12} />
-								</button>
+								{#if !user.is_owner || user.id === data.me}
+									<button
+										class="btn btn-sm"
+										onclick={() => (resetting = resetting === user.id ? null : user.id)}
+										title={t('users.resetPassword')}
+									>
+										<Icon name="refresh" size={12} />
+									</button>
+								{/if}
+								{#if !user.is_owner}
+									<button
+										class="btn btn-danger btn-sm"
+										onclick={() => (confirmDelete = confirmDelete === user.id ? null : user.id)}
+										title={t('users.delete')}
+									>
+										<Icon name="trash" size={12} />
+									</button>
+								{/if}
 							{/if}
 						</div>
 					</td>

@@ -194,7 +194,9 @@ Open `https://<your domain>` and sign in as `admin`. Under **Admin → Instance*
 decide on registration: closed, or open with every new account approved by an
 admin first (the default), and set limits per user (boards, storage, uploads and
 pushes per hour). **Admin → Users** approves new accounts and sets limits for
-single users.
+single users; admins also get a notification for each new account. The `.env`
+admin is the instance's owner: other admins cannot demote, disable or delete it,
+or reset its password.
 
 `install.sh` adds `COMPOSE_FILE` to `.env`, so plain `docker compose` commands
 on the server always use the production setup.

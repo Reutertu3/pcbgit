@@ -1,8 +1,43 @@
 # TODO
 
-Open work on pcbgit, as of 2026-09-24. Registration is closed on pcbgit.com, so
+Open work on pcbgit, as of 2026-09-25. Registration is closed on pcbgit.com, so
 items marked **before opening registration** only become real once strangers
 can sign up.
+
+## Overview
+
+Only what is left to do; details in the sections below. **Medium** comes first
+when registration opens, **Review** means code nobody has audited yet, **Low**
+and **Optional** wait until they matter.
+
+| Priority | Area | Item |
+|---|---|---|
+| Medium | Security | Limit the size of a `git push` (any pack size is accepted) |
+| Medium | Security | Limit renders queued per user (one account can fill the render worker) |
+| Medium | Security | Rate limit or CAPTCHA on registration; async `hashPassword` |
+| Medium | Security | Email verification for new accounts (admin approval exists) |
+| Medium | Fabrication | Test one real order or upload preview with each board house |
+| Medium | Rendering | A re-render empties the viewers until it finishes (render into staging, swap) |
+| Review | Security | `npm audit` and dependency updates (three.js, adm-zip, glTF Transform) |
+| Review | Security | Snapshot restore: tar extraction and paths in `restore.ts` |
+| Review | Security | Host-side updater (`install.sh`, `update.sh`, `/var/lib/pcbgit-control`) |
+| Low | Accounts | Transfer ownership to another admin (only possible in the database now) |
+| Low | Security | Renderer limits apply to the container, not to one render |
+| Low | Security | Thumbnails may share `/work` with a running render |
+| Low | Security | A compromised renderer can falsify its own GLB or iBOM output |
+| Low | Security | Directory swap race in `/work` between check and open (needs `openat2`) |
+| Low | Security | Full Content-Security-Policy for pages (`kit.csp`) |
+| Low | Boards | `/new` leaves an empty board when the upload fails to commit |
+| Low | Boards | `syncCommits()` only sees the newest 200 commits of a branch |
+| Low | Eagle | Nets joined by name only show as separate nets in ERC |
+| Low | Eagle | Mixed shown and hidden pin numbers in one symbol all show |
+| Low | Eagle | Only one Eagle project per commit is rendered |
+| Low | Eagle | Multi-sheet schematics tested with a synthetic file only |
+| Low | Eagle | `>LAST_DATE_TIME` stays empty |
+| Low | Database | PostgreSQL only if several app instances or HA are ever needed |
+| Optional | Fabrication | JLCPCB assembly files (CPL, BOM with LCSC numbers) |
+| Optional | Fabrication | AISLER drill "2:4 precision", only if its import misreads ours |
+| Optional | Rendering | Board as PDF (assembly drawings) |
 
 ## Features
 
@@ -64,6 +99,12 @@ Open:
 - [ ] Multi-sheet Eagle schematics are tested with a synthetic file only; the
       root page is an index of the sheets, so the card thumbnail shows that.
 - [ ] Eagle's `>LAST_DATE_TIME` stays empty (the file does not record it).
+
+### Accounts (low priority)
+- [ ] Transfer ownership: the owner (`users.is_owner`, see CLAUDE.md) cannot be
+      demoted, disabled or deleted by other admins. Handing the role to another
+      admin is only possible in the database so far; a "make owner" action for
+      the owner on the Users page would do.
 
 ### Database: SQLite for now (low priority)
 Evaluated 2026-09-25 for about 5 concurrent users and 200 boards: SQLite is more

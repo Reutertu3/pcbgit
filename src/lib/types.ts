@@ -187,7 +187,7 @@ export interface CommentThread extends CommentView {
 
 export interface NotificationView {
 	id: string;
-	kind: 'comment' | 'reply' | 'version';
+	kind: 'comment' | 'reply' | 'version' | 'signup';
 	created_at: number;
 	read_at: number | null;
 	comment_id: string | null;
@@ -200,4 +200,6 @@ export interface NotificationView {
 	/** Comment text, or the newest version's commit message. */
 	excerpt: string | null;
 	short_sha: string | null;
+	/** Sign-ups: the account still waits for approval. */
+	pending: number | null;
 }

@@ -15,6 +15,8 @@ export interface User {
 	is_active: number;
 	/** 0 while the account waits for an admin's approval. */
 	approved: number;
+	/** The instance's owner, whom other admins cannot demote, disable, delete or reset. */
+	is_owner: number;
 	limit_boards: number | null;
 	limit_storage_mb: number | null;
 	created_at: number;

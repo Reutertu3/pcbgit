@@ -2,7 +2,8 @@ import { fail, redirect } from '@sveltejs/kit';
 import { translate } from '$lib/i18n';
 import type { Actions, PageServerLoad } from './$types';
 import { createSession, createUser, getUserByUsername, validateUsername } from '$lib/server/auth';
-import { audit, count, get, getBoolSetting } from '$lib/server/db';
+import { audit, count, get, getBoolSetting, run } from '$lib/server/db';
+import { notifyForSignup } from '$lib/server/notifications';
 import { SESSION_COOKIE } from '../../hooks.server';
 
 export const load: PageServerLoad = async ({ locals }) => {
@@ -45,6 +46,8 @@ export const actions: Actions = {
 		const pending = !isFirst && getBoolSetting('registration_approval', true);
 		const user = createUser({ username, email, password, role: isFirst ? 'admin' : 'user', pending });
 		audit(user.id, 'auth.register', username, pending ? 'awaiting approval' : '');
+		if (isFirst) run('UPDATE users SET is_owner = 1 WHERE id = ?', user.id);
+		else notifyForSignup(user.id);
 		// No session: the account cannot sign in until an admin approves it.
 		if (pending) return { pending: true, username };
 
