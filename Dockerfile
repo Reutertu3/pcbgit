@@ -55,12 +55,10 @@ COPY --from=build --chown=pcbgit /app/src/lib ./src/lib
 # volume takes this ownership, so the non-root user can write to it.
 RUN mkdir -p /data /work && chown pcbgit /data /work
 
-# Declared this late so a new commit only rebuilds the last layers.
+# Declared this late so a new commit only rebuilds the last layers. The release
+# tag is not built in: a tag can come after the image (compose sets PCBGIT_TAG).
 ARG PCBGIT_VERSION=dev
 ENV PCBGIT_VERSION=${PCBGIT_VERSION}
-# Release tag of that commit, when it has one.
-ARG PCBGIT_TAG=
-ENV PCBGIT_TAG=${PCBGIT_TAG}
 
 ENV NODE_ENV=production \
     PORT=3000 \

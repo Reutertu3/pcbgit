@@ -8,7 +8,7 @@ services:
       args:
         # Set by deploy/update.sh so the admin panel can show the running commit.
         PCBGIT_VERSION: ${PCBGIT_GIT_SHA:-dev}
-        PCBGIT_TAG: ${PCBGIT_GIT_TAG:-}
+    # deploy/update.sh builds this image or pulls it from GHCR and tags it so.
     image: pcbgit:latest
     restart: unless-stopped
     ports:
@@ -20,6 +20,8 @@ services:
       PCBGIT_ADMIN_USER: ${PCBGIT_ADMIN_USER:-admin}
       PCBGIT_ADMIN_PASSWORD: ${PCBGIT_ADMIN_PASSWORD:?set PCBGIT_ADMIN_PASSWORD in .env}
       PCBGIT_ADMIN_EMAIL: ${PCBGIT_ADMIN_EMAIL:-admin@localhost}
+      # Release tag of the running commit, shown in the footer (set by deploy/update.sh).
+      PCBGIT_TAG: ${PCBGIT_GIT_TAG:-}
       # Only read on the first start of an empty instance; see README.
       PCBGIT_IMPORT_SNAPSHOT: ${PCBGIT_IMPORT_SNAPSHOT:-}
       # AGPL-3.0: the footer links users to the source of the running code.

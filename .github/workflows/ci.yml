@@ -1,5 +1,7 @@
 # Tests and type checks on every push and pull request, so a broken commit shows
-# up on GitHub before the admin panel's "Update" pulls it onto a server.
+# up on GitHub before the admin panel's "Update" pulls it onto a server. Commits
+# on master that pass are built into the Docker image, which deploy/update.sh
+# pulls instead of building on the server.
 name: CI
 
 on:
@@ -11,19 +13,22 @@ on:
 permissions:
   contents: read
 
+# A newer push replaces a pull request's run; runs on master are never cancelled,
+# so the newest commit there always gets its image.
 concurrency:
-  group: ci-${{ github.ref }}
+  group: ci-${{ github.ref }}-${{ github.event_name == 'pull_request' && 'pr' || github.sha }}
   cancel-in-progress: true
 
+# Actions are pinned to commits: the image job can publish what servers run.
 jobs:
   test:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
       # The Node version the Docker image ships (node:sqlite, --experimental-strip-types).
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 24
           cache: npm
@@ -36,3 +41,51 @@ jobs:
       - run: npm ci
       - run: npm test
       - run: npm run check
+
+  image:
+    needs: test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      packages: write
+    # One build at a time, so they share the registry cache.
+    concurrency:
+      group: image
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      # KiCad and its 3D models make a ~6 GB image; the runner's preinstalled
+      # SDKs leave too little room to build and export it.
+      - name: Free disk space
+        run: sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
+
+      # GHCR names must be lower case; update.sh derives the same name from the remote.
+      - name: Image name
+        run: |
+          echo "IMAGE=ghcr.io/${GITHUB_REPOSITORY,,}" >>"$GITHUB_ENV"
+          echo "SHORT_SHA=$(git rev-parse --short HEAD)" >>"$GITHUB_ENV"
+
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
+
+      - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Tagged with the full commit SHA: a server pulls exactly the commit it
+      # checked out. The registry cache keeps the KiCad layers identical between
+      # builds, so a server downloads only the layers that changed.
+      - uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
+        with:
+          context: .
+          push: true
+          build-args: PCBGIT_VERSION=${{ env.SHORT_SHA }}
+          tags: |
+            ${{ env.IMAGE }}:sha-${{ github.sha }}
+            ${{ env.IMAGE }}:latest
+          cache-from: type=registry,ref=${{ env.IMAGE }}:buildcache
+          cache-to: type=registry,ref=${{ env.IMAGE }}:buildcache,mode=max

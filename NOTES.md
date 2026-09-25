@@ -201,6 +201,14 @@ link and card thumbnail got a new version.
 ### Tests run on GitHub
 A GitHub Actions workflow runs the tests and type checks on every push and pull
 request, with Node 24 as in the Docker image, so a broken commit shows up before
-a server updates to it. Building the image in Actions as well, so the small
-server pulls instead of building, is planned in TODO.md.
+a server updates to it.
+
+### Servers pull the image instead of building it
+The live server has 2 cores and 4 GB, and every update ran the npm install and
+the app build next to the running site. GitHub Actions now builds the image of
+each master commit that passes the tests and publishes it on GHCR, tagged with
+the commit. An update pulls the image of exactly the commit it updates to,
+waiting up to 20 minutes right after a push, and builds on the server only when
+there is none. No admin panel switch: the choice follows from whether an image
+exists, and `PCBGIT_UPDATE_IMAGE=build` in `.env` forces building.
 

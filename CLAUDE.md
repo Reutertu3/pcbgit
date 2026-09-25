@@ -16,7 +16,12 @@ npm run seed     # demo boards
 ```
 
 Run `npm test` and `npm run check` before calling a change done. GitHub Actions
-(`.github/workflows/ci.yml`) runs both on every push, with Node 24 as in the image.
+(`.github/workflows/ci.yml`) runs both on every push, with Node 24 as in the image,
+and builds the image of each passing `master` commit into
+`ghcr.io/reutertu3/pcbgit:sha-<commit>`. `deploy/update.sh` pulls that and tags
+it `pcbgit:latest` (what compose runs), or builds locally when there is none.
+The release tag is a runtime variable (`PCBGIT_TAG`), not built in, since a tag
+can come after the image.
 
 ## How a version gets rendered
 

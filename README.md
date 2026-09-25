@@ -218,7 +218,12 @@ To update, either:
 - press **Update from GitHub** under **Admin → Instance**, or
 - run `/opt/pcbgit/deploy/update.sh` on the server.
 
-Both pull from GitHub, rebuild and restart. The site is down for a few seconds.
+Both pull from GitHub and restart. The Docker image is not built on the server:
+GitHub Actions builds one for every commit on `master` that passes its tests, and
+the update pulls the image of exactly the commit it updates to. Right after a
+push, the update waits up to 20 minutes for that image. Without one (a fork
+without the workflow, a remote outside GitHub, local edits on the server), the
+server builds the image itself as before. The site is down for a few seconds.
 **Check now** runs the GitHub check immediately.
 
 <details>
@@ -230,6 +235,11 @@ Both pull from GitHub, rebuild and restart. The site is down for a few seconds.
   to `/var/lib/pcbgit-control`; a systemd unit on the host picks it up.
 - Each update re-syncs the systemd units and restarts Caddy when its config changed.
 - `systemctl status pcbgit-update.service` shows the last run on the server.
+- The image comes from `ghcr.io/<owner>/<repo>` of the GitHub remote. The package
+  must be public: GitHub makes it private when it is first published (change it
+  under the package's settings). A private or unreachable image is not waited
+  for; the server builds instead, and the log says why.
+- The panel's status says which way an update went: "pulled image" or "built here".
 - After an update that changes rendering, **Admin → Boards → Re-render all**
   brings existing versions up to date.
 
@@ -291,6 +301,7 @@ Set these in `.env`:
 | `PCBGIT_IMPORT_SNAPSHOT` | — | Snapshot to import on the first start of an empty instance |
 | `COMPOSE_FILE` | — | Set by `install.sh` so `docker compose` uses the production setup |
 | `PCBGIT_SOURCE_URL` | `https://github.com/Reutertu3/pcbgit` | Repository linked as "Source" in the footer. Forks must set their own. |
+| `PCBGIT_UPDATE_IMAGE` | `ghcr.io/<owner>/<repo>` of a GitHub remote | Where updates pull the image from (tagged `sha-<commit>`). `build` always builds on the server. |
 
 <details>
 <summary>Set in the image or compose files; rarely changed</summary>
