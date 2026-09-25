@@ -28,7 +28,7 @@
 
 /*
  * Themes. Every colour in the app comes from these tokens, so a theme is just
- * a block of variables. :root is the default (Forest); the rest are selected
+ * a block of variables. :root is the default (PCBgit); the rest are selected
  * with <html data-theme="…">. The list shown in the picker is in src/lib/themes.ts.
  *
  * --viewer-bg stays dark in every theme: board layers are composited with
@@ -163,6 +163,51 @@
 	--err: #ef6f6f;
 	--info: #6ba4e8;
 	--viewer-bg: #05070a;
+	color-scheme: dark;
+}
+
+:root[data-theme='catppuccin-latte'] {
+	--surface-0: #e6e9ef;
+	--surface-1: #eff1f5;
+	--surface-2: #dce0e8;
+	--surface-3: #ccd0da;
+	--border-subtle: #ccd0da;
+	--border-strong: #acb0be;
+	--text-primary: #4c4f69;
+	--text-secondary: #5c5f77;
+	--text-muted: #7c7f93;
+	--accent: #8839ef;
+	--accent-hover: #7028d4;
+	--on-accent: #eff1f5;
+	--accent-soft: rgba(136, 57, 239, 0.12);
+	--ok: #40a02b;
+	--warn: #df8e1d;
+	--err: #d20f39;
+	--info: #1e66f5;
+	--viewer-bg: #232634;
+	--preview-bg: #5c5f77;
+	color-scheme: light;
+}
+
+:root[data-theme='catppuccin-frappe'] {
+	--surface-0: #292c3c;
+	--surface-1: #303446;
+	--surface-2: #414559;
+	--surface-3: #51576d;
+	--border-subtle: #414559;
+	--border-strong: #626880;
+	--text-primary: #c6d0f5;
+	--text-secondary: #b5bfe2;
+	--text-muted: #838ba7;
+	--accent: #ca9ee6;
+	--accent-hover: #babbf1;
+	--on-accent: #232634;
+	--accent-soft: rgba(202, 158, 230, 0.16);
+	--ok: #a6d189;
+	--warn: #e5c890;
+	--err: #e78284;
+	--info: #8caaee;
+	--viewer-bg: #232634;
 	color-scheme: dark;
 }
 

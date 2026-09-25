@@ -1,6 +1,9 @@
 /** Themes offered in the picker. Colours live in app.css; these are just the swatches. */
 export const THEMES = [
-	{ id: 'forest', dark: true, label: 'Forest', swatches: ['#273338', '#2b5748', '#618764', '#9cb080'] },
+	// Shown as "PCBgit"; the id stays, since visitors' choice is stored by id.
+	{ id: 'forest', dark: true, label: 'PCBgit', swatches: ['#273338', '#2b5748', '#618764', '#9cb080'] },
+	{ id: 'catppuccin-frappe', dark: true, label: 'Catppuccin Frappé', swatches: ['#303446', '#414559', '#ca9ee6', '#c6d0f5'] },
+	{ id: 'catppuccin-latte', dark: false, label: 'Catppuccin Latte', swatches: ['#eff1f5', '#ccd0da', '#8839ef', '#4c4f69'] },
 	{ id: 'gruvbox-dark', dark: true, label: 'Gruvbox Dark', swatches: ['#282828', '#3c3836', '#fe8019', '#ebdbb2'] },
 	{ id: 'gruvbox-light', dark: false, label: 'Gruvbox Light', swatches: ['#fbf1c7', '#ebdbb2', '#af3a03', '#3c3836'] },
 	{ id: 'nord', dark: true, label: 'Nord', swatches: ['#2e3440', '#3b4252', '#88c0d0', '#eceff4'] },

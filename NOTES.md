@@ -250,3 +250,9 @@ used for every on/off option: automatic updates and open registration, the
 render queue's auto-refresh, DRC markers on the PCB view, the BOM's "changes
 only", the 3D export options, "include rendered output" for snapshots and
 "reinstall even if unchanged".
+
+### Catppuccin themes
+Catppuccin Latte (light) and Frappé (dark) join the theme picker, with the colours
+from the official palette and mauve as the accent. Unlike the other added themes,
+they set their own button hover colour; the others still inherit the default
+theme's green there. The default theme, Forest, is now called PCBgit.

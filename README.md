@@ -59,7 +59,7 @@
 - **Admin panel**: users, boards, colour-coded tags, render queue, backups, updates
 - **Snapshots** for backup and moving to a new server
 - **One-click updates** from GitHub with a changelog
-- **English and German** interface, six colour themes
+- **English and German** interface, eight colour themes
 
 ### Stack
 
