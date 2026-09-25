@@ -183,3 +183,10 @@ serialised in the one app process, so they never collide. A switch to PostgreSQL
 is noted in TODO.md as low priority, for when several app instances or high
 availability are needed, and then as a full switch rather than a choice at install.
 
+### Converted schematics on full standard sheets
+Converted Eagle sheets were sized to the coordinates written on the sheet (part
+origins, wires), not to how far the symbols reach. Eagle's drawing frame is a
+symbol placed at the origin, so it and parts near the edge were cut off
+(TB6612FNG). Symbol extents now count, and each sheet goes on the smallest ISO
+sheet that holds it (A4 up to A0, landscape or portrait), centred.
+

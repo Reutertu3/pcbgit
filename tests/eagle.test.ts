@@ -114,10 +114,25 @@ test('values from the file cannot break out of their strings', () => {
 	assert.ok(!items(result.files[0].content).some((n) => n[0] === 'symbol' && JSON.stringify(n).includes('"lib_id","evil"')));
 });
 
+test('pages are standard sheets that hold the whole drawing, frames included', () => {
+	// The fixture's frame is a 100 x 80 mm symbol at the origin; nothing else reaches that far.
+	const result = convertEagleSchematic(eagleSchematic(), 'board', 'demo');
+	const [, name, orientation] = items(result.files[0].content).find((n) => n[0] === 'paper')!;
+	assert.equal(name, 'A4');
+	assert.equal(orientation, undefined, 'landscape');
+	// Everything, the frame's far corner included, lies on the 297 x 210 mm sheet.
+	// Only what is placed on the sheet: library symbols are drawn around their own origin.
+	const placed = JSON.stringify(items(result.files[0].content).filter((n) => n[0] !== 'lib_symbols'));
+	const coords = [...placed.matchAll(/\["(?:xy|at)","([-\d.]+)","([-\d.]+)"/g)].map((m) => [Number(m[1]), Number(m[2])]);
+	assert.ok(coords.length > 20);
+	assert.ok(coords.every(([x, y]) => x >= 0 && x <= 297 && y >= 0 && y <= 210));
+});
+
 test('absurd coordinates are clamped instead of producing an absurd page', () => {
 	const result = convertEagleSchematic(eagleSchematic({ r1X: '1e300' }), 'board', 'demo');
 	const paper = items(result.files[0].content).find((n) => n[0] === 'paper')!;
-	assert.ok(Number(paper[2]) <= 2000 && Number(paper[3]) <= 2000, String(paper));
+	assert.equal(paper[1], 'User', 'too big for A0');
+	assert.ok(Number(paper[2]) <= 5000 && Number(paper[3]) <= 5000, String(paper));
 	const nan = convertEagleSchematic(eagleSchematic({ r1X: 'NaN' }), 'board', 'demo');
 	assert.ok(!nan.files[0].content.includes('NaN'));
 });

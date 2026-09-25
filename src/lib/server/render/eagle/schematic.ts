@@ -210,6 +210,62 @@ function frame(e: XmlElement, t: Transform, text: (s: string, x: number, y: numb
 	return out;
 }
 
+/**
+ * How far a symbol's drawing reaches around its origin, in symbol space. Pins count
+ * with their length and texts roughly with their length, so parts near the edge and
+ * frames (large symbols placed at the origin) end up on the page.
+ */
+function symbolExtent(symbol: XmlElement) {
+	const xs: number[] = [], ys: number[] = [];
+	const add = (x: number, y: number) => (xs.push(x), ys.push(y));
+	for (const e of symbol.children) {
+		const a = e.attrs;
+		if (e.tag === 'pin') {
+			const r = rotation(a.rot);
+			const len = PIN_LENGTH[a.length ?? 'long'] ?? 7.62;
+			const rad = (r.angle * Math.PI) / 180;
+			add(num(a.x), num(a.y));
+			add(num(a.x) + len * Math.cos(rad), num(a.y) + len * Math.sin(rad));
+		} else if (e.tag === 'circle') {
+			const radius = Math.abs(num(a.radius));
+			add(num(a.x) - radius, num(a.y) - radius);
+			add(num(a.x) + radius, num(a.y) + radius);
+		} else if (e.tag === 'text') {
+			const r = rotation(a.rot);
+			const reach = e.text.length * num(a.size, 1.778) * 0.8;
+			add(num(a.x), num(a.y));
+			add(num(a.x) + (r.angle === 90 || r.angle === 270 ? 0 : reach), num(a.y) + (r.angle === 90 || r.angle === 270 ? reach : 0));
+		} else {
+			for (const [k, v] of Object.entries(a)) if (/^[xy][12]?$/.test(k)) (k[0] === 'x' ? xs : ys).push(num(v));
+			for (const v of children(e, 'vertex')) add(num(v.attrs.x), num(v.attrs.y));
+		}
+	}
+	return xs.length ? { minX: Math.min(...xs), minY: Math.min(...ys), maxX: Math.max(...xs), maxY: Math.max(...ys) } : null;
+}
+
+/** ISO sheets, landscape (mm); the drawing goes on the smallest that fits. */
+const PAPER = [
+	['A4', 297, 210],
+	['A3', 420, 297],
+	['A2', 594, 420],
+	['A1', 841, 594],
+	['A0', 1189, 841]
+] as const;
+
+/** The page for a drawing of `width` × `height` mm: a standard sheet, or a custom one beyond A0. */
+function paperFor(width: number, height: number) {
+	const margin = 10;
+	const portrait = height > width;
+	for (const [name, long, short] of PAPER) {
+		const [w, h] = portrait ? [short, long] : [long, short];
+		if (width + 2 * margin <= w && height + 2 * margin <= h) {
+			return { sexpr: `(paper "${name}"${portrait ? ' portrait' : ''})`, width: w, height: h };
+		}
+	}
+	const w = Math.min(5000, width + 2 * margin), h = Math.min(5000, height + 2 * margin);
+	return { sexpr: `(paper "User" ${fmt(w)} ${fmt(h)})`, width: w, height: h };
+}
+
 /** A name KiCad accepts inside a library id. */
 function idSafe(value: string) {
 	return value.replace(/[^A-Za-z0-9_.+-]/g, '_').slice(0, 100) || '_';
@@ -397,18 +453,34 @@ export function convertEagleSchematic(xml: string, name: string, drawingName: st
 		const instancePath = multi ? `/${rootUuid}/${sheetUuids[index]}` : `/${rootUuid}`;
 		const fileUuid = multi ? makeUuid(`file:${index}`) : rootUuid;
 
-		// Page: everything on the sheet, with a margin. KiCad's y axis points down.
+		// Page: everything on the sheet, including how far each placed symbol reaches
+		// (a frame is a symbol at the origin), centred on the smallest standard sheet.
 		const xs: number[] = [], ys: number[] = [];
 		const collect = (e: XmlElement) => {
 			for (const [k, v] of Object.entries(e.attrs)) if (/^[xy][12]?$/.test(k)) (k[0] === 'x' ? xs : ys).push(num(v));
 			e.children.forEach(collect);
 		};
 		collect(sheet);
+		for (const instance of children(child(sheet, 'instances'), 'instance')) {
+			const part = parts.get(instance.attrs.part ?? '');
+			const symbol = part && libSymbolFor(part)?.gates.get(instance.attrs.gate ?? '')?.symbol;
+			const extent = symbol && symbolExtent(symbol);
+			if (!extent) continue;
+			const r = rotation(instance.attrs.rot);
+			const a = (r.angle * Math.PI) / 180;
+			for (const [lx0, ly] of [[extent.minX, extent.minY], [extent.maxX, extent.minY], [extent.minX, extent.maxY], [extent.maxX, extent.maxY]]) {
+				const lx = r.mirror ? -lx0 : lx0;
+				xs.push(num(instance.attrs.x) + lx * Math.cos(a) - ly * Math.sin(a));
+				ys.push(num(instance.attrs.y) + lx * Math.sin(a) + ly * Math.cos(a));
+			}
+		}
 		if (!xs.length) xs.push(0);
 		if (!ys.length) ys.push(0);
-		const minX = Math.min(...xs) - 10, maxX = Math.max(...xs) + 10;
-		const minY = Math.min(...ys) - 10, maxY = Math.max(...ys) + 10;
-		const t: Transform = { x: (x) => x - minX, y: (y) => maxY - y };
+		const minX = Math.max(-MAX_COORD, Math.min(...xs)), maxX = Math.min(MAX_COORD, Math.max(...xs));
+		const minY = Math.max(-MAX_COORD, Math.min(...ys)), maxY = Math.min(MAX_COORD, Math.max(...ys));
+		const paper = paperFor(maxX - minX, maxY - minY);
+		const offsetX = (paper.width - (maxX - minX)) / 2, offsetY = (paper.height - (maxY - minY)) / 2;
+		const t: Transform = { x: (x) => x - minX + offsetX, y: (y) => maxY - y + offsetY };
 		const out: string[] = [];
 		const used = new Set<LibSymbol>();
 
@@ -521,9 +593,8 @@ export function convertEagleSchematic(xml: string, name: string, drawingName: st
 			}
 		}
 
-		const width = Math.min(2000, maxX - minX), height = Math.min(2000, maxY - minY);
 		const content =
-			`(kicad_sch (version 20231120) (generator "pcbgit-eagle") (generator_version "1") (uuid ${q(fileUuid)}) (paper "User" ${fmt(width)} ${fmt(height)})\n` +
+			`(kicad_sch (version 20231120) (generator "pcbgit-eagle") (generator_version "1") (uuid ${q(fileUuid)}) ${paper.sexpr}\n` +
 			`(lib_symbols\n${[...used].map((l) => l.sexpr).join('\n')}\n)\n${out.join('\n')}\n` +
 			(multi ? '' : `(sheet_instances (path "/" (page "1")))\n`) +
 			')\n';
@@ -547,7 +618,7 @@ export function convertEagleSchematic(xml: string, name: string, drawingName: st
 	});
 	const rows = Math.ceil(sheets.length / 4);
 	const root =
-		`(kicad_sch (version 20231120) (generator "pcbgit-eagle") (generator_version "1") (uuid ${q(rootUuid)}) (paper "User" 260 ${fmt(40 + rows * 45)})\n` +
+		`(kicad_sch (version 20231120) (generator "pcbgit-eagle") (generator_version "1") (uuid ${q(rootUuid)}) ${paperFor(260, 20 + rows * 45).sexpr}\n` +
 		`(lib_symbols)\n` +
 		`(text ${q(drawingName)} (exclude_from_sim no) (at 20 15 0) ${effects(3, { justify: 'left bottom' })} (uuid ${q(makeUuid('title'))}))\n` +
 		`${blocks.join('\n')}\n(sheet_instances (path "/" (page "1")))\n)\n`;
