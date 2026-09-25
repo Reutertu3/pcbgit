@@ -4,6 +4,7 @@ import type { Actions, PageServerLoad } from './$types';
 import { audit } from '$lib/server/db';
 import { createSnapshot, deleteBackupEntry, listSnapshots, saveUploadedSnapshot, snapshotPath } from '$lib/server/backups';
 import { DATA_DIR } from '$lib/server/paths';
+import { bodySizeLimit } from '$lib/server/upload';
 import { SnapshotError, cancelPendingRestore, pendingRestore, stageSnapshot } from '$lib/server/restore';
 
 /** Under Docker the restart policy brings the server back; elsewhere an admin restarts it. */
@@ -18,7 +19,8 @@ function message(error: unknown, locale: Locale) {
 export const load: PageServerLoad = async () => ({
 	...listSnapshots(),
 	pending: pendingRestore(DATA_DIR),
-	autoRestart: AUTO_RESTART
+	autoRestart: AUTO_RESTART,
+	uploadLimit: bodySizeLimit()
 });
 
 export const actions: Actions = {

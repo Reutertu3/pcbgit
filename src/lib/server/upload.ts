@@ -7,6 +7,20 @@ import { classifyEagleHead } from './render/eagle/detect';
 export const MAX_UPLOAD_BYTES = 200 * 1024 * 1024;
 const MAX_FILES = 4000;
 
+/**
+ * The largest request adapter-node accepts, from BODY_SIZE_LIMIT as it reads it:
+ * bytes, or a number with K, M or G (powers of 1024). Its default is 512K;
+ * null means no limit. The image sets 210M.
+ */
+export function bodySizeLimit(value = process.env.BODY_SIZE_LIMIT): number | null {
+	const setting = value?.trim() || '512K';
+	if (setting === 'Infinity') return null;
+	const match = /^(\d+)([KMG]?)$/i.exec(setting);
+	if (!match) return null;
+	const unit = { '': 1, K: 1024, M: 1024 ** 2, G: 1024 ** 3 }[match[2].toUpperCase() as '' | 'K' | 'M' | 'G'];
+	return Number(match[1]) * unit;
+}
+
 /** Files that are noise in a repository and should never be committed. */
 const IGNORED = [
 	/(^|\/)__MACOSX\//,

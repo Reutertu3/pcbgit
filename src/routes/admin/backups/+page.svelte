@@ -71,9 +71,14 @@
 
 	<section class="surface p-4">
 		<h3 class="mb-1 text-sm font-semibold">{t('backups.import')}</h3>
-		<p class="mb-3 text-xs text-[var(--text-secondary)]">
-			{#each tParts('backups.importHint') as part}{#if typeof part === 'string'}{part}{:else}<span class="mono">/data/backups/</span>{/if}{/each}
-		</p>
+		<div class="mb-3 space-y-1 text-xs leading-relaxed text-[var(--text-secondary)]">
+			<p>{t('backups.importHint')}</p>
+			{#if data.uploadLimit}
+				<p>
+					{#each tParts('backups.importLimit', { limit: formatBytes(data.uploadLimit) }) as part}{#if typeof part === 'string'}{part}{:else}<code class="mono mt-1 block overflow-x-auto whitespace-nowrap rounded border bg-[var(--surface-0)] px-2 py-1">docker compose cp snapshot.tar.gz pcbgit:/data/backups/</code>{/if}{/each}
+				</p>
+			{/if}
+		</div>
 		<form
 			method="POST"
 			action="?/upload"

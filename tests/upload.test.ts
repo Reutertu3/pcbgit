@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import AdmZip from 'adm-zip';
 
-const { filesFromZip, MAX_UPLOAD_BYTES } = await import('../src/lib/server/upload.ts');
+const { bodySizeLimit, filesFromZip, MAX_UPLOAD_BYTES } = await import('../src/lib/server/upload.ts');
 
 test('an archive that expands past the limit is rejected before inflating', () => {
 	const zip = new AdmZip();
@@ -23,4 +23,12 @@ test('a normal archive is unpacked with its wrapping folder stripped', () => {
 	zip.addFile('board/board.kicad_sch', Buffer.from('(kicad_sch)'));
 	zip.addFile('board/__MACOSX/._x', Buffer.from('noise'));
 	assert.deepEqual(filesFromZip(zip.toBuffer()).map((f) => f.path), ['board.kicad_pcb', 'board.kicad_sch']);
+});
+
+test('the request size limit is read as adapter-node reads BODY_SIZE_LIMIT', () => {
+	assert.equal(bodySizeLimit('210M'), 210 * 1024 * 1024);
+	assert.equal(bodySizeLimit('1g'), 1024 ** 3);
+	assert.equal(bodySizeLimit('4096'), 4096);
+	assert.equal(bodySizeLimit(''), 512 * 1024, 'adapter-node default');
+	assert.equal(bodySizeLimit('Infinity'), null);
 });
