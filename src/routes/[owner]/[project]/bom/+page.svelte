@@ -22,13 +22,14 @@
 	// iBOM cannot read pcbgit's theme from inside its sandbox; its mode and colours go
 	// in the URL. Unknown until mounted, so the frame is created once, already themed.
 	let themeQuery = $state<string | null>(null);
-	const dark = $derived(themeQuery?.startsWith('?dark') ?? false);
+	const dark = $derived(themeQuery?.startsWith('&dark') ?? false);
 	$effect(() => {
 		const read = () => {
 			const style = getComputedStyle(document.documentElement);
 			const colors = ibomColorParam(style);
 			const params = [style.colorScheme === 'dark' && 'dark', colors && `c=${colors}`].filter(Boolean);
-			themeQuery = params.length ? `?${params.join('&')}` : '';
+			// Appended to the artifact URL, which already carries its version.
+			themeQuery = params.map((param) => `&${param}`).join('');
 		};
 		read();
 		const observer = new MutationObserver(read);

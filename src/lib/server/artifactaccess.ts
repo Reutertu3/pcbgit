@@ -19,7 +19,12 @@ export function artifactAccess(commitId: string, viewer: User | null) {
  */
 export const SVG_POLICY = "default-src 'none'; style-src 'unsafe-inline'; img-src data:; frame-ancestors 'self'; sandbox";
 
-/** Artifacts are immutable per commit, so public ones can be cached forever. */
-export function artifactCacheControl(visibility: 'public' | 'private') {
-	return visibility === 'public' ? 'public, max-age=31536000, immutable' : 'private, max-age=600';
+/**
+ * A versioned URL (`?v=`, or a raw file at a commit sha) never changes content, so
+ * public ones can be cached forever. Without a version, a re-render replaces the file
+ * under the same URL: cache it only briefly.
+ */
+export function artifactCacheControl(visibility: 'public' | 'private', versioned: boolean) {
+	if (visibility === 'private') return 'private, max-age=600';
+	return versioned ? 'public, max-age=31536000, immutable' : 'public, max-age=300';
 }

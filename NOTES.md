@@ -190,3 +190,11 @@ symbol placed at the origin, so it and parts near the edge were cut off
 (TB6612FNG). Symbol extents now count, and each sheet goes on the smallest ISO
 sheet that holds it (A4 up to A0, landscape or portrait), centred.
 
+### Re-renders reach the browser
+Public artifacts were cached as immutable, but a re-render writes new files under
+the same commit id and names, so browsers kept showing the old schematic, 3D model
+or thumbnail for up to a year. Artifact links now carry the time the file was
+stored (`?v=…`), which changes with every render; only such links are cached for
+good, unversioned ones for 5 minutes. Checked by re-rendering TB6612FNG: every
+link and card thumbnail got a new version.
+

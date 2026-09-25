@@ -18,7 +18,7 @@
 	const sheet = $derived(data.sheets[index]);
 	const box = $derived(parseViewBox(sheet?.viewBox));
 	/** The server recolours sheets for the dark look (?dark). */
-	const sheetUrl = (dark: boolean) => (dark ? `${sheet.url}?dark` : sheet.url);
+	const sheetUrl = (dark: boolean) => (dark ? `${sheet.url}&dark` : sheet.url);
 
 	/* ---- export the current sheet as a raster image ---- */
 	/** Canvas limits: 16k px per side everywhere; keep area sane for Safari too. */

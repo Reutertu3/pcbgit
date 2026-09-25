@@ -17,12 +17,10 @@
 
 	const href = $derived(`/${project.owner_username}/${project.slug}`);
 	const dimensions = $derived(formatDimensions(project.board_width, project.board_height));
-	const previewSrc = $derived(
-		project.head_commit_id ? `/artifacts/${project.head_commit_id}/thumb/preview-front` : null
-	);
-	const schematicSrc = $derived(
-		project.head_commit_id ? `/artifacts/${project.head_commit_id}/thumb/sheet-0` : null
-	);
+	const thumbSrc = (name: string) =>
+		project.head_commit_id ? `/artifacts/${project.head_commit_id}/thumb/${name}?v=${project.head_rendered_at}` : null;
+	const previewSrc = $derived(thumbSrc('preview-front'));
+	const schematicSrc = $derived(thumbSrc('sheet-0'));
 </script>
 
 <!--

@@ -354,8 +354,8 @@
 								<Icon name="download" size={13} /> {t('overview.dlSchematicPdf')}
 							</a>
 						{/if}
-						{#if data.tabs.three}
-							<a href="/artifacts/{data.commit.id}/board.glb" class="btn btn-sm justify-start">
+						{#if data.glb}
+							<a href={data.glb} class="btn btn-sm justify-start">
 								<Icon name="download" size={13} /> {t('overview.dlGlb')}
 							</a>
 						{/if}

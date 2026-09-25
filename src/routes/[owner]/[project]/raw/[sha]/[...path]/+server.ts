@@ -43,7 +43,7 @@ export const GET: RequestHandler = async ({ params, locals, setHeaders }) => {
 	setHeaders({
 		'Content-Type': type,
 		'Content-Length': String(bytes.length),
-		'Cache-Control': artifactCacheControl(project.visibility),
+		'Cache-Control': artifactCacheControl(project.visibility, true),
 		'X-Content-Type-Options': 'nosniff',
 		...(type === 'image/svg+xml' ? { 'Content-Security-Policy': SVG_POLICY } : {})
 	});

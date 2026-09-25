@@ -8,7 +8,7 @@ import { fileBody } from '$lib/server/filebody';
 import { ensureThumbnail, isThumbnailName } from '$lib/server/thumbnails';
 
 /** GET /artifacts/<commit>/thumb/<name> — raster thumbnail of <name>.svg. */
-export const GET: RequestHandler = async ({ params, locals }) => {
+export const GET: RequestHandler = async ({ params, locals, url }) => {
 	if (!isThumbnailName(params.name)) error(400, 'Bad name');
 	const visibility = artifactAccess(params.commit, locals.user);
 	if (!visibility) error(404, 'Not found');
@@ -22,7 +22,7 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 		headers: {
 			'Content-Type': thumbnail?.type ?? 'image/svg+xml',
 			'Content-Length': String(fs.statSync(file).size),
-			'Cache-Control': artifactCacheControl(visibility),
+			'Cache-Control': artifactCacheControl(visibility, url.searchParams.has('v')),
 			...(thumbnail ? {} : { 'Content-Security-Policy': SVG_POLICY })
 		}
 	});

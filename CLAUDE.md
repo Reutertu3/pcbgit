@@ -103,10 +103,11 @@ converter takes untrusted XML: keep its reader entity-free and capped
 
 ## Things that bite
 
-- **Artifacts are cached as immutable.** Public boards serve
-  `/artifacts/<commitId>/<file>` with `max-age=31536000, immutable`, but a re-render
-  reuses the same commit id and file names. After changing render output, browsers
-  keep the old files; check in a private window. Artifact URLs carry no version yet.
+- **Artifact URLs carry a version.** A re-render reuses the commit id and file
+  names, so links are `/artifacts/<commitId>/<file>?v=<created_at>` (`artifactUrl()`;
+  card thumbnails use `head_rendered_at`). Only URLs with `v` are cached as
+  immutable on public boards; without it, 5 minutes. Build artifact links with
+  `artifactUrl()`, and append options with `&` (`&dark`), not `?`.
 - **Re-rendering clears first.** `clearArtifacts()` runs before rendering, so a
   board's viewers are empty until its render finishes.
 - **Schematic sheets:** kicad-cli writes `<root>.svg` and `<root>-<sheet>.svg`;
@@ -175,5 +176,3 @@ code look disconnected; confirm in the code.
 
 - `/new` creates the project before committing the upload; if the commit or sync
   fails, an empty board is left behind.
-- Artifact URLs need a version (e.g. `?v=<artifact id>`) so re-renders bypass the
-  immutable cache.

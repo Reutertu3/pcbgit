@@ -41,6 +41,8 @@ export interface ProjectSummary {
 	has_schematic: number;
 	has_pcb: number;
 	has_bom: number;
+	/** When the head version's artifacts were stored; versions the thumbnail URLs. */
+	head_rendered_at: number | null;
 }
 
 export interface CommitSummary {

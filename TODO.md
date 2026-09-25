@@ -124,8 +124,6 @@ without external buffers, the schematic fallback confined to the checkout.
 ## Other known issues
 - [ ] A re-render empties a board's viewers until it finishes
       (`clearArtifacts()` runs first). Render into a staging directory and swap.
-- [ ] Artifact URLs need a version (e.g. `?v=<artifact id>`): public artifacts
-      are cached as immutable, so browsers keep old files after a re-render.
 - [ ] `/new` creates the board before committing the upload; if that fails, an
       empty board is left behind.
 - [ ] `syncCommits()` only looks at the newest 200 commits of a branch.

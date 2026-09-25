@@ -54,10 +54,9 @@ export const GET: RequestHandler = async ({ params, locals, setHeaders, url }) =
 	if (!stat.isFile()) error(404, 'Not found');
 
 	const extension = path.extname(target).toLowerCase();
-	// Artifacts are immutable once rendered: keyed by commit id, never rewritten in place.
 	setHeaders({
 		'Content-Type': TYPES[extension] ?? 'application/octet-stream',
-		'Cache-Control': artifactCacheControl(visibility),
+		'Cache-Control': artifactCacheControl(visibility, url.searchParams.has('v')),
 		'X-Content-Type-Options': 'nosniff'
 	});
 

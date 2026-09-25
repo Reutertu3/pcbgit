@@ -66,8 +66,9 @@ export function loadProjectContext(
 }
 
 function artifactUrl(row: ArtifactRow) {
-	// rel_path is "<commitId>/<file>", which is exactly the artifact route shape.
-	return `/artifacts/${row.rel_path.replace(/\\/g, '/')}`;
+	// rel_path is "<commitId>/<file>", which is exactly the artifact route shape. A
+	// re-render keeps the path but stores new rows, so `v` gives each render its own URL.
+	return `/artifacts/${row.rel_path.replace(/\\/g, '/')}?v=${row.created_at}`;
 }
 
 export function schematicSheets(commitId: string): SheetArtifact[] {
@@ -127,6 +128,7 @@ export function artifactSummary(commitId: string) {
 		ibom: rows.find((row) => row.kind === 'ibom_html'),
 		schematicPdf: rows.find((row) => row.kind === 'schematic_pdf'),
 		convertedProject: rows.find((row) => row.kind === 'converted_zip'),
+		glb: rows.find((row) => row.kind === 'pcb_glb'),
 		previewFront: rows.find((row) => row.kind === 'pcb_preview_svg' && row.name === 'front'),
 		previewBack: rows.find((row) => row.kind === 'pcb_preview_svg' && row.name === 'back'),
 		totalBytes: rows.reduce((sum, row) => sum + row.size_bytes, 0),
