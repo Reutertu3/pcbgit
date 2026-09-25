@@ -1,6 +1,7 @@
 import { count, get, getSetting, now, run, setSetting } from './db';
 import { createUser, getUserByUsername } from './auth';
 import { ensureTag } from './projects';
+import { DEFAULT_TAGLINE } from './site';
 
 /**
  * Runs on every boot.
@@ -46,7 +47,7 @@ function seedDefaults() {
 	if (getSetting('bootstrapped') === 'true') return;
 
 	setSetting('site_name', 'pcbgit');
-	setSetting('site_tagline', 'Self-hosted home for hardware design');
+	setSetting('site_tagline', DEFAULT_TAGLINE);
 	setSetting('registration_open', 'true');
 	for (const [name, category] of STARTER_TAGS) ensureTag(name, category);
 

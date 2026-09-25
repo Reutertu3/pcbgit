@@ -1,5 +1,4 @@
 {
-	"site.tagline": "Self-hosted home for hardware design",
 	"nav.browse": "Browse",
 	"nav.tags": "Tags",
 	"nav.starred": "Starred",
@@ -460,7 +459,6 @@
 	"browse.sort.stars": "Most starred",
 	"browse.sort.name": "Name",
 	"browse.title": "Browse boards",
-	"browse.intro": "Push a KiCad project with [[git]], and get schematics, a layered board view, an assembled 3D model, a bill of materials and a DRC report — rendered automatically and versioned for every commit.",
 	"browse.statBoards": {
 		"one": "board",
 		"other": "boards"
@@ -741,7 +739,8 @@
 	"instance.title": "Instance settings",
 	"instance.siteName": "Site name",
 	"instance.tagline": "Tagline",
-	"instance.taglineHint": "Shown on the browse page and in the page description. The stock tagline is translated into each viewer's language; a custom one is shown as written.",
+	"instance.intro": "Text under the tagline",
+	"instance.textsHint": "Both appear on the front page, and the tagline also in the page description. They are shown exactly as written, in every language; leave one empty to hide it.",
 	"instance.openRegistration": "Open registration",
 	"instance.openRegistrationHint": "When off, only an administrator can create accounts. Existing users are unaffected.",
 	"instance.save": "Save settings",

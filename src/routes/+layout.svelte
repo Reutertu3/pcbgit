@@ -27,7 +27,7 @@
 
 <svelte:head>
 	<title>{data.site.name}</title>
-	<meta name="description" content={data.site.tagline ?? t('site.tagline')} />
+	{#if data.site.tagline}<meta name="description" content={data.site.tagline} />{/if}
 </svelte:head>
 
 <svelte:window onclick={() => (menuOpen = false)} />

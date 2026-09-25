@@ -4,6 +4,7 @@ import { audit, getSetting, setSetting } from '$lib/server/db';
 import { fail } from '@sveltejs/kit';
 import { resetKicadVersionCache } from '$lib/server/render/kicad';
 import { instanceLimits } from '$lib/server/limits';
+import { siteTexts } from '$lib/server/site';
 import {
 	autoUpdateEnabled,
 	requestCheck,
@@ -17,7 +18,7 @@ import {
 export const load: PageServerLoad = async () => ({
 	settings: {
 		siteName: getSetting('site_name', 'pcbgit'),
-		siteTagline: getSetting('site_tagline', 'Self-hosted home for hardware design'),
+		...siteTexts(),
 		registrationOpen: getSetting('registration_open', 'true') === 'true',
 		registrationApproval: getSetting('registration_approval', 'true') === 'true'
 	},
@@ -33,6 +34,7 @@ export const actions: Actions = {
 		const form = await request.formData();
 		setSetting('site_name', String(form.get('site_name') ?? 'pcbgit').trim().slice(0, 60) || 'pcbgit');
 		setSetting('site_tagline', String(form.get('site_tagline') ?? '').trim().slice(0, 160));
+		setSetting('site_intro', String(form.get('site_intro') ?? '').trim().slice(0, 600));
 		setSetting('registration_open', form.get('registration_open') ? 'true' : 'false');
 		setSetting('registration_approval', form.get('registration_approval') ? 'true' : 'false');
 		audit(locals.user!.id, 'admin.settings_save');

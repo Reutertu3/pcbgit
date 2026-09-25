@@ -301,3 +301,10 @@ unchanged), and `PCBGIT_MIN_FREE_DISK` (1 GB by default) is always left free:
 below it writes are refused for everyone and renders wait, as the render queue
 page says. The app itself stays unlimited: it briefly holds uploads in memory,
 and a hard limit would make it the process that gets killed.
+
+### Front page texts written by the admin, never translated
+The tagline was translated while it kept its stock wording, and the text under
+it was fixed. Both are now settings under Instance (the text under the tagline
+is new there), shown exactly as written in every language: an instance's own
+words cannot be translated by pcbgit. The defaults are the old English texts;
+an empty field hides it.

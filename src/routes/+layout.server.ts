@@ -3,11 +3,9 @@ import { getSetting } from '$lib/server/db';
 import { unreadCount } from '$lib/server/notifications';
 import { avatarVersion } from '$lib/server/avatars';
 import { runningTag, runningVersion } from '$lib/server/updater';
-
-const DEFAULT_TAGLINE = 'Self-hosted home for hardware design';
+import { siteTexts } from '$lib/server/site';
 
 export const load: LayoutServerLoad = async ({ locals, url }) => {
-	const tagline = getSetting('site_tagline', DEFAULT_TAGLINE);
 	return {
 		locale: locals.locale,
 		user: locals.user
@@ -21,8 +19,8 @@ export const load: LayoutServerLoad = async ({ locals, url }) => {
 			: null,
 		site: {
 			name: getSetting('site_name', 'pcbgit'),
-			// The stock tagline is translated; one an admin wrote is shown as written.
-			tagline: tagline === DEFAULT_TAGLINE ? null : tagline,
+			// Shown as written in every language (site.ts).
+			...siteTexts(),
 			registrationOpen: getSetting('registration_open', 'true') === 'true'
 		},
 		pathname: url.pathname,

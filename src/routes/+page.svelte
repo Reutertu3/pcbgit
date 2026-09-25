@@ -52,12 +52,8 @@
 		<section class="surface relative mb-6 overflow-hidden p-6 sm:p-8">
 			<HeroBoard />
 			<div class="relative max-w-2xl">
-				<h1 class="text-2xl font-bold tracking-tight sm:text-3xl">{data.site.tagline ?? t('site.tagline')}</h1>
-				<p class="mt-2 text-sm leading-relaxed text-[var(--text-secondary)]">
-					{#each tParts('browse.intro') as part}
-						{#if typeof part === 'string'}{part}{:else}<span class="mono">git</span>{/if}
-					{/each}
-				</p>
+				{#if data.site.tagline}<h1 class="text-2xl font-bold tracking-tight sm:text-3xl">{data.site.tagline}</h1>{/if}
+				{#if data.site.intro}<p class="mt-2 text-sm leading-relaxed text-[var(--text-secondary)]">{data.site.intro}</p>{/if}
 				<div class="mt-5 flex flex-wrap items-center gap-5 text-sm">
 					<span><strong class="text-lg">{formatCount(data.stats.boards)}</strong> <span class="text-[var(--text-muted)]">{t('browse.statBoards', { count: data.stats.boards })}</span></span>
 					<span><strong class="text-lg">{formatCount(data.stats.versions)}</strong> <span class="text-[var(--text-muted)]">{t('browse.statVersions', { count: data.stats.versions })}</span></span>

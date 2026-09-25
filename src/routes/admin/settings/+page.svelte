@@ -75,8 +75,12 @@
 		</div>
 		<div class="mb-4">
 			<label class="label" for="site_tagline">{t('instance.tagline')}</label>
-			<input class="input" id="site_tagline" name="site_tagline" value={data.settings.siteTagline} maxlength="160" />
-			<p class="hint">{t('instance.taglineHint')}</p>
+			<input class="input" id="site_tagline" name="site_tagline" value={data.settings.tagline} maxlength="160" />
+		</div>
+		<div class="mb-4">
+			<label class="label" for="site_intro">{t('instance.intro')}</label>
+			<textarea class="input min-h-20" id="site_intro" name="site_intro" maxlength="600">{data.settings.intro}</textarea>
+			<p class="hint">{t('instance.textsHint')}</p>
 		</div>
 		<Switch name="registration_open" checked={data.settings.registrationOpen} class="mb-4">
 			<span class="block text-sm font-medium">{t('instance.openRegistration')}</span>

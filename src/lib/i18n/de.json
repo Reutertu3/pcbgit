@@ -1,5 +1,4 @@
 {
-	"site.tagline": "Selbst gehostetes Zuhause für Hardware-Design",
 	"nav.browse": "Stöbern",
 	"nav.tags": "Tags",
 	"nav.starred": "Favoriten",
@@ -460,7 +459,6 @@
 	"browse.sort.stars": "Meiste Sterne",
 	"browse.sort.name": "Name",
 	"browse.title": "Boards entdecken",
-	"browse.intro": "Pushe ein KiCad-Projekt mit [[git]] und erhalte Schaltpläne, eine Lagenansicht der Platine, ein bestücktes 3D-Modell, eine Stückliste und einen DRC-Bericht – automatisch gerendert und für jeden Commit versioniert.",
 	"browse.statBoards": {
 		"one": "Board",
 		"other": "Boards"
@@ -741,7 +739,8 @@
 	"instance.title": "Instanzeinstellungen",
 	"instance.siteName": "Seitenname",
 	"instance.tagline": "Slogan",
-	"instance.taglineHint": "Wird auf der Startseite und in der Seitenbeschreibung angezeigt. Der Standard-Slogan wird in die Sprache der Besucher übersetzt, ein eigener wird so angezeigt, wie er geschrieben ist.",
+	"instance.intro": "Text unter dem Slogan",
+	"instance.textsHint": "Beide erscheinen auf der Startseite, der Slogan auch in der Seitenbeschreibung. Sie werden genau so angezeigt, wie sie hier stehen, in jeder Sprache; ein leeres Feld blendet es aus.",
 	"instance.openRegistration": "Offene Registrierung",
 	"instance.openRegistrationHint": "Wenn deaktiviert, können nur Administratoren Konten anlegen. Bestehende Benutzer sind nicht betroffen.",
 	"instance.save": "Einstellungen speichern",
