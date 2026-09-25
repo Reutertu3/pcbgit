@@ -123,6 +123,10 @@ converter takes untrusted XML: keep its reader entity-free and capped
 - **Schematic sheets:** kicad-cli writes `<root>.svg` and `<root>-<sheet>.svg`;
   `orderSchematicSheets()` puts the root at `sheet-0`. The card thumbnail and the
   Schematic tab both rely on `sheet-0` being the root.
+- **kicad-cli's plotter is not KiCad's editor.** Where they differ, the checkout's
+  schematics are adjusted before export (`render/schematicfix.ts`, native projects
+  only): a fill "with colour" at alpha 0 is drawn by the editor as nothing, but
+  plotted in the outline colour, so it becomes `(type none)`.
 - **Schematic dark mode** is a server-side recolour (`?dark`,
   `render/schematictheme.ts`) of KiCad's *default* schematic palette to Gruvbox
   Dark. If kicad-cli is ever given `--theme`, that map stops matching. Light mode

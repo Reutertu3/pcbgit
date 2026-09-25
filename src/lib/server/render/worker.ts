@@ -12,7 +12,7 @@ import { clearArtifacts, listArtifacts, storeArtifact, svgGeometry } from './art
 import { analyzeBoardText, type BoardStats } from './board';
 import { discoverEagleFiles } from './eagle/detect';
 import { convertEagleProject } from './eagleimport';
-import { readOutput, trustedDir } from './outputs';
+import { readOutput, trustedDir, writeNew } from './outputs';
 import { bomToCsv, groupBom, parseBomCsv, type BomLine } from './bom';
 import {
 	IBOM_SCRIPT,
@@ -31,7 +31,8 @@ import {
 	schPdfArgs,
 	schSvgArgs
 } from './kicad';
-import { discoverKicadFiles, hasKicadContent } from './kicadfiles';
+import { discoverKicadFiles, hasKicadContent, type KicadProjectFiles } from './kicadfiles';
+import { clearTransparentFills } from './schematicfix';
 import { ensureThumbnail } from '../thumbnails';
 import { optimizeBoardGlb } from './glb';
 import { countBySeverity, parseDrcReport, parseErcReport, type Violation } from './reports';
@@ -217,6 +218,7 @@ async function renderCommit(job: JobRow, log: string[]) {
 		const violations: Violation[] = [];
 
 		if (version) {
+			if (!eagle) await fixSchematics(files, log);
 			if (files.rootSch) await renderSchematic(files.rootSch, outDir, commit.id, log, violations, Boolean(eagle));
 			if (files.pcb) await renderBoard(files.pcb, board, outDir, commit.id, log, violations);
 		}
@@ -245,6 +247,24 @@ async function renderCommit(job: JobRow, log: string[]) {
 		await fsp.rm(checkout, { recursive: true, force: true });
 		await fsp.rm(outDir, { recursive: true, force: true });
 	}
+}
+
+/**
+ * Rewrites what kicad-cli would plot differently from KiCad's editor (schematicfix.ts)
+ * in the checkout's schematics. The checkout is in the render directory: each file is
+ * read as renderer output and replaced by an exclusive create, so a link planted in
+ * its place makes this fail rather than write through it.
+ */
+async function fixSchematics(files: KicadProjectFiles, log: string[]) {
+	let total = 0;
+	for (const file of files.sch) {
+		const { text, count } = clearTransparentFills((await readOutput(file, files.root)).toString('utf8'));
+		if (!count) continue;
+		await fsp.rm(file);
+		await writeNew(file, text);
+		total += count;
+	}
+	if (total) log.push(`schematic: ${total} transparent fill(s) drawn without fill, as KiCad shows them`);
 }
 
 async function buildBom(

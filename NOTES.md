@@ -224,3 +224,11 @@ version once its image is ready, and does not retry one that failed. A download
 or build that fails now moves the checkout back, so the server does not claim to
 be up to date while the old version runs.
 
+### Transparent fills no longer plotted solid red
+On the Touch-Matrix board (render-isolation-test), the DF-Player symbol U7 showed
+as a solid dark red block in the schematic, dark and light, and in the PDF. Its
+body is a text box filled "with colour" at zero opacity, which KiCad's editor
+draws as nothing but kicad-cli's plotter treats as unset and fills with the
+outline colour. Such fills are now turned into no fill before export. Affected
+boards need a re-render.
+

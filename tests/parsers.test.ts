@@ -12,6 +12,7 @@ import { exportableLayers, fabricationLayers, layerIdFromFilename, layerStyle } 
 import { DEFAULT_FAB, FAB_PROFILES, fabProfile } from '../src/lib/fab.ts';
 import { orderSchematicSheets, pcbDrillArgs, pcbGerberArgs, schPdfArgs } from '../src/lib/server/render/kicad.ts';
 import { darkSchematicSvg, isSchematicSheet } from '../src/lib/server/render/schematictheme.ts';
+import { clearTransparentFills } from '../src/lib/server/render/schematicfix.ts';
 
 test('s-expression parser handles nesting, quotes and escapes', () => {
 	const tree = parseSexpr('(kicad_pcb (version 20241229) (title_block (title "Sensor \\"Hub\\"")) (net 1 "GND"))');
@@ -336,4 +337,34 @@ test('a board outline drawn inside a footprint counts, moved and rotated with it
 	// 90° counter-clockwise: the 50 mm edge runs upwards, the 30 mm one to the left.
 	assert.equal(board.widthMm, 30);
 	assert.equal(board.heightMm, 50);
+});
+
+test('fully transparent colour fills become no fill, as KiCad draws them; other fills stay', () => {
+	// As KiCad 10 writes a text box used as a symbol body (Touch-Matrix DF-Player).
+	const body = `(text_box "DF-Player\n"
+					(stroke
+						(width 0)
+						(type solid)
+					)
+					(fill
+						(type color)
+						(color 0 0 0 0)
+					)
+				)`;
+	const fixed = clearTransparentFills(body);
+	assert.equal(fixed.count, 1);
+	assert.ok(fixed.text.includes('(fill (type none))'));
+	assert.ok(fixed.text.includes('(stroke'), 'the rest is untouched');
+
+	assert.equal(clearTransparentFills('(fill (type color) (color 255 0 0 0.0000))').count, 1);
+	// Colours that show, the other fill types, and sheet boxes (no type) are left alone.
+	const kept = [
+		'(fill (type color) (color 255 0 0 0.5))',
+		'(fill (type color) (color 0 0 0 1))',
+		'(fill (type background))',
+		'(fill (type outline))',
+		'(fill (color 0 0 0 0.0000))',
+		'(stroke (width 0) (type default) (color 0 0 0 0))'
+	].join(' ');
+	assert.deepEqual(clearTransparentFills(kept), { text: kept, count: 0 });
 });
