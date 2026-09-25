@@ -22,6 +22,8 @@ services:
       PCBGIT_ADMIN_EMAIL: ${PCBGIT_ADMIN_EMAIL:-admin@localhost}
       # Release tag of the running commit, shown in the footer (set by deploy/update.sh).
       PCBGIT_TAG: ${PCBGIT_GIT_TAG:-}
+      # Uploads, pushes, snapshots and renders stop short of this much free disk space.
+      PCBGIT_MIN_FREE_DISK: ${PCBGIT_MIN_FREE_DISK:-1G}
       # Only read on the first start of an empty instance; see README.
       PCBGIT_IMPORT_SNAPSHOT: ${PCBGIT_IMPORT_SNAPSHOT:-}
       # AGPL-3.0: the footer links users to the source of the running code.
@@ -61,9 +63,10 @@ services:
       - /home/pcbgit:uid=10001,gid=10001,mode=0700
     cap_drop: [ALL]
     security_opt: ["no-new-privileges:true"]
-    # Big boards need memory for the 3D export; raise it if renders get killed.
-    mem_limit: 4g
-    cpus: 2
+    # Big boards need memory for the 3D export; raise it if renders get killed,
+    # lower it on a small server so a render cannot starve the site (see .env.example).
+    mem_limit: ${PCBGIT_RENDER_MEMORY:-4g}
+    cpus: ${PCBGIT_RENDER_CPUS:-2}
     pids_limit: 512
     # The image's check fetches the web app, which does not run here.
     healthcheck:

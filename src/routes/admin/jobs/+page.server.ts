@@ -3,6 +3,7 @@ import { translate } from '$lib/i18n';
 import type { Actions, PageServerLoad } from './$types';
 import { all, audit, get, now, run } from '$lib/server/db';
 import { enqueueRender, kick, queueStats } from '$lib/server/render/worker';
+import { formatSize, freeDiskSpace, minFreeDisk } from '$lib/server/limits';
 
 interface AdminJobRow {
 	id: string;
@@ -22,8 +23,11 @@ interface AdminJobRow {
 export const load: PageServerLoad = async ({ url }) => {
 	const status = url.searchParams.get('status') ?? '';
 	const openLog = url.searchParams.get('log');
+	const free = await freeDiskSpace();
 
 	return {
+		// Renders wait while the disk is below the minimum; say so, or the queue just looks stuck.
+		diskLow: free < minFreeDisk() ? { free: formatSize(free), min: formatSize(minFreeDisk()) } : null,
 		jobs: all<AdminJobRow>(
 			`SELECT j.id, j.status, j.attempts, j.error, j.queued_at, j.started_at, j.finished_at,
 			   j.commit_id, c.sha, c.message, p.slug, u.username

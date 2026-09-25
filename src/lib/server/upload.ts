@@ -3,6 +3,7 @@ import path from 'node:path';
 import type { UploadFile } from './git';
 import { UserError } from '../i18n';
 import { classifyEagleHead } from './render/eagle/detect';
+import { parseByteSize } from './bytes';
 
 export const MAX_UPLOAD_BYTES = 200 * 1024 * 1024;
 const MAX_FILES = 4000;
@@ -14,11 +15,7 @@ const MAX_FILES = 4000;
  */
 export function bodySizeLimit(value = process.env.BODY_SIZE_LIMIT): number | null {
 	const setting = value?.trim() || '512K';
-	if (setting === 'Infinity') return null;
-	const match = /^(\d+)([KMG]?)$/i.exec(setting);
-	if (!match) return null;
-	const unit = { '': 1, K: 1024, M: 1024 ** 2, G: 1024 ** 3 }[match[2].toUpperCase() as '' | 'K' | 'M' | 'G'];
-	return Number(match[1]) * unit;
+	return setting === 'Infinity' ? null : parseByteSize(setting);
 }
 
 /** Files that are noise in a repository and should never be committed. */

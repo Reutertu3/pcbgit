@@ -6,11 +6,17 @@
  *
  * Storage belongs to the board's owner, so a collaborator's push counts against
  * the owner's limit; the hourly limit counts whoever uploads or pushes.
+ *
+ * Above all of them, the server keeps a minimum of free disk space
+ * (PCBGIT_MIN_FREE_DISK): a full disk would break the database and repositories
+ * for everyone, so that one applies to admins too.
  */
+import fsp from 'node:fs/promises';
 import { UserError } from '../i18n';
+import { parseByteSize } from './bytes';
 import { all, count, get, getSetting, run } from './db';
 import { repoExists, repoSize } from './git';
-import { repoPath } from './paths';
+import { DATA_DIR, repoPath } from './paths';
 
 export class LimitError extends UserError {}
 
@@ -83,19 +89,43 @@ export async function storageUsed(userId: string) {
 	return repos + artifacts;
 }
 
-export const formatMb = (bytes: number) => `${Math.round(bytes / MB)} MB`;
+/** For messages: whole MB, or GB with one decimal from 1 GB up. */
+export const formatSize = (bytes: number) =>
+	bytes >= 1024 * MB ? `${(bytes / (1024 * MB)).toFixed(1)} GB` : `${Math.round(bytes / MB)} MB`;
+
+/** Free space the server always leaves on the data disk: PCBGIT_MIN_FREE_DISK, 1 GB if unset. */
+export function minFreeDisk(value = process.env.PCBGIT_MIN_FREE_DISK) {
+	const parsed = value?.trim() ? parseByteSize(value) : null;
+	return parsed ?? 1024 ** 3;
+}
+
+export async function freeDiskSpace() {
+	const stats = await fsp.statfs(DATA_DIR);
+	return stats.bavail * stats.bsize;
+}
+
+/** Throws when writing `bytes` more would leave less than the minimum free. */
+export async function checkDiskSpace(bytes = 0) {
+	const free = await freeDiskSpace();
+	const min = minFreeDisk();
+	if (free - bytes < min) throw new LimitError('limits.error.disk', { free: formatSize(free), min: formatSize(min) });
+}
 
 function limitedUser(userId: string) {
 	return get<LimitedUser>('SELECT id, role, limit_boards, limit_storage_mb FROM users WHERE id = ?', userId);
 }
 
-/** Before a board is written to. The version that crosses the limit is still accepted; the next is not. */
+/**
+ * Before a board is written to: the disk's minimum free space, then the owner's
+ * storage. The version that crosses the storage limit is still accepted; the next is not.
+ */
 export async function checkStorage(ownerId: string) {
+	await checkDiskSpace();
 	const owner = limitedUser(ownerId);
 	const limit = owner && limitsFor(owner).storageBytes;
 	if (!limit) return;
 	const used = await storageUsed(ownerId);
-	if (used >= limit) throw new LimitError('limits.error.storage', { used: formatMb(used), limit: formatMb(limit) });
+	if (used >= limit) throw new LimitError('limits.error.storage', { used: formatSize(used), limit: formatSize(limit) });
 }
 
 /** Before a user creates a board. */

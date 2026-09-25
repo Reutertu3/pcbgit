@@ -287,3 +287,14 @@ disable, delete or reset the password of the admin who set the instance up. That
 account is now the owner (the `.env` admin, or the oldest admin on existing
 instances): no one can demote, disable or delete it, and only the owner resets
 its password. A separate "super admin" role was not needed for that.
+
+### Resource settings: renderer limits and minimum free disk
+On a 2-core, 4 GB server the renderer's fixed limits (4 GB, 2 CPUs) were the
+whole machine, so a large board could take the site down with it; and nothing
+stopped uploads, pushes, snapshots or renders from filling the disk, which would
+break the database and repositories. `PCBGIT_RENDER_MEMORY` and
+`PCBGIT_RENDER_CPUS` in `.env` now set the renderer's limits (defaults
+unchanged), and `PCBGIT_MIN_FREE_DISK` (1 GB by default) is always left free:
+below it writes are refused for everyone and renders wait, as the render queue
+page says. The app itself stays unlimited: it briefly holds uploads in memory,
+and a hard limit would make it the process that gets killed.

@@ -126,3 +126,31 @@ test('an account waiting for approval cannot sign in or push until approved', ()
 	assert.equal(auth.getSessionUser(session.id)?.username, 'newbie');
 	assert.equal(auth.authenticateToken('newbie', token)?.username, 'newbie');
 });
+
+test('sizes read like BODY_SIZE_LIMIT, and the free-disk minimum defaults to 1 GB', async () => {
+	const { parseByteSize } = await import('../src/lib/server/bytes.ts');
+	assert.equal(parseByteSize('2G'), 2 * 1024 ** 3);
+	assert.equal(parseByteSize('500m'), 500 * MB);
+	assert.equal(parseByteSize('1.5G'), 1.5 * 1024 ** 3);
+	assert.equal(parseByteSize('4096'), 4096);
+	assert.equal(parseByteSize('lots'), null);
+
+	assert.equal(limits.minFreeDisk(undefined), 1024 ** 3);
+	assert.equal(limits.minFreeDisk(''), 1024 ** 3, 'an empty setting keeps the default');
+	assert.equal(limits.minFreeDisk('lots'), 1024 ** 3, 'an unreadable one too');
+	assert.equal(limits.minFreeDisk('0'), 0, '0 turns it off');
+});
+
+test('below the free-disk minimum, writes are refused for everyone, admins included', async () => {
+	const previous = process.env.PCBGIT_MIN_FREE_DISK;
+	// More than any test machine has free.
+	process.env.PCBGIT_MIN_FREE_DISK = '1000000G';
+	try {
+		await assert.rejects(limits.checkStorage(admin.id), /disk is almost full/);
+		await assert.rejects(limits.checkNewBoard(user.id), limits.LimitError);
+	} finally {
+		if (previous === undefined) delete process.env.PCBGIT_MIN_FREE_DISK;
+		else process.env.PCBGIT_MIN_FREE_DISK = previous;
+	}
+	await limits.checkStorage(admin.id);
+});

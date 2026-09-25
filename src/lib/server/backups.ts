@@ -4,6 +4,7 @@ import fsp from 'node:fs/promises';
 import path from 'node:path';
 import { promisify } from 'node:util';
 import { audit, count, db, getSetting } from './db';
+import { formatSize, freeDiskSpace, minFreeDisk } from './limits';
 import { ARTIFACT_DIR, BACKUP_DIR, DATA_DIR, TMP_DIR } from './paths';
 import {
 	SNAPSHOT_FORMAT,
@@ -37,6 +38,7 @@ export interface PreRestoreInfo {
  * captured. Pause pushes (or accept a later snapshot) if that matters.
  */
 export async function createSnapshot(opts: { includeArtifacts: boolean; actorId: string }) {
+	await checkSnapshotSpace(0);
 	const work = await fsp.mkdtemp(path.join(TMP_DIR, 'snapshot-'));
 	try {
 		// VACUUM INTO gives a transaction-consistent copy while the app keeps running.
@@ -179,14 +181,13 @@ async function adoptSnapshot(target: string, name: string, actorId: string) {
 export const PIECE_MAX = 32 * 1024 * 1024;
 const MAX_PIECES = 100_000;
 const INCOMING_DIR = path.join(BACKUP_DIR, 'incoming');
-// Left free while a large upload fills the disk, so the server keeps working.
-const DISK_RESERVE = 1024 ** 3;
 // Uploads abandoned for this long are removed when the next one starts.
 const STALE_UPLOAD_MS = 24 * 60 * 60 * 1000;
 
-export async function freeDiskSpace() {
-	const stats = await fsp.statfs(BACKUP_DIR);
-	return stats.bavail * stats.bsize;
+/** Snapshots stop short of the minimum free disk space (PCBGIT_MIN_FREE_DISK), like uploads do. */
+async function checkSnapshotSpace(bytes: number) {
+	const free = await freeDiskSpace();
+	if (free - bytes < minFreeDisk()) throw new SnapshotError('snapshot.error.diskFull', { free: formatSize(free), min: formatSize(minFreeDisk()) });
 }
 
 function uploadDir(id: string) {
@@ -223,10 +224,7 @@ export async function saveSnapshotPiece(opts: { id: string; name: string; part: 
 	const dir = uploadDir(opts.id);
 	checkPieceNumbers(opts.part, opts.parts);
 	if (opts.data.byteLength === 0 || opts.data.byteLength > PIECE_MAX) throw new SnapshotError('snapshot.error.badUpload');
-	const free = await freeDiskSpace();
-	if (free < opts.data.byteLength + DISK_RESERVE) {
-		throw new SnapshotError('snapshot.error.diskFull', { free: `${Math.floor(free / 1024 ** 2)} MB` });
-	}
+	await checkSnapshotSpace(opts.data.byteLength);
 	if (opts.part === 1) await removeStaleUploads();
 
 	await fsp.mkdir(dir, { recursive: true });

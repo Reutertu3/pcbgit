@@ -34,6 +34,7 @@ import {
 import { discoverKicadFiles, hasKicadContent, type KicadProjectFiles } from './kicadfiles';
 import { clearTransparentFills } from './schematicfix';
 import { ensureThumbnail } from '../thumbnails';
+import { freeDiskSpace, minFreeDisk } from '../limits';
 import { optimizeBoardGlb } from './glb';
 import { countBySeverity, parseDrcReport, parseErcReport, type Violation } from './reports';
 
@@ -133,11 +134,27 @@ export function recoverStuckJobs() {
 	kick();
 }
 
+// Set while renders wait for disk space; the timer looks again.
+let diskRetry: ReturnType<typeof setTimeout> | null = null;
+
 async function runNextJob(): Promise<boolean> {
 	const job = get<JobRow>(
 		"SELECT * FROM render_jobs WHERE status = 'queued' ORDER BY queued_at LIMIT 1"
 	);
 	if (!job) return false;
+
+	// Renders write artifacts: below the minimum free space they wait, queued, and
+	// start by themselves once there is room again (the render queue page says so).
+	if ((await freeDiskSpace()) < minFreeDisk()) {
+		if (!diskRetry) {
+			console.warn('[render] disk below PCBGIT_MIN_FREE_DISK: renders wait for space');
+			diskRetry = setTimeout(() => {
+				diskRetry = null;
+				kick();
+			}, 60_000);
+		}
+		return false;
+	}
 
 	run(
 		"UPDATE render_jobs SET status = 'running', started_at = ?, attempts = attempts + 1 WHERE id = ?",

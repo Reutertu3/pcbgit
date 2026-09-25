@@ -62,6 +62,7 @@
 	</div>
 </div>
 
+{#if data.diskLow}<FormError message={t('jobs.diskLow', data.diskLow)} />{/if}
 {#if form?.message}<FormError message={form.message} kind="success" />{/if}
 {#if form?.error}<FormError message={form.error} />{/if}
 
