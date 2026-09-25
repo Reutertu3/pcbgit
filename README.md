@@ -214,20 +214,24 @@ appears in the list.
 
 pcbgit checks GitHub for new commits every hour. When updates are available,
 **Admin → Overview** shows a banner and **Admin → Instance** lists the new
-commits as a changelog.
+commits as a changelog, with whether their image is ready.
 
 To update, either:
 
-- press **Update from GitHub** under **Admin → Instance**, or
+- press **Update from GitHub** under **Admin → Instance**,
+- turn on **Automatic updates** there: after each hourly check, a new version is
+  installed as soon as its image is ready, or
 - run `/opt/pcbgit/deploy/update.sh` on the server.
 
-Both pull from GitHub and restart. The Docker image is not built on the server:
-GitHub Actions builds one for every commit on `master` that passes its tests, and
-the update pulls the image of exactly the commit it updates to. Right after a
-push, the update waits up to 20 minutes for that image. Without one (a fork
-without the workflow, a remote outside GitHub, local edits on the server), the
-server builds the image itself as before. The site is down for a few seconds.
-**Check now** runs the GitHub check immediately.
+The Docker image is not built on the server: GitHub Actions builds one for every
+commit on `master` that passes its tests, and the update pulls the image of
+exactly the commit it updates to. Right after a push, the update waits up to 20
+minutes for that image. Without one (a fork without the workflow, a remote
+outside GitHub, local edits on the server, failed tests), the server builds the
+image itself. The site is down for a few seconds while pcbgit restarts. The
+panel shows each step (fetch, wait for image, download or build, restart) and
+how the running version got there. **Check now** runs the GitHub check
+immediately.
 
 <details>
 <summary>How updating works, and what can go wrong</summary>
@@ -235,14 +239,19 @@ server builds the image itself as before. The site is down for a few seconds.
 - Only fast-forward pulls are done. If the server copy has its own commits, the
   update stops and the panel says so.
 - The container cannot run commands on the host. The button writes a request file
-  to `/var/lib/pcbgit-control`; a systemd unit on the host picks it up.
+  to `/var/lib/pcbgit-control`; a systemd unit on the host picks it up. The
+  automatic-update switch is a file there too (`auto-update`), read by the hourly
+  check.
+- An automatic update only starts when the image is ready (or when the server
+  builds itself). If it fails, it is not retried; the next new version is.
+- A download or build that fails leaves the old version running, and the checkout
+  goes back to it, so the next check offers the update again.
 - Each update re-syncs the systemd units and restarts Caddy when its config changed.
 - `systemctl status pcbgit-update.service` shows the last run on the server.
-- The image comes from `ghcr.io/<owner>/<repo>` of the GitHub remote. The package
-  must be public: GitHub makes it private when it is first published (change it
-  under the package's settings). A private or unreachable image is not waited
-  for; the server builds instead, and the log says why.
-- The panel's status says which way an update went: "pulled image" or "built here".
+- The image comes from `ghcr.io/<owner>/<repo>` of the GitHub remote, and must be
+  public (the package's settings on GitHub; a package published from a public
+  repository usually is). A private or unreachable image is not waited for; the
+  server builds instead, and the log says why.
 - After an update that changes rendering, **Admin → Boards → Re-render all**
   brings existing versions up to date.
 

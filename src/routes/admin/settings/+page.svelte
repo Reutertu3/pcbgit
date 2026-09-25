@@ -8,6 +8,7 @@
 	import FormError from '$lib/components/FormError.svelte';
 	import SavedNote from '$lib/components/SavedNote.svelte';
 	import { t, tParts } from '$lib/i18n/t';
+	import type { ImageState, UpdateStatus, UpdateStep } from '$lib/types';
 
 	let { data, form } = $props();
 
@@ -23,6 +24,38 @@
 	});
 
 	const STATE_COLOR = { running: 'var(--info)', success: 'var(--ok)', failed: 'var(--err)' } as const;
+
+	// Only "ready" updates in a minute; the others wait for GitHub or build here.
+	const IMAGE_COLOR: Record<ImageState, string> = {
+		ready: 'var(--ok)',
+		building: 'var(--info)',
+		failed: 'var(--warn)',
+		missing: 'var(--warn)',
+		unreadable: 'var(--warn)',
+		local: 'var(--warn)',
+		off: 'var(--text-muted)'
+	};
+
+	// update.sh's steps in order; downloading and building share a place.
+	const STEPS = ['fetch', 'wait', 'install', 'restart'] as const;
+	function stepIndex(step: UpdateStep | undefined) {
+		if (step === 'pull' || step === 'build') return 2;
+		if (step === 'done') return STEPS.length;
+		return Math.max(0, STEPS.indexOf((step ?? 'fetch') as (typeof STEPS)[number]));
+	}
+	function stepLabel(step: (typeof STEPS)[number], status: UpdateStatus | null) {
+		if (step !== 'install') return t(`instance.step.${step}`);
+		if (status?.step === 'build' || status?.how === 'built') return t('instance.step.build');
+		if (status?.step === 'pull' || status?.how === 'pulled') return t('instance.step.pull');
+		return t('instance.step.install');
+	}
+
+	// How the running version got here, when the last update installed it.
+	const runningHow = $derived.by(() => {
+		const status = data.update?.status;
+		if (status?.state !== 'success' || !status.how || !status.to) return null;
+		return data.version.startsWith(status.to) || status.to.startsWith(data.version) ? status.how : null;
+	});
 </script>
 
 <svelte:head><title>{t('admin.nav.instance')} · {t('admin.title')} · {data.site.name}</title></svelte:head>
@@ -72,7 +105,9 @@
 <section class="surface mt-4 p-5" id="updates">
 	<div class="mb-1 flex flex-wrap items-center justify-between gap-2">
 		<h3 class="text-sm font-semibold">{t('instance.updates')}</h3>
-		<span class="mono text-xs text-[var(--text-muted)]">{t('instance.running', { version: data.version })}</span>
+		<span class="mono text-xs text-[var(--text-muted)]">
+			{t('instance.running', { version: data.version })}{#if runningHow}{' · '}{t(`instance.how.${runningHow}`)}{/if}
+		</span>
 	</div>
 
 	{#if !data.update}
@@ -80,11 +115,35 @@
 			{#each tParts('instance.updatesOff') as part}{#if typeof part === 'string'}{part}{:else}<span class="mono">deploy/install.sh</span>{/if}{/each}
 		</p>
 	{:else}
-		<p class="mb-3 text-xs leading-relaxed text-[var(--text-secondary)]">
-			{t('instance.updatesHint')}
-		</p>
-
 		{@const available = data.availability}
+		<p class="mb-1 text-xs leading-relaxed text-[var(--text-secondary)]">{t('instance.updatesHint')}</p>
+		{#if available?.checked}
+			<p class="mb-3 text-xs leading-relaxed text-[var(--text-secondary)]">
+				{#if available.source}
+					{#each tParts('instance.sourceImage') as part}{#if typeof part === 'string'}{part}{:else}<span class="mono">{available.source}</span>{/if}{/each}
+				{:else}
+					{#each tParts('instance.sourceBuild') as part}{#if typeof part === 'string'}{part}{:else}<span class="mono">PCBGIT_UPDATE_IMAGE=build</span>{/if}{/each}
+				{/if}
+			</p>
+		{:else}
+			<div class="mb-3"></div>
+		{/if}
+
+		<form method="POST" action="?/autoUpdate" use:enhance class="mb-4 flex flex-wrap items-start justify-between gap-3 rounded-md border px-3 py-2.5">
+			<div class="min-w-0 flex-1">
+				<p class="flex items-center gap-2 text-sm font-medium">
+					{t('instance.auto')}
+					<span class="chip" style:color={data.autoUpdate ? 'var(--ok)' : 'var(--text-muted)'}>{data.autoUpdate ? t('instance.autoOn') : t('instance.autoOff')}</span>
+				</p>
+				<p class="mt-0.5 text-xs leading-relaxed text-[var(--text-secondary)]">{t('instance.autoHint')}</p>
+				{#if data.autoUpdate && data.update.status?.state === 'failed' && data.update.status.trigger === 'auto'}
+					<p class="mt-1 text-xs" style:color="var(--warn)">{t('instance.autoPaused', { version: data.update.status.target ?? '' })}</p>
+				{/if}
+			</div>
+			<input type="hidden" name="enabled" value={data.autoUpdate ? 'false' : 'true'} />
+			<button class="btn btn-sm" type="submit">{data.autoUpdate ? t('instance.autoTurnOff') : t('instance.autoTurnOn')}</button>
+		</form>
+
 		{#if available}
 			<div class="mb-3">
 				{#if checking}
@@ -103,6 +162,12 @@
 						<span class="mono text-[var(--text-muted)]">{t('instance.range', { from: available.current, to: available.latest, branch: available.branch })}</span>
 						<span class="text-[var(--text-muted)]">· {t('instance.checked', { time: relativeTime(available.checked) })}</span>
 					</p>
+					{#if available.image}
+						<p class="mb-2 flex items-start gap-1.5 text-xs" style:color={IMAGE_COLOR[available.image]}>
+							<Icon name={available.image === 'ready' ? 'check' : available.image === 'building' ? 'clock' : 'info'} size={13} class="mt-px shrink-0" />
+							<span>{t(`instance.image.${available.image}`)}</span>
+						</p>
+					{/if}
 					<Changelog commits={available.commits} total={available.behind} />
 				{:else}
 					<p class="flex items-center gap-1.5 text-xs" style:color="var(--ok)">
@@ -118,14 +183,42 @@
 			</div>
 		{/if}
 
-		{#if data.update.requested}
-			<p class="mb-3 text-xs" style:color="var(--info)">{t('instance.requested')}</p>
-		{:else if data.update.status}
-			{@const status = data.update.status}
+		{@const status = data.update.status}
+		{#if data.update.requested || status?.state === 'running' || (status?.state === 'failed' && status.step)}
+			<!-- Where the update is: every step before the current one is done. -->
+			{@const current = data.update.requested ? -1 : stepIndex(status?.step)}
+			<div class="mb-3 rounded-md border px-3 py-2 text-xs">
+				<ol class="flex flex-wrap items-center gap-x-3 gap-y-1">
+					{#each STEPS as step, index (step)}
+						{@const failed = status?.state === 'failed' && !data.update.requested && index === current}
+						<li
+							class="flex items-center gap-1"
+							style:color={failed ? 'var(--err)' : index < current ? 'var(--ok)' : index === current ? 'var(--info)' : 'var(--text-muted)'}
+						>
+							<Icon
+								name={failed ? 'x' : index < current ? 'check' : index === current ? 'refresh' : 'chevronRight'}
+								size={12}
+								class={index === current && !failed ? 'animate-pulse' : ''}
+							/>
+							{stepLabel(step, status)}
+						</li>
+					{/each}
+				</ol>
+				<p class="mt-1.5 text-[var(--text-muted)]">
+					{#if data.update.requested}
+						{t('instance.requested')}
+					{:else if status}
+						{status.message}{#if status.trigger === 'auto'}{' · '}{t('instance.automatic')}{/if}
+						· {status.state === 'running' ? t('instance.started', { time: relativeTime(status.started * 1000) }) : formatDateTime((status.finished ?? status.started) * 1000)}
+					{/if}
+				</p>
+			</div>
+		{:else if status}
 			<div class="mb-3 rounded-md border px-3 py-2 text-xs">
 				<span class="font-semibold" style:color={STATE_COLOR[status.state]}>{status.message}</span>
 				<span class="text-[var(--text-muted)]">
-					· {status.state === 'running' ? t('instance.started', { time: relativeTime(status.started * 1000) }) : formatDateTime((status.finished ?? status.started) * 1000)}
+					{#if status.how}{' · '}{t(`instance.how.${status.how}`)}{/if}{#if status.trigger === 'auto'}{' · '}{t('instance.automatic')}{/if}
+					· {formatDateTime((status.finished ?? status.started) * 1000)}
 				</span>
 			</div>
 		{/if}
@@ -145,7 +238,7 @@
 		</form>
 
 		{#if data.update.log}
-			<details class="mt-3" open={data.update.status?.state === 'failed'}>
+			<details class="mt-3" open={status?.state === 'failed'}>
 				<summary class="cursor-pointer text-xs text-[var(--text-muted)]">{t('instance.lastLog')}</summary>
 				<pre class="mono mt-2 max-h-72 overflow-auto whitespace-pre-wrap rounded border bg-[var(--surface-0)] px-3 py-2 text-[0.6875rem] leading-relaxed text-[var(--text-secondary)]">{data.update.log}</pre>
 			</details>

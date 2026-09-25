@@ -212,3 +212,15 @@ waiting up to 20 minutes right after a push, and builds on the server only when
 there is none. No admin panel switch: the choice follows from whether an image
 exists, and `PCBGIT_UPDATE_IMAGE=build` in `.env` forces building.
 
+### Updates explained in the panel, and automatic updates
+The Instance page said "pulls and rebuilds" and showed one status line, so it was
+unclear what an update would do and where it stood. The hourly check now also
+asks whether the new commit's image is ready, still building on GitHub, failed,
+or missing, and the page says what pressing Update will do in each case. A
+running update shows its steps (fetch, wait for image, download or build,
+restart), and the header says whether the running version was pulled or built.
+Automatic updates can be switched on: the hourly check then installs a new
+version once its image is ready, and does not retry one that failed. A download
+or build that fails now moves the checkout back, so the server does not claim to
+be up to date while the old version runs.
+

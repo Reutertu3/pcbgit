@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
-# Pulls the latest pcbgit from GitHub and rebuilds the running instance.
+# Updates pcbgit to the latest commit on GitHub and restarts it.
 #
-#   sudo deploy/update.sh            update (FORCE=1 rebuilds even if unchanged)
+#   sudo deploy/update.sh            update (FORCE=1 reinstalls even if unchanged)
 #   sudo deploy/update.sh --check    only fetch and record what an update would bring
 #
 # Run by systemd: pcbgit-update when the admin panel asks for an update,
-# pcbgit-check hourly and when the panel asks for a check.
+# pcbgit-check hourly and when the panel asks for a check. With automatic updates
+# on (the panel's switch), a check that finds a new version requests the update.
 #
 # Only fast-forward pulls are done: local edits on the server are never merged
 # or overwritten; the update fails instead and says why.
@@ -20,6 +21,8 @@ COMPOSE_FILES="${PCBGIT_COMPOSE_FILES:-docker-compose.yml:deploy/docker-compose.
 STATUS="$CONTROL_DIR/update-status.json"
 LOG="$CONTROL_DIR/update.log"
 REQUEST="$CONTROL_DIR/update-request"
+# Written by the admin panel's switch; its presence turns automatic updates on.
+AUTO="$CONTROL_DIR/auto-update"
 # How long to wait for GitHub Actions to publish the image of a new commit.
 IMAGE_WAIT=$((20 * 60))
 
@@ -47,24 +50,103 @@ sync_caddy() {
 	fi
 }
 
+# owner/repo of a GitHub remote; nothing for other hosts.
+github_repo() {
+	local remote
+	remote=$(git_ remote get-url origin)
+	[[ "$remote" =~ github\.com[:/]([^/]+)/([^/]+)$ ]] && echo "${BASH_REMATCH[1]}/${BASH_REMATCH[2]%.git}"
+	return 0
+}
+
+# Where the image comes from: GitHub Actions builds one for every commit on master
+# that passes its tests (.github/workflows/ci.yml), so this small server does not
+# have to. PCBGIT_UPDATE_IMAGE in .env: unset follows a GitHub remote
+# (ghcr.io/<owner>/<repo>), "build" always builds here. Nothing means build here.
+image_repo() {
+	local setting repo
+	setting=$(sed -n 's/^PCBGIT_UPDATE_IMAGE=//p' "$REPO_DIR/.env" 2>/dev/null | tail -1 | tr -d "\"'")
+	if [[ -n "$setting" ]]; then
+		[[ "$setting" == build ]] || echo "$setting"
+		return 0
+	fi
+	repo=$(github_repo)
+	[[ -n "$repo" ]] && echo "ghcr.io/${repo,,}"
+	return 0
+}
+
+# State of the CI run for a commit on GitHub: queued, in_progress, success,
+# failure, …; nothing when there is none or GitHub cannot be asked.
+ci_state() {
+	local repo answer status
+	repo=$(github_repo)
+	[[ -n "$repo" ]] || return 0
+	answer=$(curl -fsS --max-time 10 "https://api.github.com/repos/$repo/actions/workflows/ci.yml/runs?head_sha=$1&per_page=1" 2>/dev/null) || return 0
+	# No run for the commit: no "status" field, and nothing is printed.
+	status=$(grep -m1 -o '"status": *"[a-z_]*"' <<<"$answer" | sed 's/.*"\([a-z_]*\)"$/\1/' || true)
+	if [[ "$status" == completed ]]; then
+		grep -m1 -o '"conclusion": *"[a-z_]*"' <<<"$answer" | sed 's/.*"\([a-z_]*\)"$/\1/' || true
+	else
+		echo "$status"
+	fi
+}
+
+# Whether the image of a commit can be pulled: ready, building (CI still running),
+# failed (CI failed, so no image will come), missing, unreadable (a private package
+# or no network), local (edits on this server, which the image does not have), or
+# off (built here).
+image_state() { # repo, full commit
+	local answer
+	[[ -n "$1" ]] || { echo off; return; }
+	if [[ -n "$(git_ status --porcelain --untracked-files=no)" ]]; then echo local; return; fi
+	if answer=$(docker manifest inspect "$1:sha-$2" 2>&1 >/dev/null); then echo ready; return; fi
+	if ! grep -qi 'manifest unknown\|not found' <<<"$answer"; then echo unreadable; return; fi
+	case "$(ci_state "$2")" in
+		queued | in_progress | waiting | requested | pending) echo building ;;
+		failure | cancelled | timed_out | startup_failure) echo failed ;;
+		*) echo missing ;;
+	esac
+}
+
 # Records what an update would bring: the commits on GitHub that the server does
-# not have yet (newest first, with their messages as the changelog), and whether
-# the server copy has commits of its own, which would block a fast-forward.
+# not have yet (newest first, with their messages as the changelog), whether the
+# server copy has commits of its own, which would block a fast-forward, and
+# whether the newest commit's image is ready.
 write_availability() {
-	local branch upstream behind ahead remote
+	local branch upstream behind ahead remote repo image=""
 	branch=$(git_ rev-parse --abbrev-ref HEAD)
 	upstream="origin/$branch"
 	behind=$(git_ rev-list --count "HEAD..$upstream")
 	ahead=$(git_ rev-list --count "$upstream..HEAD")
 	# Strip any credentials embedded in an https remote URL.
 	remote=$(git_ remote get-url origin | sed -E 's#^([a-z+]+://)[^/@]*@#\1#')
+	repo=$(image_repo)
+	((behind > 0)) && image=$(image_state "$repo" "$(git_ rev-parse "$upstream")")
 	git_ log --max-count=50 --format='%H%x1f%h%x1f%an%x1f%ct%x1f%s' "HEAD..$upstream" \
 		>"$CONTROL_DIR/update-commits.txt.tmp"
 	publish "$CONTROL_DIR/update-commits.txt"
-	printf '{"checked":%s,"ok":true,"branch":"%s","current":"%s","latest":"%s","behind":%s,"ahead":%s,"remote":"%s"}\n' \
+	printf '{"checked":%s,"ok":true,"branch":"%s","current":"%s","latest":"%s","behind":%s,"ahead":%s,"remote":"%s","source":"%s","image":"%s"}\n' \
 		"$(date +%s)" "$branch" "$(git_ rev-parse --short HEAD)" "$(git_ rev-parse --short "$upstream")" \
-		"$behind" "$ahead" "$remote" >"$CONTROL_DIR/update-available.json.tmp"
+		"$behind" "$ahead" "$remote" "$repo" "$image" >"$CONTROL_DIR/update-available.json.tmp"
 	publish "$CONTROL_DIR/update-available.json"
+}
+
+# With automatic updates on, a check that finds a new version requests the update,
+# as the panel's button does. Only when it can go ahead now: the image is ready (or
+# this server builds), nothing blocks a fast-forward, and the last automatic
+# attempt at this version did not fail (it waits for a newer one instead).
+auto_update() {
+	[[ -f "$AUTO" ]] || return 0
+	local available latest
+	available=$(cat "$CONTROL_DIR/update-available.json")
+	grep -q '"behind":0,' <<<"$available" && return 0
+	grep -q '"ahead":0,' <<<"$available" || return 0
+	grep -Eq '"image":"(ready|off)"' <<<"$available" || return 0
+	latest=$(sed -n 's/.*"latest":"\([0-9a-f]*\)".*/\1/p' <<<"$available")
+	if [[ -f "$STATUS" ]] && grep -q '"state":"failed"' "$STATUS" && grep -q "\"target\":\"$latest\"" "$STATUS"; then
+		return 0
+	fi
+	printf '{"by":"automatic","auto":true,"force":false,"requested_at":"%s"}\n' "$(date -Is)" >"$REQUEST.tmp"
+	publish "$REQUEST"
 }
 
 mkdir -p "$CONTROL_DIR"
@@ -80,6 +162,9 @@ if [[ "$MODE" == check ]]; then
 	if git_ fetch --prune origin >"$CONTROL_DIR/check.log.tmp" 2>&1; then
 		publish "$CONTROL_DIR/check.log"
 		write_availability
+		# The update this may request waits for the lock; let it go first.
+		exec 9>&-
+		auto_update
 	else
 		publish "$CONTROL_DIR/check.log"
 		printf '{"checked":%s,"ok":false}\n' "$(date +%s)" >"$CONTROL_DIR/update-available.json.tmp"
@@ -96,24 +181,43 @@ if [[ "$COMPOSE_FILES" == *prod* ]] && ! grep -Eq '^PCBGIT_DOMAIN=[A-Za-z0-9.-]+
 	exit 1
 fi
 
-# A request from the panel may ask for a rebuild even without new commits.
-if [[ -f "$REQUEST" ]] && grep -q '"force": *true' "$REQUEST"; then FORCE=1; fi
+# A request from the panel may ask for a reinstall even without new commits.
+trigger=manual
+if [[ -f "$REQUEST" ]]; then
+	grep -q '"force": *true' "$REQUEST" && FORCE=1
+	grep -q '"auto": *true' "$REQUEST" && trigger=auto
+fi
 rm -f "$REQUEST"
 
 started=$(date +%s)
 from=$(git_ rev-parse --short HEAD)
 to=$from
-write_status() { # state, message
+target=""
+how=""
+# The panel shows `step` as a list (fetch, wait, pull or build, restart, done)
+# and `message` as the detail.
+write_status() { # state, step, message
 	local finished=null
 	[[ "$1" != running ]] && finished=$(date +%s)
-	printf '{"state":"%s","message":"%s","started":%s,"finished":%s,"from":"%s","to":"%s"}\n' \
-		"$1" "$2" "$started" "$finished" "$from" "$to" >"$STATUS.tmp"
+	printf '{"state":"%s","step":"%s","how":"%s","trigger":"%s","message":"%s","started":%s,"finished":%s,"from":"%s","to":"%s","target":"%s"}\n' \
+		"$1" "$2" "$how" "$trigger" "$3" "$started" "$finished" "$from" "$to" "${target:0:7}" >"$STATUS.tmp"
 	publish "$STATUS"
 }
+# A download or build that fails leaves the old version running: move the checkout
+# back to it, or the next check would call the server up to date. --keep keeps
+# local edits.
+from_commit=$(git_ rev-parse HEAD)
+on_error() {
+	if [[ "$step" == pull || "$step" == build ]] && [[ "$(git_ rev-parse HEAD)" != "$from_commit" ]]; then
+		git_ reset --keep "$from_commit" >>"$LOG" 2>&1 && to=$from
+	fi
+	write_status failed "$step" "Failed while $phase - see the log"
+}
+step=fetch
 phase="pulling from GitHub"
-trap 'write_status failed "Failed while $phase - see the log"' ERR
+trap on_error ERR
 
-write_status running "Pulling from GitHub"
+write_status running fetch "Fetching from GitHub"
 : >"$LOG"
 chmod 644 "$LOG"
 {
@@ -132,59 +236,33 @@ if [[ "$(git_ rev-parse HEAD)" == "$target" && "${FORCE:-0}" != 1 ]]; then
 	# Still catches a Caddyfile an earlier update left unapplied.
 	sync_caddy >>"$LOG" 2>&1
 	write_availability
-	write_status success "Already up to date"
+	write_status success done "Already up to date"
 	exit 0
 fi
 
-# Where the image comes from: GitHub Actions builds one for every commit on master
-# that passes its tests (.github/workflows/ci.yml), so this small server does not
-# have to. PCBGIT_UPDATE_IMAGE in .env: unset follows a GitHub remote
-# (ghcr.io/<owner>/<repo>), "build" always builds here.
-image_repo() {
-	local setting remote
-	setting=$(sed -n 's/^PCBGIT_UPDATE_IMAGE=//p' "$REPO_DIR/.env" 2>/dev/null | tail -1 | tr -d "\"'")
-	if [[ -n "$setting" ]]; then
-		[[ "$setting" == build ]] || echo "$setting"
-		return
-	fi
-	remote=$(git_ remote get-url origin)
-	if [[ "$remote" =~ github\.com[:/]([^/]+)/([^/]+)$ ]]; then
-		local repo=${BASH_REMATCH[2]%.git}
-		echo "ghcr.io/${BASH_REMATCH[1],,}/${repo,,}"
-	fi
-}
 pull_ref=""
 repo=$(image_repo)
-if [[ -n "$repo" ]]; then
-	if [[ -n "$(git_ status --porcelain --untracked-files=no)" ]]; then
-		# The image holds the commit as on GitHub, without edits made here.
-		echo "== local changes in $REPO_DIR: building here instead of pulling $repo" >>"$LOG"
-	else
-		# The image appears a few minutes after the push (tests, then the build). Only
-		# "not found" is worth waiting for; a private package or no network is not.
-		ref="$repo:sha-$target"
-		waited=0
-		while ! answer=$(docker manifest inspect "$ref" 2>&1 >/dev/null); do
-			if ! grep -qi 'manifest unknown\|not found' <<<"$answer"; then
-				echo "== cannot read $ref ($answer): building here" >>"$LOG"
-				ref=""
-				break
-			fi
-			if ((waited >= IMAGE_WAIT)); then
-				echo "== no image $ref after $((IMAGE_WAIT / 60)) min: building here" >>"$LOG"
-				ref=""
-				break
-			fi
-			if ((waited == 0)); then
-				echo "== waiting for $ref to be built on GitHub" >>"$LOG"
-				write_status running "Waiting for the image of ${target:0:7} to be built on GitHub"
-			fi
-			sleep 30
-			waited=$((waited + 30))
-		done
-		pull_ref=$ref
+state=$(image_state "$repo" "$target")
+# The image appears a few minutes after the push (tests, then the build). Only a
+# build still running is worth waiting for.
+waited=0
+while [[ "$state" == building || ("$state" == missing && waited -eq 0) ]]; do
+	if ((waited >= IMAGE_WAIT)); then break; fi
+	if ((waited == 0)); then
+		step=wait
+		echo "== waiting for $repo:sha-$target to be built on GitHub" >>"$LOG"
+		write_status running wait "Waiting for the image of ${target:0:7} to be built on GitHub"
 	fi
-fi
+	sleep 30
+	waited=$((waited + 30))
+	state=$(image_state "$repo" "$target")
+done
+case "$state" in
+	ready) pull_ref="$repo:sha-$target" ;;
+	off) ;;
+	local) echo "== local changes in $REPO_DIR: building here instead of pulling $repo" >>"$LOG" ;;
+	*) echo "== no image $repo:sha-$target ($state): building here" >>"$LOG" ;;
+esac
 
 phase="pulling from GitHub"
 git_ merge --ff-only "$target" >>"$LOG" 2>&1
@@ -199,31 +277,36 @@ fi
 # A release tag on exactly this commit is shown in the footer next to the commit.
 export PCBGIT_GIT_TAG="$(git_ describe --tags --exact-match HEAD 2>/dev/null || true)"
 if [[ -n "$pull_ref" ]]; then
-	how="pulled image"
+	how=pulled
+	step=pull
 	phase="pulling $pull_ref"
-	write_status running "Pulling the image of $to"
+	write_status running pull "Downloading the image of $to"
 	{
 		echo "== pulling $pull_ref"
 		docker pull "$pull_ref"
 		# Compose runs pcbgit:latest; retagging it recreates both containers.
 		docker tag "$pull_ref" pcbgit:latest
 		docker rmi "$pull_ref"
-		compose up -d --remove-orphans
 	} >>"$LOG" 2>&1
 else
-	how="built here"
+	how=built
+	step=build
 	phase="building $to"
-	write_status running "Building $to"
+	write_status running build "Building $to on this server"
 	{
 		echo "== building $to"
 		export PCBGIT_GIT_SHA="$to"
-		compose up -d --build --remove-orphans
+		compose build
 	} >>"$LOG" 2>&1
 fi
+step=restart
+phase="restarting"
+write_status running restart "Restarting pcbgit"
 {
+	compose up -d --remove-orphans
 	sync_caddy
 	docker image prune -f
 	echo "== $(date -Is) done ($how)"
 } >>"$LOG" 2>&1
 write_availability
-if [[ "$from" == "$to" ]]; then write_status success "Rebuilt $to ($how)"; else write_status success "Updated $from → $to ($how)"; fi
+if [[ "$from" == "$to" ]]; then write_status success done "Reinstalled $to"; else write_status success done "Updated $from → $to"; fi

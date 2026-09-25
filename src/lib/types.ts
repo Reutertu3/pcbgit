@@ -142,7 +142,32 @@ export interface Availability {
 	repoUrl: string | null;
 	commits: ChangelogEntry[];
 	checkRequested: boolean;
+	/** Registry updates pull from; null when this server builds each version itself. */
+	source: string | null;
+	/** Whether the newest commit's image can be pulled (update.sh `image_state`); null when up to date. */
+	image: ImageState | null;
 }
+
+/** update.sh's status file. */
+export type UpdateStep = 'fetch' | 'wait' | 'pull' | 'build' | 'restart' | 'done';
+
+export interface UpdateStatus {
+	state: 'running' | 'success' | 'failed';
+	/** Absent in status files from before steps were recorded. */
+	step?: UpdateStep;
+	/** How the new version got onto the server, once decided. */
+	how?: 'pulled' | 'built' | '';
+	trigger?: 'manual' | 'auto';
+	message: string;
+	started: number;
+	finished: number | null;
+	from: string;
+	to: string;
+	/** Short commit the update is going to. */
+	target?: string;
+}
+
+export type ImageState = 'ready' | 'building' | 'failed' | 'missing' | 'unreadable' | 'local' | 'off';
 
 export interface CommentView {
 	id: string;

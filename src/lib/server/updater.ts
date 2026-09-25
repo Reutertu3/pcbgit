@@ -1,8 +1,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import type { Availability, ChangelogEntry } from '$lib/types';
+import type { Availability, ChangelogEntry, ImageState, UpdateStatus } from '$lib/types';
 
-export type { Availability, ChangelogEntry };
+export type { Availability, ChangelogEntry, UpdateStatus };
 
 /**
  * The app never updates itself. It drops a request file into a folder shared
@@ -11,14 +11,7 @@ export type { Availability, ChangelogEntry };
  */
 const CONTROL_DIR = process.env.PCBGIT_CONTROL_DIR ?? '';
 
-export interface UpdateStatus {
-	state: 'running' | 'success' | 'failed';
-	message: string;
-	started: number;
-	finished: number | null;
-	from: string;
-	to: string;
-}
+const IMAGE_STATES: ImageState[] = ['ready', 'building', 'failed', 'missing', 'unreadable', 'local', 'off'];
 
 export function updaterEnabled() {
 	return CONTROL_DIR !== '' && fs.existsSync(CONTROL_DIR);
@@ -74,12 +67,12 @@ export function githubWebUrl(remote: string) {
 export function updateAvailability(): Availability | null {
 	if (!updaterEnabled()) return null;
 	const checkRequested = fs.existsSync(path.join(CONTROL_DIR, 'check-request'));
-	let raw: Partial<Availability> & { remote?: string };
+	let raw: Partial<Omit<Availability, 'source' | 'image'>> & { remote?: string; source?: string; image?: string };
 	try {
 		raw = JSON.parse(fs.readFileSync(path.join(CONTROL_DIR, 'update-available.json'), 'utf8'));
 	} catch {
 		// Never checked yet.
-		return { checked: 0, ok: true, branch: '', current: '', latest: '', behind: 0, ahead: 0, repoUrl: null, commits: [], checkRequested };
+		return { checked: 0, ok: true, branch: '', current: '', latest: '', behind: 0, ahead: 0, repoUrl: null, commits: [], checkRequested, source: null, image: null };
 	}
 
 	const repoUrl = raw.remote ? githubWebUrl(raw.remote) : null;
@@ -114,8 +107,25 @@ export function updateAvailability(): Availability | null {
 		ahead: raw.ahead ?? 0,
 		repoUrl,
 		commits,
-		checkRequested
+		checkRequested,
+		source: raw.source || null,
+		image: IMAGE_STATES.includes(raw.image as ImageState) ? (raw.image as ImageState) : null
 	};
+}
+
+/**
+ * Automatic updates: update.sh --check (hourly) requests the update itself when a
+ * new version can be installed. The switch is a file the host script looks for.
+ */
+export function autoUpdateEnabled() {
+	return updaterEnabled() && fs.existsSync(path.join(CONTROL_DIR, 'auto-update'));
+}
+
+export function setAutoUpdate(on: boolean, by: string) {
+	if (!updaterEnabled()) throw new Error('Updates are not configured on this server.');
+	const file = path.join(CONTROL_DIR, 'auto-update');
+	if (on) fs.writeFileSync(file, JSON.stringify({ by, enabled_at: new Date().toISOString() }, null, 1));
+	else fs.rmSync(file, { force: true });
 }
 
 export function requestCheck() {

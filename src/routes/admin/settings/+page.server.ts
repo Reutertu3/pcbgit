@@ -3,7 +3,15 @@ import { translate } from '$lib/i18n';
 import { audit, getSetting, setSetting } from '$lib/server/db';
 import { fail } from '@sveltejs/kit';
 import { resetKicadVersionCache } from '$lib/server/render/kicad';
-import { requestCheck, requestUpdate, runningVersion, updateAvailability, updateState } from '$lib/server/updater';
+import {
+	autoUpdateEnabled,
+	requestCheck,
+	requestUpdate,
+	runningVersion,
+	setAutoUpdate,
+	updateAvailability,
+	updateState
+} from '$lib/server/updater';
 
 export const load: PageServerLoad = async () => ({
 	settings: {
@@ -13,7 +21,8 @@ export const load: PageServerLoad = async () => ({
 	},
 	version: runningVersion(),
 	update: updateState(),
-	availability: updateAvailability()
+	availability: updateAvailability(),
+	autoUpdate: autoUpdateEnabled()
 });
 
 export const actions: Actions = {
@@ -34,7 +43,7 @@ export const actions: Actions = {
 			return fail(409, { error: translate(locals.locale, 'instance.error.busy') });
 		}
 		requestUpdate(locals.user!.username, force);
-		audit(locals.user!.id, 'admin.update_request', force ? 'forced rebuild' : 'pull');
+		audit(locals.user!.id, 'admin.update_request', force ? 'forced reinstall' : 'update');
 		return { success: true, message: translate(locals.locale, 'instance.requestedMessage') };
 	},
 
@@ -44,6 +53,14 @@ export const actions: Actions = {
 		if (!availability.checkRequested) requestCheck();
 		audit(locals.user!.id, 'admin.update_check');
 		return { success: true, message: translate(locals.locale, 'instance.checkingMessage') };
+	},
+
+	autoUpdate: async ({ request, locals }) => {
+		if (!updateState()) return fail(400, { error: translate(locals.locale, 'instance.error.notConfigured') });
+		const on = (await request.formData()).get('enabled') === 'true';
+		setAutoUpdate(on, locals.user!.username);
+		audit(locals.user!.id, 'admin.auto_update', on ? 'on' : 'off');
+		return { success: true, message: translate(locals.locale, on ? 'instance.autoOnMessage' : 'instance.autoOffMessage') };
 	},
 
 	recheckKicad: async ({ locals }) => {

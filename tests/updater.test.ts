@@ -78,3 +78,42 @@ test('a failed check is reported as such', () => {
 	fs.writeFileSync(path.join(control, 'update-available.json'), '{"checked":1700000000,"ok":false}\n');
 	assert.equal(updater.updateAvailability()?.ok, false);
 });
+
+test('the image state and source from update.sh --check are read back; unknown states are dropped', () => {
+	fs.writeFileSync(
+		path.join(control, 'update-available.json'),
+		'{"checked":1700000000,"ok":true,"branch":"master","current":"aaa1111","latest":"bbb2222","behind":1,"ahead":0,"remote":"x","source":"ghcr.io/me/pcbgit","image":"building"}\n'
+	);
+	assert.equal(updater.updateAvailability()?.source, 'ghcr.io/me/pcbgit');
+	assert.equal(updater.updateAvailability()?.image, 'building');
+	// A server that builds itself writes an empty source; an up-to-date one no image state.
+	fs.writeFileSync(
+		path.join(control, 'update-available.json'),
+		'{"checked":1700000000,"ok":true,"branch":"master","current":"a","latest":"a","behind":0,"ahead":0,"remote":"x","source":"","image":"surprise"}\n'
+	);
+	assert.equal(updater.updateAvailability()?.source, null);
+	assert.equal(updater.updateAvailability()?.image, null);
+});
+
+test('steps, how and trigger of an update are read back', () => {
+	fs.writeFileSync(
+		path.join(control, 'update-status.json'),
+		'{"state":"running","step":"pull","how":"pulled","trigger":"auto","message":"Downloading","started":1,"finished":null,"from":"a","to":"b","target":"b"}\n'
+	);
+	const status = updater.updateState()!.status!;
+	assert.equal(status.step, 'pull');
+	assert.equal(status.how, 'pulled');
+	assert.equal(status.trigger, 'auto');
+	assert.equal(status.target, 'b');
+});
+
+test('automatic updates are a file the host script looks for', () => {
+	assert.equal(updater.autoUpdateEnabled(), false);
+	updater.setAutoUpdate(true, 'admin');
+	assert.ok(fs.existsSync(path.join(control, 'auto-update')));
+	assert.equal(updater.autoUpdateEnabled(), true);
+	updater.setAutoUpdate(false, 'admin');
+	assert.equal(updater.autoUpdateEnabled(), false);
+	// Turning it off twice is fine.
+	updater.setAutoUpdate(false, 'admin');
+});

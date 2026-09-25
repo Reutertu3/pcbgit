@@ -21,7 +21,11 @@ and builds the image of each passing `master` commit into
 `ghcr.io/reutertu3/pcbgit:sha-<commit>`. `deploy/update.sh` pulls that and tags
 it `pcbgit:latest` (what compose runs), or builds locally when there is none.
 The release tag is a runtime variable (`PCBGIT_TAG`), not built in, since a tag
-can come after the image.
+can come after the image. The app and `update.sh` talk only through files in
+`PCBGIT_CONTROL_DIR`: requests and the `auto-update` switch from the app, status
+(`state`, `step`, `how`, `trigger`), availability (`image`, `source`) and the log
+from the script. A field added on one side needs the other (`updater.ts`,
+`$lib/types`).
 
 ## How a version gets rendered
 
