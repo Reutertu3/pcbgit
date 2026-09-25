@@ -13,7 +13,11 @@ the code live in CLAUDE.md.
 | v0.3.0 | 2026-09-23 | Production Gerbers, re-render all, isolated renderer, security audit |
 | v0.3.1 | 2026-09-24 | Port setting, README images; also schematic PDF, license list, front-page filter and sort, settings form fix (not listed in its release notes) |
 | v0.4.0 | 2026-09-24 | Collaborators, version notifications, messages page, profile pictures |
-| v0.4.1 | 2026-09-24 | Render isolation against symlink tricks, download crash fix |
+| v0.4.1 | 2026-09-24 | Tagged on the v0.4.0 commit by mistake; its release was withdrawn and the fixes shipped as v0.4.2 |
+| v0.4.2 | 2026-09-24 | Render isolation against symlink tricks, download crash fix, NOTES.md |
+| v0.4.3 | 2026-09-24 | Preliminary Eagle support (Eagle 6+, Native or Converted) |
+| v0.5.0 | 2026-09-25 | Servers pull the image GitHub Actions built, automatic updates, CI, re-rendered files reach the browser, Eagle sheets on standard sizes |
+| v0.5.1 | 2026-09-25 | Transparent schematic fills no longer plotted red, tidier update section with an on/off slider |
 
 ## 2026-09-22
 
@@ -130,7 +134,7 @@ published as an artifact.
 
 Still open: a race if a compromised renderer keeps a process running (TODO.md).
 
-### Downloads could crash the server
+### Downloads could crash the server · v0.4.2
 Three routes (artifacts, thumbnails, backup download) passed a Node file stream
 straight to `new Response()`. Node's HTTP layer (undici) wraps such a stream in an
 adapter that can close it a second time when the visitor disconnects near the end
@@ -153,7 +157,7 @@ with them on would have untagged every board. Checked on the local instance:
 
 Eagle support was scoped the same day: Eagle 6 and newer only (see TODO.md).
 
-### Eagle projects render like KiCad ones
+### Eagle projects render like KiCad ones · v0.4.3
 Old Eagle projects (Eagle 6 and newer) can be uploaded or pushed for archiving.
 The schematic is translated by pcbgit's own converter, since kicad-cli cannot read
 Eagle schematics (only KiCad's GUI can; scripting that GUI worked but was fragile
@@ -212,7 +216,7 @@ waiting up to 20 minutes right after a push, and builds on the server only when
 there is none. No admin panel switch: the choice follows from whether an image
 exists, and `PCBGIT_UPDATE_IMAGE=build` in `.env` forces building.
 
-### Updates explained in the panel, and automatic updates
+### Updates explained in the panel, and automatic updates · v0.5.0
 The Instance page said "pulls and rebuilds" and showed one status line, so it was
 unclear what an update would do and where it stood. The hourly check now also
 asks whether the new commit's image is ready, still building on GitHub, failed,
@@ -222,9 +226,7 @@ restart), and the header says whether the running version was pulled or built.
 Automatic updates can be switched on: the hourly check then installs a new
 version once its image is ready, and does not retry one that failed. A download
 or build that fails now moves the checkout back, so the server does not claim to
-be up to date while the old version runs. The same day the section was tidied:
-shorter texts, its messages (errors, "Checking GitHub…") shown under its buttons
-instead of at the top of the page, and the switch became a green/red on/off slider.
+be up to date while the old version runs.
 
 ### Transparent fills no longer plotted solid red
 On the Touch-Matrix board (render-isolation-test), the DF-Player symbol U7 showed
@@ -234,3 +236,9 @@ draws as nothing but kicad-cli's plotter treats as unset and fills with the
 outline colour. Such fills are now turned into no fill before export. Affected
 boards need a re-render.
 
+### Update section tidied · v0.5.1
+On the Instance page, messages appeared at the top, far from the buttons that
+caused them, and the texts were long. The update
+section's messages (errors, "Checking GitHub…") now sit under its buttons,
+confirmations it already shows elsewhere are gone, the texts are shorter, and
+automatic updates are switched with a green/red on/off slider.
