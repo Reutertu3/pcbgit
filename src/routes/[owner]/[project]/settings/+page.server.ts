@@ -19,6 +19,7 @@ import {
 	syncCommits,
 	updateProject
 } from '$lib/server/projects';
+import { LimitError, checkStorage, takeWrite } from '$lib/server/limits';
 import {
 	MAX_UPLOAD_BYTES,
 	UploadError,
@@ -102,6 +103,15 @@ export const actions: Actions = {
 		}
 		const problem = projectProblem(files);
 		if (problem) return fail(400, { error: translate(locals.locale, problem) });
+
+		// Storage is the owner's, the hourly count is whoever uploads.
+		try {
+			await checkStorage(project.owner_id);
+			takeWrite(locals.user!);
+		} catch (error) {
+			if (error instanceof LimitError) return fail(403, { error: error.in(locals.locale) });
+			throw error;
+		}
 
 		await commitFiles(repoPath(project.owner_username, project.slug), files, {
 			message,

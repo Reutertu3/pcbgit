@@ -82,6 +82,14 @@ converter takes untrusted XML: keep its reader entity-free and capped
   turn foreign keys off around the rebuild, or dropping the old table deletes
   their rows.
 - **Admin actions** that change data call `audit(...)`.
+- **Limits** (`$lib/server/limits.ts`): anything that writes to a board checks
+  `checkStorage(owner)` and `takeWrite(actor)` first; creating a board checks
+  `checkNewBoard()`. Storage is the board owner's (repositories plus artifacts,
+  `projects.repo_bytes` kept current by `syncCommits()`); the hourly count is
+  whoever uploads or pushes. Admins have no limits. A refused push answers the
+  ref request with `refusePush()` so git prints the reason.
+- **Pending accounts** (admin approval) have `approved = 0` and `is_active = 0`,
+  so every `is_active = 1` filter already leaves them out.
 - **Permissions** go through `canView` / `canEdit` / `isOwner` (projects.ts). Collaborators
   (`project_members`) can do everything an owner can except delete the board and manage
   collaborators. SQL that filters by access (`visibleTo`, `VISIBLE` in notifications.ts)

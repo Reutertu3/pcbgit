@@ -212,3 +212,20 @@ export function authRequired(message = 'Authentication required') {
 		}
 	});
 }
+
+/** One pkt-line: four hex digits of length (including themselves), then the data. */
+function pktLine(data: string) {
+	return (Buffer.byteLength(data) + 4).toString(16).padStart(4, '0') + data;
+}
+
+/**
+ * Refuses a push while git is asking for the refs. An "ERR" line there makes git
+ * stop with "remote error: <message>"; an HTTP error status would only show
+ * "The requested URL returned error: 403", without the reason.
+ */
+export function refusePush(message: string) {
+	const body = pktLine('# service=git-receive-pack\n') + '0000' + pktLine(`ERR ${message.replace(/\s+/g, ' ')}\n`);
+	return new Response(body, {
+		headers: { 'Content-Type': 'application/x-git-receive-pack-advertisement', 'Cache-Control': 'no-cache' }
+	});
+}

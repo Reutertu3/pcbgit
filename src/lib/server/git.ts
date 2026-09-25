@@ -45,6 +45,20 @@ export async function deleteRepo(ownerSlug: string, projectSlug: string) {
 	await fsp.rm(repoPath(ownerSlug, projectSlug), { recursive: true, force: true });
 }
 
+/** Bytes a repository takes on disk, for storage limits. Links are counted, not followed. */
+export async function repoSize(repo: string) {
+	let total = 0;
+	const walk = async (dir: string) => {
+		for (const entry of await fsp.readdir(dir, { withFileTypes: true })) {
+			const full = path.join(dir, entry.name);
+			if (entry.isDirectory()) await walk(full);
+			else total += (await fsp.lstat(full)).size;
+		}
+	};
+	await walk(repo);
+	return total;
+}
+
 export function repoExists(ownerSlug: string, projectSlug: string) {
 	return fs.existsSync(repoPath(ownerSlug, projectSlug));
 }

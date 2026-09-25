@@ -3,6 +3,7 @@ import { translate } from '$lib/i18n';
 import { audit, getSetting, setSetting } from '$lib/server/db';
 import { fail } from '@sveltejs/kit';
 import { resetKicadVersionCache } from '$lib/server/render/kicad';
+import { instanceLimits } from '$lib/server/limits';
 import {
 	autoUpdateEnabled,
 	requestCheck,
@@ -17,8 +18,10 @@ export const load: PageServerLoad = async () => ({
 	settings: {
 		siteName: getSetting('site_name', 'pcbgit'),
 		siteTagline: getSetting('site_tagline', 'Self-hosted home for hardware design'),
-		registrationOpen: getSetting('registration_open', 'true') === 'true'
+		registrationOpen: getSetting('registration_open', 'true') === 'true',
+		registrationApproval: getSetting('registration_approval', 'true') === 'true'
 	},
+	limits: instanceLimits(),
 	version: runningVersion(),
 	update: updateState(),
 	availability: updateAvailability(),
@@ -31,8 +34,20 @@ export const actions: Actions = {
 		setSetting('site_name', String(form.get('site_name') ?? 'pcbgit').trim().slice(0, 60) || 'pcbgit');
 		setSetting('site_tagline', String(form.get('site_tagline') ?? '').trim().slice(0, 160));
 		setSetting('registration_open', form.get('registration_open') ? 'true' : 'false');
+		setSetting('registration_approval', form.get('registration_approval') ? 'true' : 'false');
 		audit(locals.user!.id, 'admin.settings_save');
-		return { success: true, saved: true, message: translate(locals.locale, 'instance.saved') };
+		return { success: true, saved: true, scope: 'site', message: translate(locals.locale, 'instance.saved') };
+	},
+
+	/** Defaults for every user (admins have none); 0 means no limit. The Users page can override the first two. */
+	saveLimits: async ({ request, locals }) => {
+		const form = await request.formData();
+		const read = (name: string) => String(Math.max(0, Math.floor(Number(form.get(name)) || 0)));
+		setSetting('limit_boards', read('limit_boards'));
+		setSetting('limit_storage_mb', read('limit_storage_mb'));
+		setSetting('limit_writes_per_hour', read('limit_writes_per_hour'));
+		audit(locals.user!.id, 'admin.limits_save', '', JSON.stringify(instanceLimits()));
+		return { success: true, saved: true, scope: 'limits', message: translate(locals.locale, 'instance.saved') };
 	},
 
 	// The update section shows its own progress (steps, "Checking GitHub…", the

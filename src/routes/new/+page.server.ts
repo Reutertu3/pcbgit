@@ -2,6 +2,7 @@ import { fail, redirect } from '@sveltejs/kit';
 import { translate } from '$lib/i18n';
 import type { Actions, PageServerLoad } from './$types';
 import { get } from '$lib/server/db';
+import { LimitError, boardsOwned, checkNewBoard, limitsFor, storageUsed, takeWrite } from '$lib/server/limits';
 import { commitFiles } from '$lib/server/git';
 import { repoPath } from '$lib/server/paths';
 import { LICENSES, createProject, listTags, slugify, syncCommits, validateSlug } from '$lib/server/projects';
@@ -14,7 +15,16 @@ import {
 
 export const load: PageServerLoad = async ({ locals, url }) => {
 	if (!locals.user) redirect(303, `/login?next=${encodeURIComponent(url.pathname)}`);
-	return { licenses: LICENSES, allTags: listTags() };
+	const limits = limitsFor(locals.user);
+	return {
+		licenses: LICENSES,
+		allTags: listTags(),
+		// Shown only when the user has a limit, so they know where they stand before uploading.
+		usage: {
+			boards: limits.boards === null ? null : { used: boardsOwned(locals.user.id), limit: limits.boards },
+			storage: limits.storageBytes === null ? null : { used: await storageUsed(locals.user.id), limit: limits.storageBytes }
+		}
+	};
 };
 
 export const actions: Actions = {
@@ -66,6 +76,14 @@ export const actions: Actions = {
 			}
 			const problem = projectProblem(files);
 			if (problem) return fail(400, { error: translate(locals.locale, problem), ...values });
+		}
+
+		try {
+			await checkNewBoard(user.id);
+			takeWrite(user);
+		} catch (error) {
+			if (error instanceof LimitError) return fail(403, { error: error.in(locals.locale), ...values });
+			throw error;
 		}
 
 		const project = await createProject({

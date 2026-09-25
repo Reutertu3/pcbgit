@@ -80,7 +80,8 @@ scripts run by hand.
 
 ## Security
 
-Done in the audit of 2026-09-23 and after: open redirect after sign-in, sign-in
+Done in the audit of 2026-09-23 and after: limits per user (boards, storage,
+uploads and pushes per hour) and admin approval of new accounts, open redirect after sign-in, sign-in
 rate limit (async scrypt), frame/HSTS headers, capability-free containers,
 render isolation (renderer container: no `/data`, no network, read-only,
 limited), CSP for SVG artifacts, git checks on push (`receive.fsckObjects`),
@@ -91,10 +92,9 @@ without external buffers, the schematic fallback confined to the checkout.
 
 ### Medium: before opening registration
 - [ ] Git push size: `git-http-backend` accepts any pack size.
-- [ ] Boards per user, and storage per user (repositories plus artifacts).
 - [ ] Renders queued per user: one account can fill the single render worker.
-- [ ] Rate limit for uploads and pushes, like the sign-in limit.
-- [ ] Email verification, or admin approval, for new accounts.
+- [ ] Email verification for new accounts (admin approval exists, and is on by
+      default).
 - [ ] Rate limit or CAPTCHA on registration; make `hashPassword` async like
       `verifyPassword`.
 

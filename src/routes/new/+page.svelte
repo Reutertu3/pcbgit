@@ -49,6 +49,16 @@
 	<p class="mt-1 text-sm text-[var(--text-secondary)]">
 		{t('newBoard.intro')}
 	</p>
+	{#if data.usage.boards || data.usage.storage}
+		<p class="mt-1 text-xs text-[var(--text-muted)]">
+			{[
+				data.usage.boards && t('limits.boardsUsed', { used: data.usage.boards.used, limit: data.usage.boards.limit }),
+				data.usage.storage && t('limits.storageUsed', { used: formatBytes(data.usage.storage.used), limit: formatBytes(data.usage.storage.limit) })
+			]
+				.filter(Boolean)
+				.join(' · ')}
+		</p>
+	{/if}
 
 	<form
 		class="mt-6"

@@ -1,7 +1,8 @@
 import type { RequestHandler } from './$types';
 import { authenticateToken, getUserByUsername } from '$lib/server/auth';
 import { get } from '$lib/server/db';
-import { authRequired, parseBasicAuth, runGitBackend } from '$lib/server/githttp';
+import { authRequired, parseBasicAuth, refusePush, runGitBackend } from '$lib/server/githttp';
+import { LimitError, checkStorage, checkWriteRate, takeWrite } from '$lib/server/limits';
 import { repoPath } from '$lib/server/paths';
 import { canEdit, canView, syncCommits } from '$lib/server/projects';
 import { repoExists } from '$lib/server/git';
@@ -21,7 +22,7 @@ function isWrite(pathInfo: string, queryString: string) {
 }
 
 async function handle(event: Parameters<RequestHandler>[0]) {
-	const { params, request, url } = event;
+	const { params, request, url, locals } = event;
 	// Clients clone ".../project.git"; the suffix is cosmetic on our side.
 	const slug = params.project.replace(/\.git$/, '');
 	const pathInfo = params.path ? `/${params.path}` : '/';
@@ -53,6 +54,18 @@ async function handle(event: Parameters<RequestHandler>[0]) {
 		// Owner, collaborators and admins, the same rule as the web interface.
 		const allowed = canEdit(project, actor);
 		if (!allowed) return new Response('You do not have write access to this repository\n', { status: 403 });
+
+		// Limits: checked when git asks for the refs, so it can show the reason, and
+		// again on the push itself, which is what counts against the hourly limit.
+		try {
+			await checkStorage(project.owner_id);
+			if (request.method === 'POST') takeWrite(actor);
+			else checkWriteRate(actor);
+		} catch (error) {
+			if (!(error instanceof LimitError)) throw error;
+			const message = error.in(locals.locale);
+			return request.method === 'GET' ? refusePush(message) : new Response(`${message}\n`, { status: 403 });
+		}
 	} else if (project.visibility === 'private') {
 		if (!actor) return authRequired('This repository is private.\n');
 		const allowed = canView(project, actor);

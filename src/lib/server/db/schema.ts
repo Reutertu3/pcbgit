@@ -14,6 +14,11 @@ CREATE TABLE IF NOT EXISTS users (
   bio           TEXT NOT NULL DEFAULT '',
   role          TEXT NOT NULL DEFAULT 'user' CHECK (role IN ('user','admin')),
   is_active     INTEGER NOT NULL DEFAULT 1,
+  -- 0 while a new account waits for an admin (is_active is 0 then too).
+  approved      INTEGER NOT NULL DEFAULT 1,
+  -- Per-user limits; NULL means the instance default (settings limit_*).
+  limit_boards     INTEGER,
+  limit_storage_mb INTEGER,
   created_at    INTEGER NOT NULL,
   updated_at    INTEGER NOT NULL
 );
@@ -50,6 +55,8 @@ CREATE TABLE IF NOT EXISTS projects (
   source_url     TEXT NOT NULL DEFAULT '',
   default_branch TEXT NOT NULL DEFAULT 'main',
   head_commit_id TEXT,
+  -- Size of the bare repository on disk, for storage limits; -1 until measured.
+  repo_bytes     INTEGER NOT NULL DEFAULT -1,
   created_at     INTEGER NOT NULL,
   updated_at     INTEGER NOT NULL,
   UNIQUE (owner_id, slug)

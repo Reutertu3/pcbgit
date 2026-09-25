@@ -56,7 +56,8 @@
 
 - Push and clone over **HTTPS with personal access tokens**, or upload a ZIP
 - **Public and private boards**, stars, threaded comments with notifications
-- **Admin panel**: users, boards, colour-coded tags, render queue, backups, updates
+- **Admin panel**: users, boards, colour-coded tags, render queue, backups, updates,
+  limits per user (boards, storage, uploads and pushes per hour), approval of new accounts
 - **Snapshots** for backup and moving to a new server
 - **One-click updates** from GitHub with a changelog
 - **English and German** interface, eight colour themes
@@ -189,8 +190,11 @@ deploy/install.sh    # systemd units for updates; checks .env
 deploy/update.sh     # first build and start
 ```
 
-Open `https://<your domain>` and sign in as `admin`. Consider switching off open
-registration under **Admin → Instance**.
+Open `https://<your domain>` and sign in as `admin`. Under **Admin → Instance**,
+decide on registration: closed, or open with every new account approved by an
+admin first (the default), and set limits per user (boards, storage, uploads and
+pushes per hour). **Admin → Users** approves new accounts and sets limits for
+single users.
 
 `install.sh` adds `COMPOSE_FILE` to `.env`, so plain `docker compose` commands
 on the server always use the production setup.

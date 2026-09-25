@@ -10,6 +10,7 @@ import {
 	hashPassword,
 	validateUsername
 } from '$lib/server/auth';
+import { instanceLimits, limitsFor, storageUsed } from '$lib/server/limits';
 
 interface AdminUserRow {
 	id: string;
@@ -19,6 +20,9 @@ interface AdminUserRow {
 	avatar: number | null;
 	role: 'user' | 'admin';
 	is_active: number;
+	approved: number;
+	limit_boards: number | null;
+	limit_storage_mb: number | null;
 	created_at: number;
 	project_count: number;
 	token_count: number;
@@ -29,20 +33,30 @@ export const load: PageServerLoad = async ({ url }) => {
 	const search = url.searchParams.get('q') ?? '';
 	const term = `%${search}%`;
 
-	return {
-		users: all<AdminUserRow>(
-			`SELECT u.id, u.username, u.email, u.display_name, (SELECT updated_at FROM avatars WHERE user_id = u.id) AS avatar, u.role, u.is_active, u.created_at,
+	const users = all<AdminUserRow>(
+			`SELECT u.id, u.username, u.email, u.display_name, (SELECT updated_at FROM avatars WHERE user_id = u.id) AS avatar, u.role, u.is_active,
+			   u.approved, u.limit_boards, u.limit_storage_mb, u.created_at,
 			   (SELECT COUNT(*) FROM projects p WHERE p.owner_id = u.id) AS project_count,
 			   (SELECT COUNT(*) FROM access_tokens t WHERE t.user_id = u.id) AS token_count,
 			   (SELECT MAX(s.created_at) FROM sessions s WHERE s.user_id = u.id) AS last_session
 			 FROM users u
 			 WHERE (? = '' OR u.username LIKE ? OR u.email LIKE ? OR u.display_name LIKE ?)
-			 ORDER BY u.created_at DESC`,
+			 ORDER BY u.approved ASC, u.created_at DESC`,
 			search,
 			term,
 			term,
 			term
+		);
+
+	return {
+		// Accounts waiting for approval come first.
+		users: await Promise.all(
+			users.map(async (user) => {
+				const limits = limitsFor(user);
+				return { ...user, storage: await storageUsed(user.id), boardLimit: limits.boards, storageLimit: limits.storageBytes };
+			})
 		),
+		defaults: instanceLimits(),
 		search
 	};
 };
@@ -87,6 +101,32 @@ export const actions: Actions = {
 		run('UPDATE users SET role = ?, updated_at = ? WHERE id = ?', role, now(), id);
 		audit(locals.user!.id, 'admin.user_role', getUserById(id)?.username ?? id, role);
 		return { success: true, message: translate(locals.locale, 'users.roleUpdated') };
+	},
+
+	approve: async ({ request, locals }) => {
+		const id = String((await request.formData()).get('id') ?? '');
+		const user = getUserById(id);
+		if (!user) return fail(404, { error: translate(locals.locale, 'error.userNotFound') });
+		run('UPDATE users SET approved = 1, is_active = 1, updated_at = ? WHERE id = ?', now(), id);
+		audit(locals.user!.id, 'admin.user_approve', user.username);
+		return { success: true, message: translate(locals.locale, 'users.approved', { name: user.username }) };
+	},
+
+	/** Per-user overrides of the instance limits; an empty field means the default. */
+	setLimits: async ({ request, locals }) => {
+		const form = await request.formData();
+		const id = String(form.get('id') ?? '');
+		const user = getUserById(id);
+		if (!user) return fail(404, { error: translate(locals.locale, 'error.userNotFound') });
+		const read = (name: string) => {
+			const raw = String(form.get(name) ?? '').trim();
+			return raw === '' ? null : Math.max(0, Math.floor(Number(raw) || 0));
+		};
+		const boards = read('boards');
+		const storage = read('storage_mb');
+		run('UPDATE users SET limit_boards = ?, limit_storage_mb = ?, updated_at = ? WHERE id = ?', boards, storage, now(), id);
+		audit(locals.user!.id, 'admin.user_limits', user.username, `boards ${boards ?? 'default'}, storage ${storage ?? 'default'} MB`);
+		return { success: true, message: translate(locals.locale, 'users.limitsSaved', { name: user.username }) };
 	},
 
 	toggleActive: async ({ request, locals }) => {

@@ -1,5 +1,5 @@
 import { all, audit, count, get, newId, now, run, tx } from './db';
-import { deleteRepo, initRepo, listCommits, repoExists, resolveRef } from './git';
+import { deleteRepo, initRepo, listCommits, repoExists, repoSize, resolveRef } from './git';
 import { repoPath } from './paths';
 import { notifyForVersions } from './notifications';
 import { enqueueRender } from './render/worker';
@@ -315,6 +315,8 @@ export async function syncCommits(
 ) {
 	const repo = repoPath(ownerUsername, project.slug);
 	if (!repoExists(ownerUsername, project.slug)) return { added: 0, head: null };
+	// Every upload and push passes here, so this keeps storage limits current.
+	run('UPDATE projects SET repo_bytes = ? WHERE id = ?', await repoSize(repo), project.id);
 
 	const branch = (await resolveRef(repo, project.default_branch)) ? project.default_branch : 'HEAD';
 	const commits = await listCommits(repo, branch, 200);

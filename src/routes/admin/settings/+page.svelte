@@ -82,9 +82,38 @@
 			<span class="block text-sm font-medium">{t('instance.openRegistration')}</span>
 			<span class="block text-xs leading-relaxed text-[var(--text-secondary)]">{t('instance.openRegistrationHint')}</span>
 		</Switch>
+		<Switch name="registration_approval" checked={data.settings.registrationApproval} class="mb-4">
+			<span class="block text-sm font-medium">{t('instance.approval')}</span>
+			<span class="block text-xs leading-relaxed text-[var(--text-secondary)]">{t('instance.approvalHint')}</span>
+		</Switch>
 		<div class="flex flex-wrap items-center gap-3">
 			<button class="btn btn-primary" type="submit">{t('instance.save')}</button>
-			<SavedNote message={form && 'saved' in form ? form.message : null} token={form} />
+			<SavedNote message={form && 'saved' in form && form.scope === 'site' ? form.message : null} token={form} />
+		</div>
+	</form>
+</section>
+
+<section class="surface mt-4 p-5">
+	<h3 class="mb-1 text-sm font-semibold">{t('instance.limits')}</h3>
+	<p class="mb-3 text-xs leading-relaxed text-[var(--text-secondary)]">{t('instance.limitsHint')}</p>
+	<form method="POST" action="?/saveLimits" use:enhance={keepValues}>
+		<div class="mb-4 grid gap-3 sm:grid-cols-3">
+			<div>
+				<label class="label" for="limit_boards">{t('instance.limitBoards')}</label>
+				<input class="input" id="limit_boards" name="limit_boards" type="number" min="0" value={data.limits.boards} />
+			</div>
+			<div>
+				<label class="label" for="limit_storage_mb">{t('instance.limitStorage')}</label>
+				<input class="input" id="limit_storage_mb" name="limit_storage_mb" type="number" min="0" value={data.limits.storageMb} />
+			</div>
+			<div>
+				<label class="label" for="limit_writes_per_hour">{t('instance.limitWrites')}</label>
+				<input class="input" id="limit_writes_per_hour" name="limit_writes_per_hour" type="number" min="0" value={data.limits.writesPerHour} />
+			</div>
+		</div>
+		<div class="flex flex-wrap items-center gap-3">
+			<button class="btn btn-primary" type="submit">{t('instance.saveLimits')}</button>
+			<SavedNote message={form && 'saved' in form && form.scope === 'limits' ? form.message : null} token={form} />
 		</div>
 	</form>
 </section>

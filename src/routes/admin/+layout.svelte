@@ -37,6 +37,11 @@
 				>
 					<Icon name={item.icon} size={14} />
 					<span class="flex-1">{item.label}</span>
+					{#if item.badge === 'users' && data.badges.pending}
+						<span class="chip !border-[var(--accent)] !px-1.5 !py-0 !text-[0.625rem] !text-[var(--accent)]" title={t('users.pendingBadge', { count: data.badges.pending })}>
+							{t('users.pendingShort', { count: data.badges.pending })}
+						</span>
+					{/if}
 					{#if item.badge && data.badges[item.badge]}
 						<span class="chip !px-1.5 !py-0 !text-[0.625rem]">{data.badges[item.badge]}</span>
 					{/if}

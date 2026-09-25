@@ -11,6 +11,8 @@ export const load: LayoutServerLoad = async ({ locals, url }) => {
 	return {
 		badges: {
 			users: count('SELECT COUNT(*) FROM users'),
+			// New accounts waiting for approval, highlighted next to Users.
+			pending: count('SELECT COUNT(*) FROM users WHERE approved = 0'),
 			projects: count('SELECT COUNT(*) FROM projects'),
 			tags: count('SELECT COUNT(*) FROM tags'),
 			jobs: queueStats().queued + queueStats().running,

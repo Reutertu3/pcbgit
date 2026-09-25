@@ -4,7 +4,7 @@
 	import Icon from '$lib/components/Icon.svelte';
 	import Avatar from '$lib/components/Avatar.svelte';
 	import FormError from '$lib/components/FormError.svelte';
-	import { formatDate, relativeTime } from '$lib/format';
+	import { formatBytes, formatDate, relativeTime } from '$lib/format';
 	import { t, tParts } from '$lib/i18n/t';
 
 	let { data, form } = $props();
@@ -12,6 +12,10 @@
 	let showCreate = $state(false);
 	let resetting = $state<string | null>(null);
 	let confirmDelete = $state<string | null>(null);
+	let editingLimits = $state<string | null>(null);
+
+	/** "12 MB / 500 MB", or just the usage when there is no limit. */
+	const ofLimit = (used: string | number, limit: string | number | null) => (limit === null ? `${used}` : `${used} / ${limit}`);
 </script>
 
 <svelte:head><title>{t('admin.nav.users')} · {t('admin.title')} · {data.site.name}</title></svelte:head>
@@ -74,6 +78,7 @@
 				<th class="px-3 py-2 font-semibold">{t('users.roleUser')}</th>
 				<th class="px-3 py-2 font-semibold">{t('users.role')}</th>
 				<th class="px-3 py-2 font-semibold">{t('admin.nav.boards')}</th>
+				<th class="px-3 py-2 font-semibold">{t('users.storage')}</th>
 				<th class="px-3 py-2 font-semibold">{t('users.joined')}</th>
 				<th class="px-3 py-2 font-semibold">{t('users.lastSignIn')}</th>
 				<th class="px-3 py-2"></th>
@@ -81,7 +86,7 @@
 		</thead>
 		<tbody>
 			{#each data.users as user (user.id)}
-				<tr class="border-t" class:opacity-55={!user.is_active}>
+				<tr class="border-t" class:opacity-55={user.approved && !user.is_active}>
 					<td class="px-3 py-2">
 						<div class="flex items-center gap-2">
 							<Avatar name={user.display_name || user.username} username={user.username} avatar={user.avatar} size={26} />
@@ -96,53 +101,101 @@
 						</div>
 					</td>
 					<td class="px-3 py-2">
-						<form method="POST" action="?/setRole" use:enhance={keepValues}>
-							<input type="hidden" name="id" value={user.id} />
-							<select
-								class="select !w-auto !py-1 text-xs"
-								name="role"
-								value={user.role}
-								onchange={(event) => event.currentTarget.form?.requestSubmit()}
-							>
-								<option value="user">{t('users.roleUser')}</option>
-								<option value="admin">{t('profile.admin')}</option>
-							</select>
-						</form>
+						{#if !user.approved}
+							<span class="chip !border-[var(--accent)] !text-[var(--accent)]">{t('users.pending')}</span>
+						{:else}
+							<form method="POST" action="?/setRole" use:enhance={keepValues}>
+								<input type="hidden" name="id" value={user.id} />
+								<select
+									class="select !w-auto !py-1 text-xs"
+									name="role"
+									value={user.role}
+									onchange={(event) => event.currentTarget.form?.requestSubmit()}
+								>
+									<option value="user">{t('users.roleUser')}</option>
+									<option value="admin">{t('profile.admin')}</option>
+								</select>
+							</form>
+						{/if}
 					</td>
-					<td class="px-3 py-2 tabular-nums">{user.project_count}</td>
+					<td class="px-3 py-2 tabular-nums">{ofLimit(user.project_count, user.boardLimit)}</td>
+					<td
+						class="px-3 py-2 text-xs tabular-nums"
+						style:color={user.storageLimit !== null && user.storage >= user.storageLimit ? 'var(--err)' : undefined}
+					>
+						{ofLimit(formatBytes(user.storage), user.storageLimit === null ? null : formatBytes(user.storageLimit))}
+					</td>
 					<td class="px-3 py-2 text-xs text-[var(--text-muted)]">{formatDate(user.created_at)}</td>
 					<td class="px-3 py-2 text-xs text-[var(--text-muted)]">
 						{user.last_session ? relativeTime(user.last_session) : t('time.never')}
 					</td>
 					<td class="px-3 py-2">
 						<div class="flex justify-end gap-1">
-							<form method="POST" action="?/toggleActive" use:enhance>
-								<input type="hidden" name="id" value={user.id} />
-								<button class="btn btn-sm" type="submit" title={user.is_active ? t('users.disable') : t('users.enable')}>
-									<Icon name={user.is_active ? 'lock' : 'check'} size={12} />
+							{#if !user.approved}
+								<form method="POST" action="?/approve" use:enhance>
+									<input type="hidden" name="id" value={user.id} />
+									<button class="btn btn-primary btn-sm" type="submit"><Icon name="check" size={12} /> {t('users.approve')}</button>
+								</form>
+								<button class="btn btn-danger btn-sm" onclick={() => (confirmDelete = confirmDelete === user.id ? null : user.id)}>
+									{t('users.reject')}
 								</button>
-							</form>
-							<button
-								class="btn btn-sm"
-								onclick={() => (resetting = resetting === user.id ? null : user.id)}
-								title={t('users.resetPassword')}
-							>
-								<Icon name="refresh" size={12} />
-							</button>
-							<button
-								class="btn btn-danger btn-sm"
-								onclick={() => (confirmDelete = confirmDelete === user.id ? null : user.id)}
-								title={t('users.delete')}
-							>
-								<Icon name="trash" size={12} />
-							</button>
+							{:else}
+								<form method="POST" action="?/toggleActive" use:enhance>
+									<input type="hidden" name="id" value={user.id} />
+									<button class="btn btn-sm" type="submit" title={user.is_active ? t('users.disable') : t('users.enable')}>
+										<Icon name={user.is_active ? 'lock' : 'check'} size={12} />
+									</button>
+								</form>
+								<button
+									class="btn btn-sm"
+									onclick={() => (editingLimits = editingLimits === user.id ? null : user.id)}
+									title={t('users.limits')}
+								>
+									<Icon name="settings" size={12} />
+								</button>
+								<button
+									class="btn btn-sm"
+									onclick={() => (resetting = resetting === user.id ? null : user.id)}
+									title={t('users.resetPassword')}
+								>
+									<Icon name="refresh" size={12} />
+								</button>
+								<button
+									class="btn btn-danger btn-sm"
+									onclick={() => (confirmDelete = confirmDelete === user.id ? null : user.id)}
+									title={t('users.delete')}
+								>
+									<Icon name="trash" size={12} />
+								</button>
+							{/if}
 						</div>
 					</td>
 				</tr>
 
+				{#if editingLimits === user.id}
+					<tr class="border-t bg-s2">
+						<td colspan="7" class="px-3 py-2.5">
+							<form method="POST" action="?/setLimits" use:enhance={keepValues} class="flex flex-wrap items-end gap-2">
+								<input type="hidden" name="id" value={user.id} />
+								<div class="w-36">
+									<label class="label" for="boards-{user.id}">{t('users.limitBoards')}</label>
+									<input class="input !py-1.5" id="boards-{user.id}" name="boards" type="number" min="0" value={user.limit_boards ?? ''} placeholder={String(data.defaults.boards || '∞')} />
+								</div>
+								<div class="w-36">
+									<label class="label" for="storage-{user.id}">{t('users.limitStorage')}</label>
+									<input class="input !py-1.5" id="storage-{user.id}" name="storage_mb" type="number" min="0" value={user.limit_storage_mb ?? ''} placeholder={String(data.defaults.storageMb || '∞')} />
+								</div>
+								<button class="btn btn-sm" type="submit">{t('users.saveLimits')}</button>
+								<button class="btn btn-ghost btn-sm" type="button" onclick={() => (editingLimits = null)}>{t('common.cancel')}</button>
+							</form>
+							<p class="hint">{user.role === 'admin' ? t('users.limitsAdmin') : t('users.limitsHint')}</p>
+						</td>
+					</tr>
+				{/if}
+
 				{#if resetting === user.id}
 					<tr class="border-t bg-s2">
-						<td colspan="6" class="px-3 py-2.5">
+						<td colspan="7" class="px-3 py-2.5">
 							<form method="POST" action="?/resetPassword" use:enhance={() => async ({ update }) => {
 								await update();
 								resetting = null;
@@ -162,7 +215,7 @@
 
 				{#if confirmDelete === user.id}
 					<tr class="border-t" style:background="color-mix(in srgb, var(--err) 8%, transparent)">
-						<td colspan="6" class="px-3 py-2.5">
+						<td colspan="7" class="px-3 py-2.5">
 							<form method="POST" action="?/delete" use:enhance={() => async ({ update }) => {
 								await update();
 								confirmDelete = null;

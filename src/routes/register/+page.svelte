@@ -14,6 +14,10 @@
 	<AuthCard title={t('auth.closedTitle')} subtitle={t('auth.closedSubtitle')}>
 		<a href="/login" class="btn w-full">{t('auth.backToSignIn')}</a>
 	</AuthCard>
+{:else if form && 'pending' in form && form.pending}
+	<AuthCard title={t('auth.pendingTitle')} subtitle={t('auth.pendingSubtitle', { name: form.username })}>
+		<a href="/login" class="btn w-full">{t('auth.backToSignIn')}</a>
+	</AuthCard>
 {:else}
 	<AuthCard title={t('auth.registerTitle')} subtitle={t('auth.registerSubtitle')}>
 		<form
@@ -26,7 +30,8 @@
 				};
 			}}
 		>
-			<FormError message={form?.error} />
+			<FormError message={form && 'error' in form ? form.error : null} />
+			{#if data.approval}<p class="mb-3 text-xs leading-relaxed text-[var(--text-secondary)]">{t('auth.approvalNote')}</p>{/if}
 
 			<div class="mb-3">
 				<label class="label" for="username">{t('auth.username')}</label>

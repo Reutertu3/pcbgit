@@ -8,9 +8,9 @@ import { SESSION_COOKIE } from '../../hooks.server';
 export const load: PageServerLoad = async ({ locals }) => {
 	if (locals.user) redirect(303, '/');
 	if (!getBoolSetting('registration_open', true)) {
-		return { closed: true };
+		return { closed: true, approval: false };
 	}
-	return { closed: false };
+	return { closed: false, approval: getBoolSetting('registration_approval', true) };
 };
 
 export const actions: Actions = {
@@ -40,10 +40,13 @@ export const actions: Actions = {
 			return fail(409, { error: translate(locals.locale, 'auth.error.emailTaken'), ...values });
 		}
 
-		// The very first account to register owns the instance.
+		// The very first account to register owns the instance, and nobody could approve it.
 		const isFirst = count('SELECT COUNT(*) FROM users') === 0;
-		const user = createUser({ username, email, password, role: isFirst ? 'admin' : 'user' });
-		audit(user.id, 'auth.register', username);
+		const pending = !isFirst && getBoolSetting('registration_approval', true);
+		const user = createUser({ username, email, password, role: isFirst ? 'admin' : 'user', pending });
+		audit(user.id, 'auth.register', username, pending ? 'awaiting approval' : '');
+		// No session: the account cannot sign in until an admin approves it.
+		if (pending) return { pending: true, username };
 
 		const session = createSession(user.id, request.headers.get('user-agent') ?? '');
 		cookies.set(SESSION_COOKIE, session.id, {

@@ -13,6 +13,10 @@ export interface User {
 	bio: string;
 	role: Role;
 	is_active: number;
+	/** 0 while the account waits for an admin's approval. */
+	approved: number;
+	limit_boards: number | null;
+	limit_storage_mb: number | null;
 	created_at: number;
 	updated_at: number;
 }
@@ -58,18 +62,23 @@ export function createUser(opts: {
 	password: string;
 	role?: Role;
 	displayName?: string;
+	/** Registered while admin approval is on: cannot sign in until approved. */
+	pending?: boolean;
 }) {
 	const id = newId();
 	const ts = now();
+	const active = opts.pending ? 0 : 1;
 	run(
-		`INSERT INTO users (id, username, email, password_hash, display_name, role, created_at, updated_at)
-		 VALUES (?,?,?,?,?,?,?,?)`,
+		`INSERT INTO users (id, username, email, password_hash, display_name, role, is_active, approved, created_at, updated_at)
+		 VALUES (?,?,?,?,?,?,?,?,?,?)`,
 		id,
 		opts.username,
 		opts.email,
 		hashPassword(opts.password),
 		opts.displayName ?? opts.username,
 		opts.role ?? 'user',
+		active,
+		active,
 		ts,
 		ts
 	);

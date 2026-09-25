@@ -41,7 +41,7 @@ export const actions: Actions = {
 		}
 		clearLoginFailures(account);
 		if (!user.is_active) {
-			return fail(403, { error: translate(locals.locale, 'auth.error.disabled'), login });
+			return fail(403, { error: translate(locals.locale, user.approved ? 'auth.error.disabled' : 'auth.error.pending'), login });
 		}
 
 		const session = createSession(user.id, request.headers.get('user-agent') ?? '');

@@ -968,5 +968,42 @@
 	"error.title": "Etwas ist schiefgelaufen",
 	"error.home": "Zur Startseite",
 	"error.crossSite": "Dieses Formular wurde von einer anderen Adresse abgeschickt als der, von der es geladen wurde, und daher abgelehnt.",
-	"footer.version": "Laufende Version"
+	"footer.version": "Laufende Version",
+	"limits.error.boards": "Du hast dein Limit von {limit} Boards erreicht. Lösche ein Board oder bitte einen Administrator um mehr.",
+	"limits.error.storage": "Der Speicher des Board-Besitzers ist voll ({used} von {limit}). Lösche Boards oder bitte einen Administrator um mehr Platz.",
+	"limits.error.rate": {
+		"one": "Zu viele Uploads und Pushes (Limit: {limit} pro Stunde). Versuche es in {count} Minute erneut.",
+		"other": "Zu viele Uploads und Pushes (Limit: {limit} pro Stunde). Versuche es in {count} Minuten erneut."
+	},
+	"limits.boardsUsed": "{used} von {limit} Boards",
+	"limits.storageUsed": "{used} von {limit} Speicher",
+	"auth.error.pending": "Dein Konto wartet auf die Freigabe durch einen Administrator.",
+	"auth.pendingTitle": "Fast geschafft",
+	"auth.pendingSubtitle": "Das Konto {name} wurde angelegt. Ein Administrator muss es freigeben, bevor du dich anmelden kannst.",
+	"auth.approvalNote": "Neue Konten werden von einem Administrator freigegeben, bevor man sich anmelden kann.",
+	"users.pendingBadge": {
+		"one": "{count} Konto wartet auf Freigabe",
+		"other": "{count} Konten warten auf Freigabe"
+	},
+	"users.pendingShort": "{count} neu",
+	"users.pending": "Wartet auf Freigabe",
+	"users.approve": "Freigeben",
+	"users.reject": "Ablehnen",
+	"users.approved": "{name} ist freigegeben und kann sich jetzt anmelden.",
+	"users.storage": "Speicher",
+	"users.limits": "Limits",
+	"users.limitBoards": "Boards",
+	"users.limitStorage": "Speicher (MB)",
+	"users.saveLimits": "Limits speichern",
+	"users.limitsHint": "Leer: Standard der Instanz (grau angezeigt). 0: kein Limit.",
+	"users.limitsAdmin": "Administratoren haben keine Limits; diese gelten erst, wenn sich die Rolle ändert.",
+	"users.limitsSaved": "Limits für {name} gespeichert.",
+	"instance.approval": "Neue Konten freigeben",
+	"instance.approvalHint": "Neue Registrierungen warten, bis ein Administrator sie unter Benutzer freigibt; bis dahin können sie sich nicht anmelden.",
+	"instance.limits": "Limits pro Benutzer",
+	"instance.limitsHint": "Standardwerte für alle Benutzer; Administratoren haben keine. 0 bedeutet kein Limit. Boards und Speicher lassen sich unter Benutzer pro Person festlegen. Speicher zählt die Boards eines Benutzers: Repositories und gerenderte Ausgaben.",
+	"instance.limitBoards": "Boards pro Benutzer",
+	"instance.limitStorage": "Speicher pro Benutzer (MB)",
+	"instance.limitWrites": "Uploads und Pushes pro Stunde",
+	"instance.saveLimits": "Limits speichern"
 }

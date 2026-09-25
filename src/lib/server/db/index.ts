@@ -115,7 +115,11 @@ const ADDED_COLUMNS: [table: string, column: string, definition: string][] = [
 	['commits', 'board_bbox', "TEXT NOT NULL DEFAULT ''"],
 	['comments', 'parent_id', 'TEXT REFERENCES comments(id) ON DELETE CASCADE'],
 	['comments', 'deleted_at', 'INTEGER'],
-	['commits', 'converted_from', "TEXT NOT NULL DEFAULT ''"]
+	['commits', 'converted_from', "TEXT NOT NULL DEFAULT ''"],
+	['users', 'approved', 'INTEGER NOT NULL DEFAULT 1'],
+	['users', 'limit_boards', 'INTEGER'],
+	['users', 'limit_storage_mb', 'INTEGER'],
+	['projects', 'repo_bytes', 'INTEGER NOT NULL DEFAULT -1']
 ];
 
 /**

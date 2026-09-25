@@ -266,3 +266,14 @@ from anyone. Instead the browser now sends a snapshot in pieces of up to 32 MB
 deleting each piece as it is appended, then checks the archive without blocking
 other requests. Tested with a 324 MB snapshot: refused as one request, uploaded
 in 10 pieces, byte-identical after joining, 97 MB peak memory.
+
+### Limits per user and approval of new accounts
+Before registration is opened, one account must not be able to fill the disk or
+the render worker, and strangers should not get in unseen. Admins now set per
+user: boards, storage (repositories plus rendered output, counted for the board
+owner) and uploads plus pushes per hour (30 by default), as instance defaults
+under Instance and per user under Users; admins have none. A refused push shows
+the reason in git itself ("remote error: …"). New registrations wait for an
+admin's approval by default; the Users page lists them first and the admin
+navigation counts them. Tested with real pushes: a 1 MB storage limit, 1 push
+per hour, 2 boards, and a registration through approval to sign-in.

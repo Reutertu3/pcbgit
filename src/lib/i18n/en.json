@@ -968,5 +968,42 @@
 	"error.title": "Something went wrong",
 	"error.home": "Back to the start page",
 	"error.crossSite": "This form was submitted from a different address than the one it was loaded from, so it was rejected.",
-	"footer.version": "Running version"
+	"footer.version": "Running version",
+	"limits.error.boards": "You have reached your limit of {limit} boards. Delete a board, or ask an administrator for more.",
+	"limits.error.storage": "The board owner's storage is full ({used} of {limit}). Delete boards, or ask an administrator for more space.",
+	"limits.error.rate": {
+		"one": "Too many uploads and pushes (limit: {limit} per hour). Try again in {count} minute.",
+		"other": "Too many uploads and pushes (limit: {limit} per hour). Try again in {count} minutes."
+	},
+	"limits.boardsUsed": "{used} of {limit} boards",
+	"limits.storageUsed": "{used} of {limit} storage",
+	"auth.error.pending": "Your account is waiting for an administrator's approval.",
+	"auth.pendingTitle": "Almost there",
+	"auth.pendingSubtitle": "The account {name} was created. An administrator has to approve it before you can sign in.",
+	"auth.approvalNote": "New accounts are approved by an administrator before they can sign in.",
+	"users.pendingBadge": {
+		"one": "{count} account waiting for approval",
+		"other": "{count} accounts waiting for approval"
+	},
+	"users.pendingShort": "{count} new",
+	"users.pending": "Waiting for approval",
+	"users.approve": "Approve",
+	"users.reject": "Reject",
+	"users.approved": "Approved {name}. They can sign in now.",
+	"users.storage": "Storage",
+	"users.limits": "Limits",
+	"users.limitBoards": "Boards",
+	"users.limitStorage": "Storage (MB)",
+	"users.saveLimits": "Save limits",
+	"users.limitsHint": "Empty: the instance default (shown greyed). 0: no limit.",
+	"users.limitsAdmin": "Administrators have no limits; these apply only if the role changes.",
+	"users.limitsSaved": "Limits for {name} saved.",
+	"instance.approval": "Approve new accounts",
+	"instance.approvalHint": "New registrations wait until an administrator approves them under Users; until then they cannot sign in.",
+	"instance.limits": "Limits per user",
+	"instance.limitsHint": "Defaults for every user; administrators have none. 0 means no limit. Boards and storage can be set per user under Users. Storage counts a user's boards: repositories and rendered output.",
+	"instance.limitBoards": "Boards per user",
+	"instance.limitStorage": "Storage per user (MB)",
+	"instance.limitWrites": "Uploads and pushes per hour",
+	"instance.saveLimits": "Save limits"
 }
