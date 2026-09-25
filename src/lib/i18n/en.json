@@ -768,8 +768,6 @@
 	"instance.sourceImage": "Versions come as ready-made images from [[repo]]; a version without one is built on this server.",
 	"instance.sourceBuild": "This server builds every version itself (no GitHub remote, or [[setting]]).",
 	"instance.auto": "Automatic updates",
-	"instance.autoOn": "On",
-	"instance.autoOff": "Off",
 	"instance.autoHint": "Installs a new version after the hourly check, once its image is ready. A version that fails is skipped.",
 	"instance.autoPaused": "The automatic update to {version} failed. Waiting for the next version.",
 	"instance.image.ready": "Image ready. Updating takes about a minute.",

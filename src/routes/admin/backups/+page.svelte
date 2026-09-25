@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
 	import Icon from '$lib/components/Icon.svelte';
+	import Switch from '$lib/components/Switch.svelte';
 	import FormError from '$lib/components/FormError.svelte';
 	import { formatBytes, formatDateTime, relativeTime } from '$lib/format';
 	import { t, tParts } from '$lib/i18n/t';
@@ -57,15 +58,10 @@
 				};
 			}}
 		>
-			<label class="mb-3 flex cursor-pointer items-start gap-2.5">
-				<input type="checkbox" name="artifacts" checked class="mt-0.5" />
-				<span>
-					<span class="block text-sm">{t('backups.includeOutput')}</span>
-					<span class="block text-xs leading-relaxed text-[var(--text-muted)]">
-						{t('backups.includeOutputHint')}
-					</span>
-				</span>
-			</label>
+			<Switch name="artifacts" checked class="mb-3">
+				<span class="block text-sm">{t('backups.includeOutput')}</span>
+				<span class="block text-xs leading-relaxed text-[var(--text-muted)]">{t('backups.includeOutputHint')}</span>
+			</Switch>
 			<button class="btn btn-primary btn-sm" type="submit" disabled={creating}>
 				<Icon name="download" size={13} />
 				{creating ? t('backups.creating') : t('backups.createButton')}

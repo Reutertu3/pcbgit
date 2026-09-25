@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import Icon from './Icon.svelte';
+	import Switch from './Switch.svelte';
 	import { t } from '$lib/i18n/t';
 
 	interface Props {
@@ -1498,9 +1499,7 @@
 				{/each}
 			</select>
 			{#if !dims.keepsFraming}
-				<label class="export-check">
-					<input type="checkbox" bind:checked={exportOptions.reframe} /> {t('viewer3d.reframe')}
-				</label>
+				<Switch bind:checked={exportOptions.reframe} size="sm" class="mt-1.5 min-w-0 text-[0.6875rem] text-[var(--text-secondary)]">{t('viewer3d.reframe')}</Switch>
 			{/if}
 
 			<span class="export-label">{t('viewer3d.background')}</span>
@@ -1535,10 +1534,10 @@
 
 			<div class="mt-2 flex flex-col gap-1">
 				{#if showRuler}
-					<label class="export-check"><input type="checkbox" bind:checked={exportOptions.labels} /> {t('viewer3d.dimensionLabels')}</label>
+					<Switch bind:checked={exportOptions.labels} size="sm" class="mt-1.5 min-w-0 text-[0.6875rem] text-[var(--text-secondary)]">{t('viewer3d.dimensionLabels')}</Switch>
 				{/if}
 				{#if caption}
-					<label class="export-check"><input type="checkbox" bind:checked={exportOptions.caption} /> {t('viewer3d.caption')} <span class="truncate text-[var(--text-muted)]">({caption})</span></label>
+					<Switch bind:checked={exportOptions.caption} size="sm" class="mt-1.5 min-w-0 text-[0.6875rem] text-[var(--text-secondary)]">{t('viewer3d.caption')} <span class="truncate text-[var(--text-muted)]">({caption})</span></Switch>
 				{/if}
 			</div>
 
@@ -1758,16 +1757,6 @@
 		text-transform: uppercase;
 		letter-spacing: 0.05em;
 		color: var(--text-muted);
-	}
-	.export-check {
-		display: flex;
-		align-items: center;
-		gap: 0.35rem;
-		margin-top: 0.35rem;
-		font-size: 0.6875rem;
-		color: var(--text-secondary);
-		cursor: pointer;
-		min-width: 0;
 	}
 	.toggle:disabled {
 		opacity: 0.4;

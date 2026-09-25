@@ -1,5 +1,6 @@
 <script lang="ts">
 	import Icon from '$lib/components/Icon.svelte';
+	import Switch from '$lib/components/Switch.svelte';
 	import PanZoom from '$lib/components/PanZoom.svelte';
 	import EmptyTab from '$lib/components/EmptyTab.svelte';
 	import { unionViewBox } from '$lib/viewbox';
@@ -201,12 +202,15 @@
 				</div>
 
 				{#if markerCount}
-					<label class="surface mt-2 flex cursor-pointer items-center gap-2 px-3 py-2 text-xs">
-						<input type="checkbox" bind:checked={showMarkers} class="accent-[var(--err)]" />
-						<Icon name="alert" size={12} style="color: var(--err)" />
-						<span class="flex-1">{t('pcb.markers')}</span>
-						<span class="chip !px-1.5 !py-0 !text-[0.625rem]">{markerCount}</span>
-					</label>
+					<div class="surface mt-2 px-3 py-2 text-xs">
+						<Switch bind:checked={showMarkers} size="sm" class="w-full">
+							<span class="flex items-center gap-2">
+								<Icon name="alert" size={12} style="color: var(--err)" />
+								<span class="flex-1">{t('pcb.markers')}</span>
+								<span class="chip !px-1.5 !py-0 !text-[0.625rem]">{markerCount}</span>
+							</span>
+						</Switch>
+					</div>
 					{#if !bbox}
 						<p class="hint px-1">{t('pcb.markersNeedOutline')}</p>
 					{/if}

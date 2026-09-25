@@ -2,6 +2,7 @@
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import Icon from '$lib/components/Icon.svelte';
+	import Switch from '$lib/components/Switch.svelte';
 	import EmptyTab from '$lib/components/EmptyTab.svelte';
 	import { relativeTime, shortSha } from '$lib/format';
 	import { ibomColorParam } from '$lib/ibomtheme';
@@ -202,9 +203,7 @@
 			{/if}
 
 			{#if data.compare}
-				<label class="flex cursor-pointer items-center gap-1.5 text-xs text-[var(--text-secondary)]">
-					<input type="checkbox" bind:checked={hideUnchanged} /> {t('bom.changesOnly')}
-				</label>
+				<Switch bind:checked={hideUnchanged} size="sm" class="text-xs text-[var(--text-secondary)]">{t('bom.changesOnly')}</Switch>
 			{/if}
 		</div>
 

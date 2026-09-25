@@ -7,7 +7,7 @@
 	import Icon from '$lib/components/Icon.svelte';
 	import FormError from '$lib/components/FormError.svelte';
 	import SavedNote from '$lib/components/SavedNote.svelte';
-	import Toggle from '$lib/components/Toggle.svelte';
+	import Switch from '$lib/components/Switch.svelte';
 	import { t, tParts } from '$lib/i18n/t';
 	import type { ImageState, UpdateStatus, UpdateStep } from '$lib/types';
 
@@ -78,15 +78,10 @@
 			<input class="input" id="site_tagline" name="site_tagline" value={data.settings.siteTagline} maxlength="160" />
 			<p class="hint">{t('instance.taglineHint')}</p>
 		</div>
-		<label class="mb-4 flex cursor-pointer items-start gap-2.5">
-			<input type="checkbox" name="registration_open" checked={data.settings.registrationOpen} class="mt-0.5" />
-			<span>
-				<span class="block text-sm font-medium">{t('instance.openRegistration')}</span>
-				<span class="block text-xs leading-relaxed text-[var(--text-secondary)]">
-					{t('instance.openRegistrationHint')}
-				</span>
-			</span>
-		</label>
+		<Switch name="registration_open" checked={data.settings.registrationOpen} class="mb-4">
+			<span class="block text-sm font-medium">{t('instance.openRegistration')}</span>
+			<span class="block text-xs leading-relaxed text-[var(--text-secondary)]">{t('instance.openRegistrationHint')}</span>
+		</Switch>
 		<div class="flex flex-wrap items-center gap-3">
 			<button class="btn btn-primary" type="submit">{t('instance.save')}</button>
 			<SavedNote message={form && 'saved' in form ? form.message : null} token={form} />
@@ -137,7 +132,7 @@
 			action="?/autoUpdate"
 			class="mb-4 flex items-center gap-3"
 			use:enhance={() => {
-				// Slide at once; the page data confirms it.
+				// Stay where the click put it; the page data confirms it.
 				autoPending = !data.autoUpdate;
 				return async ({ update }) => {
 					await update();
@@ -145,15 +140,15 @@
 				};
 			}}
 		>
-			<input type="hidden" name="enabled" value={data.autoUpdate ? 'false' : 'true'} />
-			<Toggle checked={autoShown} label={t('instance.auto')} onText={t('instance.autoOn')} offText={t('instance.autoOff')} />
-			<div class="min-w-0">
-				<p class="text-sm font-medium">{t('instance.auto')}</p>
-				<p class="text-xs leading-relaxed text-[var(--text-secondary)]">{t('instance.autoHint')}</p>
+			<!-- Switching posts at once; without JavaScript, the button below does. -->
+			<Switch name="enabled" value="true" checked={autoShown} onchange={(event) => event.currentTarget.form?.requestSubmit()}>
+				<span class="block text-sm font-medium">{t('instance.auto')}</span>
+				<span class="block text-xs leading-relaxed text-[var(--text-secondary)]">{t('instance.autoHint')}</span>
 				{#if data.autoUpdate && data.update.status?.state === 'failed' && data.update.status.trigger === 'auto'}
-					<p class="text-xs" style:color="var(--warn)">{t('instance.autoPaused', { version: data.update.status.target ?? '' })}</p>
+					<span class="block text-xs" style:color="var(--warn)">{t('instance.autoPaused', { version: data.update.status.target ?? '' })}</span>
 				{/if}
-			</div>
+			</Switch>
+			<noscript><button class="btn btn-sm" type="submit">{t('instance.save')}</button></noscript>
 		</form>
 
 		{#if available}
@@ -242,9 +237,7 @@
 				<Icon name="refresh" size={13} />
 				{checking ? t('instance.checking') : t('instance.checkNow')}
 			</button>
-			<label class="flex cursor-pointer items-center gap-1.5 text-xs text-[var(--text-secondary)]">
-				<input type="checkbox" name="force" /> {t('instance.force')}
-			</label>
+			<Switch name="force" size="sm" class="text-xs text-[var(--text-secondary)]">{t('instance.force')}</Switch>
 		</form>
 
 		<!-- Everything this section reports goes here, under its buttons. -->

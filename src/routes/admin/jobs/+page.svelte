@@ -3,6 +3,7 @@
 	import { invalidateAll } from '$app/navigation';
 	import { page } from '$app/state';
 	import Icon from '$lib/components/Icon.svelte';
+	import Switch from '$lib/components/Switch.svelte';
 	import StatusDot from '$lib/components/StatusDot.svelte';
 	import FormError from '$lib/components/FormError.svelte';
 	import { relativeTime, shortSha } from '$lib/format';
@@ -46,9 +47,7 @@
 <div class="mb-4 flex flex-wrap items-center justify-between gap-2">
 	<h2 class="text-lg font-semibold tracking-tight">{t('about.queue')}</h2>
 	<div class="flex flex-wrap gap-2">
-		<label class="flex cursor-pointer items-center gap-1.5 text-xs text-[var(--text-secondary)]">
-			<input type="checkbox" bind:checked={autoRefresh} /> {t('jobs.autoRefresh')}
-		</label>
+		<Switch bind:checked={autoRefresh} size="sm" class="text-xs text-[var(--text-secondary)]">{t('jobs.autoRefresh')}</Switch>
 		<form method="POST" action="?/unstick" use:enhance>
 			<button class="btn btn-sm" type="submit" title={t('jobs.unstickTitle')}>
 				<Icon name="alert" size={13} /> {t('jobs.unstick')}

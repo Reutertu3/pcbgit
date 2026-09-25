@@ -242,3 +242,11 @@ caused them, and the texts were long. The update
 section's messages (errors, "Checking GitHub…") now sit under its buttons,
 confirmations it already shows elsewhere are gone, the texts are shorter, and
 automatic updates are switched with a green/red on/off slider.
+
+### One switch for every on/off option
+The green/red slider for automatic updates looked crude. It is replaced by one
+iOS-style switch (smooth slide, green when on, the knob stretching while pressed)
+used for every on/off option: automatic updates and open registration, the
+render queue's auto-refresh, DRC markers on the PCB view, the BOM's "changes
+only", the 3D export options, "include rendered output" for snapshots and
+"reinstall even if unchanged".

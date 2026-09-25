@@ -101,6 +101,9 @@ converter takes untrusted XML: keep its reader entity-free and capped
   keep ids no longer offered, and the settings form keeps them selectable.
 - **`render/kicad.ts` has no `$lib` imports:** the renderer runs it with plain Node,
   outside Vite. Pass options in instead.
+- **On/off options** use `Switch` ($lib/components/Switch.svelte), not a bare
+  checkbox: settings, view toggles, action options. It wraps a real checkbox
+  (`name`, `bind:checked`); `size="sm"` in toolbars and dense rows.
 - **Styling:** colours come from the theme tokens (`--accent`, `--on-accent`,
   `--surface-*`, `--border-*`), mixed with `color-mix`. Rules in `@layer components`
   lose to Tailwind utilities (a later layer) whatever their specificity, so a
