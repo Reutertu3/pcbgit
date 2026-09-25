@@ -65,6 +65,19 @@ Open:
       root page is an index of the sheets, so the card thumbnail shows that.
 - [ ] Eagle's `>LAST_DATE_TIME` stays empty (the file does not record it).
 
+### Database: SQLite for now (low priority)
+Evaluated 2026-09-25 for about 5 concurrent users and 200 boards: SQLite is more
+than enough. At 500 boards, 10,000 versions and 600,000 BOM rows the busiest page
+query took 2.4 ms. All writes come from one process through one connection, and
+`node:sqlite` is synchronous, so writes never collide; `busy_timeout` covers
+scripts run by hand.
+- [ ] Consider PostgreSQL only if pcbgit needs several app instances, high
+      availability or outside tools on the database. Cost: every query helper
+      becomes async (229 call sites in 47 files, 6 transactions), SQLite-only SQL
+      (`COLLATE NOCASE`, `rowid` order, upserts, migrations), backup/restore via
+      `pg_dump`, an extra container. About 1–2 weeks as a full switch; offering
+      both at install doubles that and every later feature, so switch, don't split.
+
 ## Security
 
 Done in the audit of 2026-09-23 and after: open redirect after sign-in, sign-in

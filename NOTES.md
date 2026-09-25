@@ -176,3 +176,10 @@ files there. `trustedDir()` now requires every step from RENDER_DIR down to be a
 real directory, for reads, writes and the schematic fallback. Only a swap in the
 instant between check and open remains (TODO.md).
 
+### Database evaluated: SQLite stays
+For about 5 concurrent users and 200 boards, SQLite is more than enough: a test
+database at 2.5 times that size answered the busiest page in 2.4 ms. Writes are
+serialised in the one app process, so they never collide. A switch to PostgreSQL
+is noted in TODO.md as low priority, for when several app instances or high
+availability are needed, and then as a full switch rather than a choice at install.
+
