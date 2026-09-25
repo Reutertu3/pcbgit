@@ -77,6 +77,12 @@ scripts run by hand.
       (`COLLATE NOCASE`, `rowid` order, upserts, migrations), backup/restore via
       `pg_dump`, an extra container. About 1–2 weeks as a full switch; offering
       both at install doubles that and every later feature, so switch, don't split.
+- [ ] Build the Docker image in GitHub Actions and push it to GHCR, so servers
+      pull instead of building (the 2-core/4 GB server builds next to the live
+      app). `image: ${PCBGIT_IMAGE:-pcbgit:latest}` in compose (the renderer's
+      `pull_policy: never` goes), `update.sh` pulls the image of the new commit's
+      SHA and falls back to a local build if it isn't there yet. Registry build
+      cache keeps the KiCad layers stable, so updates download only app layers.
 
 ## Security
 

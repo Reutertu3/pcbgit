@@ -15,7 +15,8 @@ npm run schema   # after editing src/lib/server/db/schema.sql
 npm run seed     # demo boards
 ```
 
-Run `npm test` and `npm run check` before calling a change done.
+Run `npm test` and `npm run check` before calling a change done. GitHub Actions
+(`.github/workflows/ci.yml`) runs both on every push, with Node 24 as in the image.
 
 ## How a version gets rendered
 

@@ -1,0 +1,38 @@
+# Tests and type checks on every push and pull request, so a broken commit shows
+# up on GitHub before the admin panel's "Update" pulls it onto a server.
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      # The Node version the Docker image ships (node:sqlite, --experimental-strip-types).
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      # The profile picture test needs the rasterisers; kicad-cli is not needed,
+      # the pipeline tests run metadata-only renders without it.
+      - name: Install thumbnail tools
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends librsvg2-bin webp
+
+      - run: npm ci
+      - run: npm test
+      - run: npm run check

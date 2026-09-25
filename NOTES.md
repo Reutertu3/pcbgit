@@ -198,3 +198,9 @@ stored (`?v=…`), which changes with every render; only such links are cached f
 good, unversioned ones for 5 minutes. Checked by re-rendering TB6612FNG: every
 link and card thumbnail got a new version.
 
+### Tests run on GitHub
+A GitHub Actions workflow runs the tests and type checks on every push and pull
+request, with Node 24 as in the Docker image, so a broken commit shows up before
+a server updates to it. Building the image in Actions as well, so the small
+server pulls instead of building, is planned in TODO.md.
+
