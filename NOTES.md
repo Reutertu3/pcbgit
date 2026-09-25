@@ -219,6 +219,12 @@ waiting up to 20 minutes right after a push, and builds on the server only when
 there is none. No admin panel switch: the choice follows from whether an image
 exists, and `PCBGIT_UPDATE_IMAGE=build` in `.env` forces building.
 
+### Moving a server explained without .env edits
+The README's steps for moving pcbgit to a new server went through a host folder
+and `PCBGIT_IMPORT_SNAPSHOT`, although Admin → Backups already uploads and
+restores snapshots. They now say: set the new server up, sign in, upload the
+snapshot and restore it. The `.env` route stays for scripted setups.
+
 ### Updates explained in the panel, and automatic updates · v0.5.0
 The Instance page said "pulls and rebuilds" and showed one status line, so it was
 unclear what an update would do and where it stood. The hourly check now also
@@ -259,6 +265,13 @@ Catppuccin Latte (light) and Frappé (dark) join the theme picker, with the colo
 from the official palette and mauve as the accent. Unlike the other added themes,
 they set their own button hover colour; the others still inherit the default
 theme's green there. The default theme, Forest, is now called PCBgit.
+
+### What the knowledge graph cannot see
+Tracing the render chain and the weakly connected nodes in the graphify graph
+showed more blind spots: the `storeArtifact()` calls in `render/worker.ts` are
+missing, type references make no edges, calls from `.svelte` files are mostly
+absent, and the graph is undirected. Noted in CLAUDE.md, so a low degree is not
+read as dead code.
 
 ### Snapshots of any size can be uploaded
 With 200 boards a snapshot runs to several GB, far above the 210 MB request
@@ -316,3 +329,11 @@ profile page, and its boards named like admin pages (users, tags, …) were hidd
 behind them. The panel is now at `/admin-panel`, a reserved username; `/admin` is
 the admin account's profile like any other. Old bookmarks to `/admin/…` now lead
 there.
+
+### Card thumbnails that only appeared on hover
+Going back to the front page, some SCH or PCB thumbnails sometimes stayed blank
+until the mouse moved over them. Nothing in the page hides them; hovering only
+starts the zoom, which makes the browser redraw. The likely cause was
+`decoding="async"` on thumbnails taken from the browser cache, which Firefox and
+Chromium sometimes draw late. It is removed (`loading="lazy"` stays); the bug no
+longer showed up in a first test, and is kept in TODO.md for observation.

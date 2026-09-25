@@ -8,7 +8,7 @@ can sign up.
 
 Only what is left to do; details in the sections below. **Medium** comes first
 when registration opens, **Review** means code nobody has audited yet, **Low**
-and **Optional** wait until they matter.
+and **Optional** wait until they matter, **Observe** is fixed but worth watching.
 
 | Priority | Area | Item |
 |---|---|---|
@@ -38,6 +38,7 @@ and **Optional** wait until they matter.
 | Optional | Fabrication | JLCPCB assembly files (CPL, BOM with LCSC numbers) |
 | Optional | Fabrication | AISLER drill "2:4 precision", only if its import misreads ours |
 | Optional | Rendering | Board as PDF (assembly drawings) |
+| Observe | Front page | Card thumbnails blank until hovered after going back (likely fixed 2026-09-25) |
 
 ## Features
 
@@ -168,3 +169,10 @@ without external buffers, the schematic fallback confined to the checkout.
 - [ ] `/new` creates the board before committing the upload; if that fails, an
       empty board is left behind.
 - [ ] `syncCommits()` only looks at the newest 200 commits of a branch.
+
+## Observe
+- [ ] Card thumbnails (SCH, PCB) sometimes stayed blank after going back to the
+      front page until hovered: loaded, but not drawn. `decoding="async"` was
+      removed from them on 2026-09-25 and a first test looked fine. If it comes
+      back, note the browser; the next step is forcing a redraw when each
+      thumbnail loads (`ProjectCard.svelte`).

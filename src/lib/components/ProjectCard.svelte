@@ -42,12 +42,13 @@
 				class:z-10={project.has_schematic && schematicSrc}
 			>
 				{#if project.has_schematic && schematicSrc}
+					<!-- No decoding="async" on either preview: back on this page, the browser took
+					     them from its cache and sometimes drew them only once hovered. -->
 					<img
 						src={schematicSrc}
 						alt={t('card.schematicAlt', { name: project.name })}
 						class="h-full w-full object-contain p-2 opacity-90 transition-transform duration-[1600ms] ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-[1.04] group-hover:duration-300"
 						loading="lazy"
-						decoding="async"
 					/>
 				{:else}
 					<div class="traces flex h-full items-center justify-center text-[var(--text-muted)]">
@@ -74,7 +75,6 @@
 						alt={t('card.boardAlt', { name: project.name })}
 						class="h-full w-full object-contain p-2 transition-transform duration-[1600ms] ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-[1.04] group-hover:duration-300"
 						loading="lazy"
-						decoding="async"
 					/>
 				{:else}
 					<div class="traces flex h-full items-center justify-center text-[var(--text-muted)]">
