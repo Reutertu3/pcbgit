@@ -18,6 +18,9 @@ the code live in CLAUDE.md.
 | v0.4.3 | 2026-09-24 | Preliminary Eagle support (Eagle 6+, Native or Converted) |
 | v0.5.0 | 2026-09-25 | Servers pull the image GitHub Actions built, automatic updates, CI, re-rendered files reach the browser, Eagle sheets on standard sizes |
 | v0.5.1 | 2026-09-25 | Transparent schematic fills no longer plotted red, tidier update section with an on/off slider |
+| v0.5.2 | 2026-09-25 | Catppuccin Latte and Frappé themes, default theme renamed PCBgit, one switch for every on/off option |
+| v0.6.0 | 2026-09-25 | Limits per user, approval of and notifications for new accounts, protected owner account, snapshots of any size |
+| v0.6.1 | 2026-09-25 | Renderer memory and CPU limits and a minimum of free disk space in `.env` |
 
 ## 2026-09-22
 
@@ -251,7 +254,7 @@ render queue's auto-refresh, DRC markers on the PCB view, the BOM's "changes
 only", the 3D export options, "include rendered output" for snapshots and
 "reinstall even if unchanged".
 
-### Catppuccin themes
+### Catppuccin themes · v0.5.2
 Catppuccin Latte (light) and Frappé (dark) join the theme picker, with the colours
 from the official palette and mauve as the accent. Unlike the other added themes,
 they set their own button hover colour; the others still inherit the default
@@ -278,7 +281,7 @@ admin's approval by default; the Users page lists them first and the admin
 navigation counts them. Tested with real pushes: a 1 MB storage limit, 1 push
 per hour, 2 boards, and a registration through approval to sign-in.
 
-### Sign-up notifications and a protected owner account
+### Sign-up notifications and a protected owner account · v0.6.0
 Admins learned about new accounts only from the marker next to Users. Every
 registration now sends active admins a notification ("… registered and waits
 for your approval"), linking to the account; the notifications table was rebuilt
@@ -288,7 +291,7 @@ account is now the owner (the `.env` admin, or the oldest admin on existing
 instances): no one can demote, disable or delete it, and only the owner resets
 its password. A separate "super admin" role was not needed for that.
 
-### Resource settings: renderer limits and minimum free disk
+### Resource settings: renderer limits and minimum free disk · v0.6.1
 On a 2-core, 4 GB server the renderer's fixed limits (4 GB, 2 CPUs) were the
 whole machine, so a large board could take the site down with it; and nothing
 stopped uploads, pushes, snapshots or renders from filling the disk, which would
