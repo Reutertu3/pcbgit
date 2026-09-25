@@ -138,7 +138,7 @@
 								<Icon name="git" size={14} /> {t('nav.tokens')}
 							</a>
 							{#if isAdmin}
-								<a href="/admin" class="menu-item" onclick={closeMenus}>
+								<a href="/admin-panel" class="menu-item" onclick={closeMenus}>
 									<Icon name="dashboard" size={14} /> {t('nav.admin')}
 								</a>
 							{/if}

@@ -5,10 +5,10 @@ import { SnapshotError } from '$lib/server/restore';
 import { translate } from '$lib/i18n';
 
 /**
- * POST /admin/backups/upload?id=&name=&part=&parts=   one piece of a snapshot (raw bytes)
- * POST /admin/backups/upload?id=&name=&parts=&join     all pieces are in: join and check
+ * POST /admin-panel/backups/upload?id=&name=&part=&parts=   one piece of a snapshot (raw bytes)
+ * POST /admin-panel/backups/upload?id=&name=&parts=&join     all pieces are in: join and check
  *
- * Admins only (hooks.server.ts guards /admin). Only application/octet-stream is
+ * Admins only (hooks.server.ts guards /admin-panel). Only application/octet-stream is
  * accepted: a page on another site cannot send that without a CORS preflight,
  * which pcbgit never answers, so it needs no separate cross-site check.
  */

@@ -81,7 +81,9 @@ converter takes untrusted XML: keep its reader entity-free and capped
   `rebuildNotifications`); if other tables reference it with `ON DELETE CASCADE`,
   turn foreign keys off around the rebuild, or dropping the old table deletes
   their rows.
-- **Admin actions** that change data call `audit(...)`.
+- **Admin actions** that change data call `audit(...)`. The admin panel lives at
+  `/admin-panel` (a reserved username): every other top-level path can be a
+  user's profile, `/admin` included, which is the default admin account's.
 - **Limits** (`$lib/server/limits.ts`): anything that writes to a board checks
   `checkStorage(owner)` and `takeWrite(actor)` first; creating a board checks
   `checkNewBoard()`. Storage is the board owner's (repositories plus artifacts,
@@ -103,7 +105,7 @@ converter takes untrusted XML: keep its reader entity-free and capped
 - **The owner** (`users.is_owner`, one account: the `.env` admin, else the first to
   register or the oldest admin; `ensureOwner()` in bootstrap.ts) cannot be demoted,
   disabled or deleted, and only the owner resets its password (`ownerRefusal()` in
-  admin/users). Any new admin action on another account needs the same check.
+  admin-panel/users). Any new admin action on another account needs the same check.
 - **Forms that edit existing values** use `use:enhance={keepValues}` ($lib/forms):
   SvelteKit resets a form after success, and with Svelte 5 that empties every field
   filled via `value={…}`. Forms that should clear (passwords, "create …") keep plain

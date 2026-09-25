@@ -5,7 +5,7 @@ import { snapshotPath } from '$lib/server/backups';
 import { fileBody } from '$lib/server/filebody';
 import { SnapshotError } from '$lib/server/restore';
 
-// Admin-only via the /admin guard in hooks.server.ts.
+// Admin-only via the /admin-panel guard in hooks.server.ts.
 export const GET: RequestHandler = async ({ params }) => {
 	let file: string;
 	try {

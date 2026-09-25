@@ -7,13 +7,13 @@
 	let { data, children } = $props();
 
 	const NAV: { href: string; label: string; icon: IconName; badge?: keyof typeof data.badges }[] = $derived([
-		{ href: '/admin', label: t('admin.nav.overview'), icon: 'dashboard' },
-		{ href: '/admin/users', label: t('admin.nav.users'), icon: 'users', badge: 'users' },
-		{ href: '/admin/projects', label: t('admin.nav.boards'), icon: 'board', badge: 'projects' },
-		{ href: '/admin/tags', label: t('nav.tags'), icon: 'tag', badge: 'tags' },
-		{ href: '/admin/jobs', label: t('about.queue'), icon: 'refresh', badge: 'jobs' },
-		{ href: '/admin/backups', label: t('admin.nav.backups'), icon: 'folder' },
-		{ href: '/admin/settings', label: t('admin.nav.instance'), icon: 'settings', badge: 'updates' }
+		{ href: '/admin-panel', label: t('admin.nav.overview'), icon: 'dashboard' },
+		{ href: '/admin-panel/users', label: t('admin.nav.users'), icon: 'users', badge: 'users' },
+		{ href: '/admin-panel/projects', label: t('admin.nav.boards'), icon: 'board', badge: 'projects' },
+		{ href: '/admin-panel/tags', label: t('nav.tags'), icon: 'tag', badge: 'tags' },
+		{ href: '/admin-panel/jobs', label: t('about.queue'), icon: 'refresh', badge: 'jobs' },
+		{ href: '/admin-panel/backups', label: t('admin.nav.backups'), icon: 'folder' },
+		{ href: '/admin-panel/settings', label: t('admin.nav.instance'), icon: 'settings', badge: 'updates' }
 	]);
 </script>
 

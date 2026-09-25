@@ -54,7 +54,7 @@ export function validateUsername(username: string) {
 }
 
 const RESERVED = new Set([
-	'admin', 'api', 'git', 'login', 'logout', 'register', 'settings', 'new', 'browse',
+	'admin', 'admin-panel', 'api', 'git', 'login', 'logout', 'register', 'settings', 'new', 'browse',
 	'about', 'static', 'assets', 'artifacts', 'tags', 'search', 'explore', 'help', 'docs'
 ]);
 

@@ -38,7 +38,7 @@ const { count, get, run } = await import('../src/lib/server/db/index.ts');
 const { bootstrap } = await import('../src/lib/server/bootstrap.ts');
 const auth = await import('../src/lib/server/auth.ts');
 const notifications = await import('../src/lib/server/notifications.ts');
-const { actions } = await import('../src/routes/admin/users/+page.server.ts');
+const { actions } = await import('../src/routes/admin-panel/users/+page.server.ts');
 
 bootstrap();
 const first = auth.getUserById('u1')!;
@@ -49,7 +49,7 @@ const bob = auth.getUserById('u3')!;
 async function act(name: keyof typeof actions, actor: typeof first, fields: Record<string, string>) {
 	const body = new FormData();
 	for (const [key, value] of Object.entries(fields)) body.set(key, value);
-	const request = new Request('http://localhost/admin/users', { method: 'POST', body });
+	const request = new Request('http://localhost/admin-panel/users', { method: 'POST', body });
 	return (actions[name] as any)({ request, locals: { user: actor, locale: 'en' } });
 }
 

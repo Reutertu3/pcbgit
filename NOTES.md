@@ -308,3 +308,11 @@ it was fixed. Both are now settings under Instance (the text under the tagline
 is new there), shown exactly as written in every language: an instance's own
 words cannot be translated by pcbgit. The defaults are the old English texts;
 an empty field hides it.
+
+### Admin panel moved to /admin-panel
+Every profile is at `/<username>`, and the admin panel sat at `/admin`, which is
+also the default admin account's name. The panel won, so that account had no
+profile page, and its boards named like admin pages (users, tags, …) were hidden
+behind them. The panel is now at `/admin-panel`, a reserved username; `/admin` is
+the admin account's profile like any other. Old bookmarks to `/admin/…` now lead
+there.

@@ -66,11 +66,11 @@
 		progress = { sent: 0, total: file.size };
 		try {
 			for (let part = 1; part <= parts; part++) {
-				await send(`/admin/backups/upload?${query}&part=${part}`, file.slice((part - 1) * size, part * size));
+				await send(`/admin-panel/backups/upload?${query}&part=${part}`, file.slice((part - 1) * size, part * size));
 				progress = { sent: Math.min(part * size, file.size), total: file.size };
 			}
 			joining = true;
-			const result = await send(`/admin/backups/upload?${query}&join`, null);
+			const result = await send(`/admin-panel/backups/upload?${query}&join`, null);
 			uploadResult = { kind: 'success', text: result.message ?? '' };
 			upload = null;
 			formElement.reset();
@@ -204,7 +204,7 @@
 							</p>
 						</div>
 						<div class="flex gap-1">
-							<a class="btn btn-sm" href="/admin/backups/download/{snap.name}" title={t('backups.download')}>
+							<a class="btn btn-sm" href="/admin-panel/backups/download/{snap.name}" title={t('backups.download')}>
 								<Icon name="download" size={12} />
 							</a>
 							<button

@@ -24,14 +24,14 @@
 		const params = new URLSearchParams();
 		if (status) params.set('status', status);
 		const query = params.toString();
-		return `/admin/jobs${query ? `?${query}` : ''}`;
+		return `/admin-panel/jobs${query ? `?${query}` : ''}`;
 	}
 
 	function logHref(id: string) {
 		const params = new URLSearchParams(page.url.searchParams);
 		if (params.get('log') === id) params.delete('log');
 		else params.set('log', id);
-		return `/admin/jobs?${params.toString()}`;
+		return `/admin-panel/jobs?${params.toString()}`;
 	}
 
 	function duration(job: { started_at: number | null; finished_at: number | null }) {

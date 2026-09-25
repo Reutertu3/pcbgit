@@ -7,11 +7,11 @@
 	let { data } = $props();
 
 	const CARDS = $derived([
-		{ label: t('admin.nav.users'), value: data.stats.users, sub: t('admin.card.active', { n: data.stats.activeUsers }), href: '/admin/users' },
-		{ label: t('admin.nav.boards'), value: data.stats.projects, sub: t('admin.card.private', { n: data.stats.privateProjects }), href: '/admin/projects' },
-		{ label: t('admin.card.versions'), value: data.stats.commits, sub: t('admin.card.failed', { n: data.stats.failedRenders }), href: '/admin/jobs' },
+		{ label: t('admin.nav.users'), value: data.stats.users, sub: t('admin.card.active', { n: data.stats.activeUsers }), href: '/admin-panel/users' },
+		{ label: t('admin.nav.boards'), value: data.stats.projects, sub: t('admin.card.private', { n: data.stats.privateProjects }), href: '/admin-panel/projects' },
+		{ label: t('admin.card.versions'), value: data.stats.commits, sub: t('admin.card.failed', { n: data.stats.failedRenders }), href: '/admin-panel/jobs' },
 		{ label: t('overview.artifacts'), value: formatBytes(data.stats.artifactBytes), sub: t('admin.card.onDisk'), href: null },
-		{ label: t('about.queue'), value: `${data.queue.running}/${data.queue.queued}`, sub: t('admin.card.runningQueued'), href: '/admin/jobs' },
+		{ label: t('about.queue'), value: `${data.queue.running}/${data.queue.queued}`, sub: t('admin.card.runningQueued'), href: '/admin-panel/jobs' },
 		{ label: t('nav.tokens'), value: data.stats.tokens, sub: t('admin.card.issued'), href: null }
 	]);
 </script>
@@ -33,7 +33,7 @@
 				{t('admin.updateAvailable', { count: data.availability.behind })}
 				<span class="mono text-xs font-normal text-[var(--text-muted)]">{data.availability.current} → {data.availability.latest}</span>
 			</h3>
-			<a href="/admin/settings#updates" class="btn btn-primary btn-sm">{t('admin.reviewUpdate')}</a>
+			<a href="/admin-panel/settings#updates" class="btn btn-primary btn-sm">{t('admin.reviewUpdate')}</a>
 		</div>
 		<Changelog commits={data.availability.commits} limit={5} total={data.availability.behind} />
 	</section>
