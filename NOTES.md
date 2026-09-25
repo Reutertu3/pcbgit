@@ -21,6 +21,7 @@ the code live in CLAUDE.md.
 | v0.5.2 | 2026-09-25 | Catppuccin Latte and Frappé themes, default theme renamed PCBgit, one switch for every on/off option |
 | v0.6.0 | 2026-09-25 | Limits per user, approval of and notifications for new accounts, protected owner account, snapshots of any size |
 | v0.6.1 | 2026-09-25 | Renderer memory and CPU limits and a minimum of free disk space in `.env` |
+| v0.6.2 | 2026-09-25 | Admin panel at /admin-panel (admin profile at /admin), untranslated front page texts, thumbnails drawn without hover |
 
 ## 2026-09-22
 
@@ -330,7 +331,7 @@ behind them. The panel is now at `/admin-panel`, a reserved username; `/admin` i
 the admin account's profile like any other. Old bookmarks to `/admin/…` now lead
 there.
 
-### Card thumbnails that only appeared on hover
+### Card thumbnails that only appeared on hover · v0.6.2
 Going back to the front page, some SCH or PCB thumbnails sometimes stayed blank
 until the mouse moved over them. Nothing in the page hides them; hovering only
 starts the zoom, which makes the browser redraw. The likely cause was
