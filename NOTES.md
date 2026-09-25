@@ -222,7 +222,9 @@ restart), and the header says whether the running version was pulled or built.
 Automatic updates can be switched on: the hourly check then installs a new
 version once its image is ready, and does not retry one that failed. A download
 or build that fails now moves the checkout back, so the server does not claim to
-be up to date while the old version runs.
+be up to date while the old version runs. The same day the section was tidied:
+shorter texts, its messages (errors, "Checking GitHub…") shown under its buttons
+instead of at the top of the page, and the switch became a green/red on/off slider.
 
 ### Transparent fills no longer plotted solid red
 On the Touch-Matrix board (render-isolation-test), the DF-Player symbol U7 showed

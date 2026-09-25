@@ -35,32 +35,34 @@ export const actions: Actions = {
 		return { success: true, saved: true, message: translate(locals.locale, 'instance.saved') };
 	},
 
+	// The update section shows its own progress (steps, "Checking GitHub…", the
+	// switch), so these actions only report errors, shown under that section.
 	update: async ({ request, locals }) => {
 		const force = (await request.formData()).get('force') === 'on';
 		const state = updateState();
-		if (!state) return fail(400, { error: translate(locals.locale, 'instance.error.notConfigured') });
+		if (!state) return fail(400, { scope: 'updates', error: translate(locals.locale, 'instance.error.notConfigured') });
 		if (state.requested || state.status?.state === 'running') {
-			return fail(409, { error: translate(locals.locale, 'instance.error.busy') });
+			return fail(409, { scope: 'updates', error: translate(locals.locale, 'instance.error.busy') });
 		}
 		requestUpdate(locals.user!.username, force);
 		audit(locals.user!.id, 'admin.update_request', force ? 'forced reinstall' : 'update');
-		return { success: true, message: translate(locals.locale, 'instance.requestedMessage') };
+		return { success: true, scope: 'updates' };
 	},
 
 	check: async ({ locals }) => {
 		const availability = updateAvailability();
-		if (!availability) return fail(400, { error: translate(locals.locale, 'instance.error.notConfigured') });
+		if (!availability) return fail(400, { scope: 'updates', error: translate(locals.locale, 'instance.error.notConfigured') });
 		if (!availability.checkRequested) requestCheck();
 		audit(locals.user!.id, 'admin.update_check');
-		return { success: true, message: translate(locals.locale, 'instance.checkingMessage') };
+		return { success: true, scope: 'updates' };
 	},
 
 	autoUpdate: async ({ request, locals }) => {
-		if (!updateState()) return fail(400, { error: translate(locals.locale, 'instance.error.notConfigured') });
+		if (!updateState()) return fail(400, { scope: 'updates', error: translate(locals.locale, 'instance.error.notConfigured') });
 		const on = (await request.formData()).get('enabled') === 'true';
 		setAutoUpdate(on, locals.user!.username);
 		audit(locals.user!.id, 'admin.auto_update', on ? 'on' : 'off');
-		return { success: true, message: translate(locals.locale, on ? 'instance.autoOnMessage' : 'instance.autoOffMessage') };
+		return { success: true, scope: 'updates' };
 	},
 
 	recheckKicad: async ({ locals }) => {
@@ -69,6 +71,7 @@ export const actions: Actions = {
 		const version = await kicadVersion();
 		return {
 			success: true,
+			scope: 'kicad',
 			message: version ? translate(locals.locale, 'instance.kicadFound', { version }) : translate(locals.locale, 'instance.kicadMissing')
 		};
 	}

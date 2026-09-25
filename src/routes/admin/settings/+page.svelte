@@ -7,6 +7,7 @@
 	import Icon from '$lib/components/Icon.svelte';
 	import FormError from '$lib/components/FormError.svelte';
 	import SavedNote from '$lib/components/SavedNote.svelte';
+	import Toggle from '$lib/components/Toggle.svelte';
 	import { t, tParts } from '$lib/i18n/t';
 	import type { ImageState, UpdateStatus, UpdateStep } from '$lib/types';
 
@@ -22,6 +23,10 @@
 		const timer = setInterval(() => invalidateAll().catch(() => {}), 3000);
 		return () => clearInterval(timer);
 	});
+
+	// The switch moves on click; the page data takes over once the server answers.
+	let autoPending = $state<boolean | null>(null);
+	const autoShown = $derived(autoPending ?? data.autoUpdate);
 
 	const STATE_COLOR = { running: 'var(--info)', success: 'var(--ok)', failed: 'var(--err)' } as const;
 
@@ -62,9 +67,6 @@
 
 <h2 class="mb-4 text-lg font-semibold tracking-tight">{t('instance.title')}</h2>
 
-{#if form?.message && !(form && 'saved' in form)}<FormError message={form.message} kind="success" />{/if}
-{#if form && 'error' in form && form.error}<FormError message={form.error} />{/if}
-
 <section class="surface p-5">
 	<form method="POST" action="?/save" use:enhance={keepValues}>
 		<div class="mb-4">
@@ -100,6 +102,9 @@
 	<form method="POST" action="?/recheckKicad" use:enhance>
 		<button class="btn btn-sm" type="submit"><Icon name="refresh" size={13} /> {t('instance.recheck')}</button>
 	</form>
+	{#if form?.scope === 'kicad' && 'message' in form}
+		<div class="mt-3 -mb-4"><FormError message={form.message} kind="info" /></div>
+	{/if}
 </section>
 
 <section class="surface mt-4 p-5" id="updates">
@@ -116,39 +121,44 @@
 		</p>
 	{:else}
 		{@const available = data.availability}
-		<p class="mb-1 text-xs leading-relaxed text-[var(--text-secondary)]">{t('instance.updatesHint')}</p>
-		{#if available?.checked}
-			<p class="mb-3 text-xs leading-relaxed text-[var(--text-secondary)]">
+		<p class="mb-4 text-xs leading-relaxed text-[var(--text-secondary)]">
+			{t('instance.updatesHint')}
+			{#if available?.checked}
 				{#if available.source}
 					{#each tParts('instance.sourceImage') as part}{#if typeof part === 'string'}{part}{:else}<span class="mono">{available.source}</span>{/if}{/each}
 				{:else}
 					{#each tParts('instance.sourceBuild') as part}{#if typeof part === 'string'}{part}{:else}<span class="mono">PCBGIT_UPDATE_IMAGE=build</span>{/if}{/each}
 				{/if}
-			</p>
-		{:else}
-			<div class="mb-3"></div>
-		{/if}
+			{/if}
+		</p>
 
-		<form method="POST" action="?/autoUpdate" use:enhance class="mb-4 flex flex-wrap items-start justify-between gap-3 rounded-md border px-3 py-2.5">
-			<div class="min-w-0 flex-1">
-				<p class="flex items-center gap-2 text-sm font-medium">
-					{t('instance.auto')}
-					<span class="chip" style:color={data.autoUpdate ? 'var(--ok)' : 'var(--text-muted)'}>{data.autoUpdate ? t('instance.autoOn') : t('instance.autoOff')}</span>
-				</p>
-				<p class="mt-0.5 text-xs leading-relaxed text-[var(--text-secondary)]">{t('instance.autoHint')}</p>
+		<form
+			method="POST"
+			action="?/autoUpdate"
+			class="mb-4 flex items-center gap-3"
+			use:enhance={() => {
+				// Slide at once; the page data confirms it.
+				autoPending = !data.autoUpdate;
+				return async ({ update }) => {
+					await update();
+					autoPending = null;
+				};
+			}}
+		>
+			<input type="hidden" name="enabled" value={data.autoUpdate ? 'false' : 'true'} />
+			<Toggle checked={autoShown} label={t('instance.auto')} onText={t('instance.autoOn')} offText={t('instance.autoOff')} />
+			<div class="min-w-0">
+				<p class="text-sm font-medium">{t('instance.auto')}</p>
+				<p class="text-xs leading-relaxed text-[var(--text-secondary)]">{t('instance.autoHint')}</p>
 				{#if data.autoUpdate && data.update.status?.state === 'failed' && data.update.status.trigger === 'auto'}
-					<p class="mt-1 text-xs" style:color="var(--warn)">{t('instance.autoPaused', { version: data.update.status.target ?? '' })}</p>
+					<p class="text-xs" style:color="var(--warn)">{t('instance.autoPaused', { version: data.update.status.target ?? '' })}</p>
 				{/if}
 			</div>
-			<input type="hidden" name="enabled" value={data.autoUpdate ? 'false' : 'true'} />
-			<button class="btn btn-sm" type="submit">{data.autoUpdate ? t('instance.autoTurnOff') : t('instance.autoTurnOn')}</button>
 		</form>
 
 		{#if available}
 			<div class="mb-3">
-				{#if checking}
-					<p class="text-xs" style:color="var(--info)">{t('instance.checkingGithub')}</p>
-				{:else if !available.checked}
+				{#if !available.checked}
 					<p class="text-xs text-[var(--text-muted)]">{t('instance.notChecked')}</p>
 				{:else if !available.ok}
 					<p class="text-xs" style:color="var(--err)">
@@ -236,6 +246,13 @@
 				<input type="checkbox" name="force" /> {t('instance.force')}
 			</label>
 		</form>
+
+		<!-- Everything this section reports goes here, under its buttons. -->
+		{#if form?.scope === 'updates' && 'error' in form && form.error}
+			<div class="mt-3"><FormError message={form.error} /></div>
+		{:else if checking}
+			<div class="mt-3"><FormError message={t('instance.checkingGithub')} kind="info" /></div>
+		{/if}
 
 		{#if data.update.log}
 			<details class="mt-3" open={status?.state === 'failed'}>
