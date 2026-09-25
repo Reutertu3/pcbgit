@@ -196,14 +196,17 @@ registration under **Admin → Instance**.
 on the server always use the production setup.
 
 <details>
-<summary><b>Moving an existing instance to this server</b></summary>
+<summary><b>Moving an existing pcbgit to a new server</b></summary>
 
-1. On the old instance, create a snapshot under **Admin → Backups** and download it.
-2. On the new server, run `install.sh` (step 4), but not `update.sh` yet.
-3. Copy the snapshot to `/var/lib/pcbgit-control/import.tar.gz`.
-4. Add `PCBGIT_IMPORT_SNAPSHOT=/control/import.tar.gz` to `.env`.
-5. Run `update.sh`. The snapshot is imported on first start.
-6. Sign in with the admin account from the old instance, then delete the file and the `.env` line.
+1. On the old server, create a snapshot under **Admin → Backups** and download it.
+2. Set up the new server as above and sign in with the admin account from its `.env`.
+3. Under **Admin → Backups**, upload the snapshot and restore it. pcbgit restarts
+   with the old server's users, boards and settings; from then on, sign in with
+   the old server's accounts.
+
+A snapshot larger than the upload limit (210 MB) can be copied in instead of
+uploaded: `docker compose cp snapshot.tar.gz pcbgit:/data/backups/`. It then
+appears in the list.
 
 </details>
 
