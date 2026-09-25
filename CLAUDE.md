@@ -37,9 +37,12 @@ accepts those tools and paths inside `RENDER_DIR`. New tools must be added to
 its allowlist, and must only be given paths under `RENDER_DIR`: copy inputs in,
 copy results out (see `thumbnails.ts`). The renderer can rewrite anything in
 `RENDER_DIR`, and the app resolves paths with `/data` mounted: read results only
-with `readOutput(file, jobDir)`, create files there only with `writeNew()` /
-`COPYFILE_EXCL` (`render/outputs.ts`), and hand bytes, not paths, to
-`storeArtifact()` and `optimizeBoardGlb()`.
+with `readOutput(file, jobDir)`, create files there only with `writeNew()`
+(`render/outputs.ts`), and hand bytes, not paths, to `storeArtifact()` and
+`optimizeBoardGlb()`. Both check the job directory itself with `trustedDir()`:
+every step from `RENDER_DIR` down must be a real directory, since the renderer
+can swap a whole job directory for a link. Code that needs a directory's real
+path (the schematic fallback) takes it from `trustedDir()` too.
 
 **Eagle projects** (6 and newer) are converted before that: a commit without KiCad
 files is searched for Eagle `.sch`/`.brd` (`render/eagle/detect.ts`, by content);

@@ -93,8 +93,9 @@ without external buffers, the schematic fallback confined to the checkout.
 - [ ] A compromised renderer can still falsify its own job's GLB or iBOM output
       (parsed in the browser, iBOM sandboxed).
 - [ ] A process a compromised renderer leaves running could swap a directory in
-      `/work` for a link between the app's realpath check and its open
-      (`readOutput`), or while `tar` extracts a checkout. Closing it needs
+      `/work` for a link between the app's checks (`trustedDir`, realpath) and its
+      open (`readOutput`), or while `tar` extracts a checkout. A directory swapped
+      *before* the check, e.g. while kicad-cli runs, is refused (2026-09-25). Closing it needs
       `openat2(RESOLVE_BENEATH)`, which Node does not offer, or a renderer that
       cannot keep processes alive between tool runs.
 - [ ] Full Content-Security-Policy for pages (SvelteKit `kit.csp`); pages send

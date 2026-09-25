@@ -7,12 +7,31 @@
 import fs from 'node:fs';
 import fsp from 'node:fs/promises';
 import path from 'node:path';
+import { RENDER_DIR } from '../paths';
 
 export class OutputRefused extends Error {}
 
+/**
+ * The real path of a job directory in RENDER_DIR, provided every step from RENDER_DIR
+ * down to it is a plain directory. The renderer can rename anything below RENDER_DIR:
+ * a job directory swapped for a link into /data must not become the boundary itself.
+ */
+export async function trustedDir(dir: string) {
+	const relative = path.relative(path.resolve(RENDER_DIR), path.resolve(dir));
+	if (!relative || relative.startsWith('..') || path.isAbsolute(relative)) {
+		throw new OutputRefused(`not a job directory in the render directory: ${dir}`);
+	}
+	let current = await fsp.realpath(RENDER_DIR);
+	for (const part of relative.split(path.sep)) {
+		current = path.join(current, part);
+		if (!(await fsp.lstat(current)).isDirectory()) throw new OutputRefused(`not a plain directory: ${current}`);
+	}
+	return current;
+}
+
 /** Where `file` really is, if that is inside `root`; links are resolved as the kernel does. */
 export async function realPathInside(file: string, root: string) {
-	const realRoot = await fsp.realpath(root);
+	const realRoot = await trustedDir(root);
 	const real = await fsp.realpath(file);
 	if (!real.startsWith(realRoot + path.sep)) throw new OutputRefused(`outside ${root}: ${file}`);
 	return real;
@@ -34,8 +53,10 @@ export async function readOutput(file: string, root: string): Promise<Buffer> {
 
 /**
  * Creates a file in a directory the renderer can write to. Exclusive create: an
- * existing entry, a planted link included, makes it fail instead of writing through.
+ * existing entry, a planted link included, makes it fail instead of writing through;
+ * and the directories above it must not have been swapped for links either.
  */
 export async function writeNew(file: string, data: string | Uint8Array) {
+	await trustedDir(path.dirname(file));
 	await fsp.writeFile(file, data, { flag: 'wx' });
 }

@@ -12,7 +12,7 @@ import { clearArtifacts, listArtifacts, storeArtifact, svgGeometry } from './art
 import { analyzeBoardText, type BoardStats } from './board';
 import { discoverEagleFiles } from './eagle/detect';
 import { convertEagleProject } from './eagleimport';
-import { readOutput } from './outputs';
+import { readOutput, trustedDir } from './outputs';
 import { bomToCsv, groupBom, parseBomCsv, type BomLine } from './bom';
 import {
 	IBOM_SCRIPT,
@@ -273,7 +273,7 @@ async function buildBom(
 
 	// Fallback: parse the schematic ourselves so the BOM tab is never empty.
 	const { analyzeSchematic } = await import('./schematic');
-	const lines = groupBom(analyzeSchematic(files.rootSch, files.root).symbols);
+	const lines = groupBom(analyzeSchematic(files.rootSch, await trustedDir(files.root)).symbols);
 	log.push(`bom: built from schematic parser (${lines.length} lines)`);
 	if (lines.length) {
 		await storeArtifact({ commitId, kind: 'bom_csv', name: 'bom.csv', data: Buffer.from(bomToCsv(lines)), targetName: 'bom.csv' });

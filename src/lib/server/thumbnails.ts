@@ -3,7 +3,7 @@ import fsp from 'node:fs/promises';
 import path from 'node:path';
 import { RENDER_DIR, artifactDir } from './paths';
 import { runTool } from './render/kicad';
-import { readOutput } from './render/outputs';
+import { readOutput, writeNew } from './render/outputs';
 
 /**
  * Raster thumbnails of rendered SVGs for the board cards. A real schematic SVG
@@ -53,8 +53,8 @@ async function generate(commitId: string, name: string): Promise<Thumbnail | nul
 		const svg = path.join(work, 'source.svg');
 		const rendered = path.join(work, 'thumb.png');
 		const encoded = path.join(work, 'thumb.webp');
-		// Exclusive: the renderer can write in `work` and must not plant a link to copy through.
-		await fsp.copyFile(source, svg, fs.constants.COPYFILE_EXCL);
+		// The renderer can write in `work` and must not plant a link to copy through.
+		await writeNew(svg, await fsp.readFile(source));
 
 		const raster = await runTool('rsvg-convert', ['-w', String(WIDTH), '-f', 'png', '-o', rendered, svg], 60_000);
 		// rsvg-convert missing or failed: callers fall back to the SVG.

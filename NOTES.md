@@ -163,3 +163,16 @@ and depth. Boards are marked Native or Converted, converted ones warn on Gerbers
 and checks, and offer the converted KiCad project as a download. Eagle before 6
 (binary) is refused with a clear message. Board outlines drawn inside a footprint,
 common in Eagle projects, now count for the board size (KiCad boards too).
+
+## 2026-09-25
+
+### Job directories checked, not only the files in them
+Tracing the Eagle import against the render isolation rules showed a gap that
+predates it: `readOutput(file, jobDir)` checked that a file stays inside the job
+directory, but trusted the job directory itself. A compromised renderer could
+rename its job directory and put a link to a /data directory in its place while
+kicad-cli runs; the app would then read from /data, and `writeNew()` would create
+files there. `trustedDir()` now requires every step from RENDER_DIR down to be a
+real directory, for reads, writes and the schematic fallback. Only a swap in the
+instant between check and open remains (TODO.md).
+

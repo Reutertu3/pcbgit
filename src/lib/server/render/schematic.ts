@@ -28,7 +28,8 @@ const MPN_KEYS = ['mpn', 'manufacturer part number', 'part number', 'pn', 'lcsc'
  * only plain files whose real path is inside `root` (the checkout) are read.
  */
 export function analyzeSchematic(rootSchPath: string, root: string): SchematicStats {
-	const realRoot = fs.realpathSync(root);
+	// `root` is already a real path (trustedDir); resolving it again would follow a swap.
+	const realRoot = path.resolve(root);
 	const visited = new Set<string>();
 	const symbols: SchSymbol[] = [];
 	const sheets: { name: string; file: string }[] = [];
