@@ -22,6 +22,7 @@ the code live in CLAUDE.md.
 | v0.6.0 | 2026-09-25 | Limits per user, approval of and notifications for new accounts, protected owner account, snapshots of any size |
 | v0.6.1 | 2026-09-25 | Renderer memory and CPU limits and a minimum of free disk space in `.env` |
 | v0.6.2 | 2026-09-25 | Admin panel at /admin-panel (admin profile at /admin), untranslated front page texts, thumbnails drawn without hover |
+| v0.6.3 | 2026-09-26 | Updates follow releases (image built only for releases, Install button), master built on the server, last activity per user |
 
 ## 2026-09-22
 
@@ -351,7 +352,7 @@ token use, written at most every 5 minutes). The column is "Last active", with
 the last sign-in as its tooltip; existing accounts took their sign-in from the
 sessions still there.
 
-### Production follows releases, the button builds master
+### Production follows releases, the button builds master · v0.6.3
 Every commit pushed to master was a production candidate: CI built its image,
 and automatic updates installed it within the hour, before it was tested or had
 release notes. Now CI builds the image only for a published release (or a manual
