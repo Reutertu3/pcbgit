@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { toolbarMenu } from '$lib/menus.svelte';
 	import Icon from './Icon.svelte';
 	import { DEFAULT_THEME, THEMES } from '$lib/themes';
 	import { t } from '$lib/i18n/t';
@@ -9,7 +10,7 @@
 	];
 
 	let current = $state<string>(DEFAULT_THEME);
-	let open = $state(false);
+	const open = $derived(toolbarMenu.isOpen('theme'));
 
 	$effect(() => {
 		// Anything unknown (e.g. the old "dark" value) falls back to the default.
@@ -19,7 +20,7 @@
 
 	function choose(id: string) {
 		current = id;
-		open = false;
+		toolbarMenu.close('theme');
 		document.documentElement.dataset.theme = id;
 		try {
 			localStorage.setItem('pcbgit-theme', id);
@@ -29,14 +30,14 @@
 	}
 </script>
 
-<svelte:window onclick={() => (open = false)} />
+<svelte:window onclick={() => toolbarMenu.close('theme')} />
 
 <div class="relative">
 	<button
 		class="btn btn-ghost px-2"
 		onclick={(event) => {
 			event.stopPropagation();
-			open = !open;
+			toolbarMenu.toggle('theme');
 		}}
 		title={t('nav.theme')}
 		aria-label={t('nav.theme')}

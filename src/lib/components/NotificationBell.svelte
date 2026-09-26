@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { toolbarMenu } from '$lib/menus.svelte';
 	import { goto } from '$app/navigation';
 	import Icon from './Icon.svelte';
 	import NotificationText from './NotificationText.svelte';
@@ -12,7 +13,7 @@
 	}
 	let { unread }: Props = $props();
 
-	let open = $state(false);
+	const open = $derived(toolbarMenu.isOpen('notifications'));
 	let loading = $state(false);
 	let items = $state<NotificationView[]>([]);
 	let failed = $state(false);
@@ -52,8 +53,7 @@
 	}
 
 	function toggle() {
-		open = !open;
-		if (open) load();
+		if (toolbarMenu.toggle('notifications')) load();
 	}
 
 	async function markOne(item: NotificationView) {
@@ -68,15 +68,15 @@
 	}
 
 	async function openItem(item: NotificationView) {
-		open = false;
+		toolbarMenu.close('notifications');
 		await markOne(item);
 		goto(notificationHref(item));
 	}
 </script>
 
 <svelte:window
-	onclick={() => (open = false)}
-	onkeydown={(event) => event.key === 'Escape' && (open = false)}
+	onclick={() => toolbarMenu.close('notifications')}
+	onkeydown={(event) => event.key === 'Escape' && toolbarMenu.close('notifications')}
 />
 
 <div class="relative">
@@ -149,7 +149,7 @@
 					</ul>
 				{/if}
 			</div>
-			<a href="/messages" class="block border-t px-3 py-2 text-center text-xs text-[var(--accent)] hover:underline" onclick={() => (open = false)}>
+			<a href="/messages" class="block border-t px-3 py-2 text-center text-xs text-[var(--accent)] hover:underline" onclick={() => toolbarMenu.close('notifications')}>
 				{t('notifications.showAll')}
 			</a>
 		</div>

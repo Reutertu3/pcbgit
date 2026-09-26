@@ -1,13 +1,14 @@
 <script lang="ts">
+	import { toolbarMenu } from '$lib/menus.svelte';
 	import { invalidateAll } from '$app/navigation';
 	import Icon from './Icon.svelte';
 	import { LOCALE_COOKIE, LOCALES, type Locale } from '$lib/i18n';
 	import { locale, t } from '$lib/i18n/t';
 
-	let open = $state(false);
+	const open = $derived(toolbarMenu.isOpen('language'));
 
 	async function choose(id: Locale) {
-		open = false;
+		toolbarMenu.close('language');
 		if (id === locale()) return;
 		document.cookie = `${LOCALE_COOKIE}=${id}; path=/; max-age=31536000; samesite=lax`;
 		document.documentElement.lang = id;
@@ -16,14 +17,14 @@
 	}
 </script>
 
-<svelte:window onclick={() => (open = false)} />
+<svelte:window onclick={() => toolbarMenu.close('language')} />
 
 <div class="relative">
 	<button
 		class="btn btn-ghost !gap-1 px-2"
 		onclick={(event) => {
 			event.stopPropagation();
-			open = !open;
+			toolbarMenu.toggle('language');
 		}}
 		title={t('nav.language')}
 		aria-label={t('nav.language')}

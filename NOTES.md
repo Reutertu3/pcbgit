@@ -383,3 +383,10 @@ before the build had started: the first line of the Dockerfile
 every build. The Dockerfile uses nothing beyond the built-in syntax, so the line
 is gone. Base images still come from Docker Hub, but only when they are not
 cached on the server yet.
+
+### Toolbar menus no longer stack
+Opening the language, theme, notification and user menus one after another left
+the earlier ones open on top of each other. Each closed on a click on the page,
+but each button kept its own click from reaching the page, and so from the other
+menus too. One shared state (`$lib/menus.svelte.ts`) now holds the open menu:
+opening one closes the others, and a click on the page still closes it.

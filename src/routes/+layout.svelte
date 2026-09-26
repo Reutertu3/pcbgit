@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { toolbarMenu } from '$lib/menus.svelte';
 	// Self-hosted fonts (OFL-1.1), bundled by Vite: no request to Google on every page.
 	import '@fontsource-variable/inter';
 	import '@fontsource-variable/jetbrains-mono';
@@ -13,14 +14,14 @@
 
 	let { data, children } = $props();
 
-	let menuOpen = $state(false);
+	const menuOpen = $derived(toolbarMenu.isOpen('user'));
 	let mobileNavOpen = $state(false);
 
 	const isAdmin = $derived(data.user?.role === 'admin');
 	const current = $derived(page.url.pathname);
 
 	function closeMenus() {
-		menuOpen = false;
+		toolbarMenu.close('user');
 		mobileNavOpen = false;
 	}
 </script>
@@ -30,7 +31,7 @@
 	{#if data.site.tagline}<meta name="description" content={data.site.tagline} />{/if}
 </svelte:head>
 
-<svelte:window onclick={() => (menuOpen = false)} />
+<svelte:window onclick={() => toolbarMenu.close('user')} />
 
 <div class="flex min-h-screen flex-col">
 	<header
@@ -105,7 +106,7 @@
 						class="btn btn-ghost !px-1"
 						onclick={(event) => {
 							event.stopPropagation();
-							menuOpen = !menuOpen;
+							toolbarMenu.toggle('user');
 						}}
 						aria-haspopup="menu"
 						aria-expanded={menuOpen}
@@ -119,7 +120,7 @@
 							onclick={(event) => event.stopPropagation()}
 							role="menu"
 							tabindex="-1"
-							onkeydown={(event) => event.key === 'Escape' && (menuOpen = false)}
+							onkeydown={(event) => event.key === 'Escape' && toolbarMenu.close('user')}
 						>
 							<div class="border-b px-3 py-2">
 								<div class="truncate text-sm font-medium">{data.user.displayName}</div>
