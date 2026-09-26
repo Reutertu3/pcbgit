@@ -325,8 +325,8 @@ Set these in `.env`:
 | `PCBGIT_IMPORT_SNAPSHOT` | — | Snapshot to import on the first start of an empty instance |
 | `COMPOSE_FILE` | — | Set by `install.sh` so `docker compose` uses the production setup |
 | `PCBGIT_SOURCE_URL` | `https://github.com/Reutertu3/pcbgit` | Repository linked as "Source" in the footer. Forks must set their own. |
-| `PCBGIT_RENDER_MEMORY` | `4g` | Memory the renderer container may use; keep it below the server's total |
-| `PCBGIT_RENDER_CPUS` | `2` | CPUs the renderer container may use |
+| `PCBGIT_RENDER_MEMORY` | `4g` | Memory the renderer container may use; keep it below the server's total. `0`: no limit |
+| `PCBGIT_RENDER_CPUS` | `2` | CPUs the renderer container may use. `0`: no limit |
 | `PCBGIT_MIN_FREE_DISK` | `1G` | Free disk space that always stays free: below it uploads, pushes and snapshots are refused and renders wait |
 | `PCBGIT_UPDATE_IMAGE` | `ghcr.io/<owner>/<repo>` of a GitHub remote | Where release installs pull the image from (tagged `sha-<commit>`). `build` builds releases on the server too. |
 
