@@ -24,6 +24,7 @@ the code live in CLAUDE.md.
 | v0.6.2 | 2026-09-25 | Admin panel at /admin-panel (admin profile at /admin), untranslated front page texts, thumbnails drawn without hover |
 | v0.6.3 | 2026-09-26 | Updates follow releases (image built only for releases, Install button), master built on the server, last activity per user |
 | v0.6.4 | 2026-09-26 | Update section in plain words: release name in the header, one-line explanation, hint under the build button |
+| v0.6.5 | 2026-09-26 | Design audit (neutral tag chips, consistent headings, accessibility), calmer board card hover, toolbar menus no longer stack, server builds without Docker Hub for the build syntax |
 
 ## 2026-09-22
 
