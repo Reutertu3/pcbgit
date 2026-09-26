@@ -329,7 +329,7 @@
 		width: max(100%, calc(70vw - 2rem));
 		margin-left: 50%;
 		translate: -50%;
-		height: calc(100vh - 13rem);
+		height: calc(100svh - 13rem);
 		min-height: 32rem;
 		background: #fff;
 	}

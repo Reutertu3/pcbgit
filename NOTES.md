@@ -390,3 +390,19 @@ the earlier ones open on top of each other. Each closed on a click on the page,
 but each button kept its own click from reaching the page, and so from the other
 menus too. One shared state (`$lib/menus.svelte.ts`) now holds the open menu:
 opening one closes the others, and a click on the page still closes it.
+
+### A quieter, more consistent interface
+A UI audit, aimed at keeping the site neutral and technical rather than adding
+decoration. Tag chips were the loudest thing on every page (coloured fill,
+border and text in four hues); they are now plain chips whose dot carries the
+colour, except for a selected filter. Sidebar headings on the board page, the
+about page and board settings use the same sentence-case headings as the main
+panels; small uppercase labels stay for data (stat grids, layer groups). Counts
+and sizes use tabular figures, but only where numbers are shown: Inter also
+widens the hyphen under that setting, which spread "Self-hosted" apart when it
+was set for the whole page. Headings balance their lines, reduced motion is
+respected, keyboard users get a skip link, icon-only buttons have labels, and
+files inside a folder are indented under it. On phones the start page's hero is
+shorter and the filters fold behind a button, so boards start on the first
+screen. The 404 page names what is missing ("Board not found", with the reason
+it may be gone) instead of saying it twice. The board-card hover glow stays.

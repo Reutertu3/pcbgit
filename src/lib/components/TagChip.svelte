@@ -35,19 +35,22 @@
 		font-size: 0.6875rem;
 		font-weight: 500;
 		white-space: nowrap;
-		border: 1px solid color-mix(in srgb, var(--tag) 40%, transparent);
-		background: color-mix(in srgb, var(--tag) 14%, transparent);
-		/* Pull the text toward the theme's foreground so it stays legible on light and dark. */
-		color: color-mix(in srgb, var(--tag) 60%, var(--text-primary));
-		transition: border-color 120ms ease, background 120ms ease;
+		/* Neutral like every other chip: the dot carries the tag's colour, so a row
+		   of tags does not outshout the board it describes. */
+		border: 1px solid var(--border-subtle);
+		background: var(--surface-2);
+		color: var(--text-secondary);
+		transition: border-color 120ms ease, background 120ms ease, color 120ms ease;
 	}
 	a.tag-chip:hover {
-		border-color: var(--tag);
+		border-color: color-mix(in srgb, var(--tag) 60%, var(--border-strong));
+		color: var(--text-primary);
 	}
+	/* The selected filter is the one place the colour spreads to the chip. */
 	.tag-chip.active {
 		border-color: var(--tag);
-		background: color-mix(in srgb, var(--tag) 30%, transparent);
-		box-shadow: 0 0 0 1px var(--tag);
+		background: color-mix(in srgb, var(--tag) 18%, var(--surface-2));
+		color: var(--text-primary);
 	}
 	.dot {
 		width: 0.45rem;
@@ -57,5 +60,6 @@
 	}
 	.count {
 		color: var(--text-muted);
+		font-variant-numeric: tabular-nums;
 	}
 </style>

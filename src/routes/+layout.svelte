@@ -33,7 +33,8 @@
 
 <svelte:window onclick={() => toolbarMenu.close('user')} />
 
-<div class="flex min-h-screen flex-col">
+<div class="flex min-h-dvh flex-col">
+	<a href="#main" class="skip-link">{t('nav.skip')}</a>
 	<header
 		class="sticky top-0 z-40 border-b backdrop-blur-md"
 		style="background: color-mix(in srgb, var(--surface-1) 88%, transparent)"
@@ -182,7 +183,7 @@
 		{/if}
 	</header>
 
-	<main class="flex-1">
+	<main id="main" class="flex-1" tabindex="-1">
 		{@render children()}
 	</main>
 
@@ -210,7 +211,6 @@
 				{/if}
 				<a href="/about" class="hover:text-[var(--text-primary)]">{t('footer.about')}</a>
 				<a href="/tags" class="hover:text-[var(--text-primary)]">{t('nav.tags')}</a>
-				<span class="mono">KiCad-native</span>
 			</span>
 		</div>
 	</footer>

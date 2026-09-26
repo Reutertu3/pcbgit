@@ -21,7 +21,7 @@
 	{#each stats.filter((stat) => stat.value !== null && stat.value !== undefined) as stat}
 		<div class="bg-s1 px-3 py-2.5">
 			<dt class="text-[0.6875rem] uppercase tracking-wide text-[var(--text-muted)]">{stat.label}</dt>
-			<dd class="mt-0.5 text-sm font-semibold" style:color={tones[stat.tone ?? 'default']}>
+			<dd class="mt-0.5 text-sm font-semibold tabular-nums" style:color={tones[stat.tone ?? 'default']}>
 				{stat.value}
 			</dd>
 		</div>

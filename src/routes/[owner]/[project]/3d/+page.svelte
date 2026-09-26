@@ -27,7 +27,7 @@
 				mounts={data.mounts}
 				caption="{data.project.name} · {shortSha(data.commit?.sha)}"
 				fileBase="{data.project.slug}-{shortSha(data.commit?.sha)}"
-				class="h-[calc(100vh-15rem)] min-h-[32rem]"
+				class="h-[calc(100svh-15rem)] min-h-[32rem]"
 			/>
 		{/key}
 		<div class="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs text-[var(--text-muted)]">

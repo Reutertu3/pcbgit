@@ -63,13 +63,14 @@
 					{#if directory}
 						<div class="flex items-center gap-1.5 bg-s2 px-3 py-1.5 text-xs text-[var(--text-secondary)]">
 							<Icon name="folder" size={12} />
-							<span class="mono">{directory}</span>
+							<span class="mono">{directory}/</span>
 						</div>
 					{/if}
 					{#each files as file}
 						{@const name = file.path.split('/').pop()}
 						{@const canPreview = previewableSet.has(file.path)}
-						<div class="flex items-center gap-2 px-3 py-1.5 text-[0.8125rem] hover:bg-s2">
+						<!-- Indented under their folder's row, which would otherwise read as a divider. -->
+						<div class="flex items-center gap-2 py-1.5 pr-3 text-[0.8125rem] hover:bg-s2" class:pl-3={!directory} class:pl-8={directory}>
 							<Icon name={iconFor(file.path)} size={13} class="shrink-0 text-[var(--text-muted)]" />
 							{#if canPreview}
 								<a
@@ -95,11 +96,11 @@
 					<div class="flex items-center gap-2 border-b bg-s2 px-3 py-2">
 						<Icon name={iconFor(data.preview.path)} size={13} />
 						<span class="mono min-w-0 flex-1 truncate text-xs">{data.preview.path}</span>
-						<a href="{base}/files" class="btn btn-ghost btn-sm !px-1.5" title={t('files.closePreview')}>
+						<a href="{base}/files" class="btn btn-ghost btn-sm !px-1.5" title={t('files.closePreview')} aria-label={t('files.closePreview')}>
 							<Icon name="x" size={12} />
 						</a>
 					</div>
-					<pre class="mono max-h-[calc(100vh-18rem)] overflow-auto bg-[var(--surface-0)] px-3 py-2.5 text-[0.6875rem] leading-relaxed text-[var(--text-secondary)]">{data.preview.content}</pre>
+					<pre class="mono max-h-[calc(100svh-18rem)] overflow-auto bg-[var(--surface-0)] px-3 py-2.5 text-[0.6875rem] leading-relaxed text-[var(--text-secondary)]">{data.preview.content}</pre>
 					{#if data.preview.truncated}
 						<p class="border-t px-3 py-1.5 text-[0.6875rem] text-[var(--text-muted)]">
 							{t('files.truncated')}

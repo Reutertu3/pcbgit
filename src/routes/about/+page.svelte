@@ -30,7 +30,7 @@
 	</p>
 
 	<section class="mt-8">
-		<h2 class="mb-3 text-sm font-semibold uppercase tracking-wide text-[var(--text-muted)]">{t('about.how')}</h2>
+		<h2 class="mb-3 text-base font-semibold">{t('about.how')}</h2>
 		<ol class="grid gap-3 sm:grid-cols-3">
 			{#each PIPELINE as step, index}
 				<li class="surface p-4">
@@ -46,7 +46,7 @@
 	</section>
 
 	<section class="mt-8">
-		<h2 class="mb-3 text-sm font-semibold uppercase tracking-wide text-[var(--text-muted)]">{t('about.what')}</h2>
+		<h2 class="mb-3 text-base font-semibold">{t('about.what')}</h2>
 		<div class="grid gap-3 sm:grid-cols-2">
 			{#each FEATURES as feature}
 				<div class="surface flex gap-3 p-4">
@@ -61,7 +61,7 @@
 	</section>
 
 	<section class="mt-8">
-		<h2 class="mb-3 text-sm font-semibold uppercase tracking-wide text-[var(--text-muted)]">{t('about.instance')}</h2>
+		<h2 class="mb-3 text-base font-semibold">{t('about.instance')}</h2>
 		<dl class="surface divide-y text-sm">
 			<div class="flex justify-between gap-3 px-4 py-2.5">
 				<dt class="text-[var(--text-secondary)]">{t('about.engine')}</dt>

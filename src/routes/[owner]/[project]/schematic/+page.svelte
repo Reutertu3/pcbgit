@@ -117,7 +117,7 @@
 			<PanZoom
 				contentWidth={box.width}
 				contentHeight={box.height}
-				class="h-[calc(100vh-15rem)] min-h-[32rem]"
+				class="h-[calc(100svh-15rem)] min-h-[32rem]"
 				background={inverted ? SHEET_LIGHT : SHEET_DARK}
 			>
 				{#snippet toolbar()}
@@ -130,7 +130,7 @@
 							<Icon name={inverted ? 'moon' : 'sun'} size={12} />
 							{inverted ? t('theme.dark') : t('theme.light')}
 						</button>
-						<a class="viewer-btn border-l" href={sheet.url} download title={t('schematic.downloadSvg')}>
+						<a class="viewer-btn border-l" href={sheet.url} download title={t('schematic.downloadSvg')} aria-label={t('schematic.downloadSvg')}>
 							<Icon name="download" size={13} />
 						</a>
 						{#if data.pdf}

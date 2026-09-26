@@ -1,4 +1,5 @@
 {
+	"nav.skip": "Skip to content",
 	"nav.browse": "Browse",
 	"nav.tags": "Tags",
 	"nav.starred": "Starred",
@@ -476,6 +477,7 @@
 		"other": "{count} boards"
 	},
 	"browse.allTags": "All tags",
+	"browse.filters": "Filters",
 	"browse.author": "Author",
 	"browse.anyAuthor": "All",
 	"browse.clearFilters": "Clear filters",
@@ -827,6 +829,7 @@
 	"snapshot.error.diskFull": "Not enough free disk space on the server ({free} free; {min} must stay free).",
 	"snapshot.error.pieceMissing": "Piece {part} of the upload is missing. Start the upload again.",
 	"error.boardNotFound": "Board not found",
+	"error.boardNotFoundHint": "It may have been renamed or deleted, or it is private.",
 	"error.versionNotFound": "Version not found",
 	"validation.slug": "Use 2-64 characters: letters, numbers, dot, dash or underscore.",
 	"validation.username": "Username must be 3-32 characters: letters, numbers and dashes, not starting or ending with a dash.",

@@ -127,7 +127,7 @@
 					{formatCount(starCount)}
 				</button>
 				{#if data.editable}
-					<a href="{base}/settings" class="btn btn-sm" title={t('board.settings')}>
+					<a href="{base}/settings" class="btn btn-sm" title={t('board.settings')} aria-label={t('board.settings')}>
 						<Icon name="settings" size={13} />
 					</a>
 				{/if}
@@ -150,7 +150,7 @@
 				>
 					<Icon name={tab.icon} size={14} />
 					{tab.label}
-					{#if tab.badge}<span class="chip !px-1.5 !py-0 !text-[0.625rem]">{tab.badge}</span>{/if}
+					{#if tab.badge}<span class="chip !px-1.5 !py-0 !text-[0.625rem] tabular-nums">{tab.badge}</span>{/if}
 				</a>
 			{/each}
 		</nav>

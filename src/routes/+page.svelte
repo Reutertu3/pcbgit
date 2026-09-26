@@ -41,6 +41,10 @@
 			(data.filters.author ? 1 : 0) +
 			(data.filters.q ? 1 : 0)
 	);
+
+	// On phones the filters fold away, so the boards start on the first screen;
+	// they open by themselves while one is set.
+	let filtersOpen = $derived(activeFilterCount > 0);
 </script>
 
 <svelte:head>
@@ -49,15 +53,15 @@
 
 <div class="mx-auto max-w-[1400px] px-4 py-6">
 	{#if !data.filters.q && !activeFilterCount && data.page === 1}
-		<section class="surface relative mb-6 overflow-hidden p-6 sm:p-8">
+		<section class="surface relative mb-6 overflow-hidden p-5 sm:p-8">
 			<HeroBoard />
 			<div class="relative max-w-2xl">
-				{#if data.site.tagline}<h1 class="text-2xl font-bold tracking-tight sm:text-3xl">{data.site.tagline}</h1>{/if}
-				{#if data.site.intro}<p class="mt-2 text-sm leading-relaxed text-[var(--text-secondary)]">{data.site.intro}</p>{/if}
-				<div class="mt-5 flex flex-wrap items-center gap-5 text-sm">
-					<span><strong class="text-lg">{formatCount(data.stats.boards)}</strong> <span class="text-[var(--text-muted)]">{t('browse.statBoards', { count: data.stats.boards })}</span></span>
-					<span><strong class="text-lg">{formatCount(data.stats.versions)}</strong> <span class="text-[var(--text-muted)]">{t('browse.statVersions', { count: data.stats.versions })}</span></span>
-					<span><strong class="text-lg">{formatCount(data.stats.designers)}</strong> <span class="text-[var(--text-muted)]">{t('browse.statDesigners', { count: data.stats.designers })}</span></span>
+				{#if data.site.tagline}<h1 class="text-xl font-bold tracking-tight sm:text-3xl">{data.site.tagline}</h1>{/if}
+				{#if data.site.intro}<p class="mt-2 hidden text-sm leading-relaxed text-[var(--text-secondary)] sm:block">{data.site.intro}</p>{/if}
+				<div class="mt-4 flex flex-wrap items-center gap-x-5 gap-y-1 text-sm sm:mt-5">
+					<span><strong class="text-lg tabular-nums">{formatCount(data.stats.boards)}</strong> <span class="text-[var(--text-muted)]">{t('browse.statBoards', { count: data.stats.boards })}</span></span>
+					<span><strong class="text-lg tabular-nums">{formatCount(data.stats.versions)}</strong> <span class="text-[var(--text-muted)]">{t('browse.statVersions', { count: data.stats.versions })}</span></span>
+					<span><strong class="text-lg tabular-nums">{formatCount(data.stats.designers)}</strong> <span class="text-[var(--text-muted)]">{t('browse.statDesigners', { count: data.stats.designers })}</span></span>
 				</div>
 			</div>
 		</section>
@@ -66,7 +70,23 @@
 	<div class="flex flex-col gap-6 lg:flex-row">
 		<!-- Filters -->
 		<aside class="lg:w-56 lg:shrink-0">
-			<div class="lg:sticky lg:top-20 flex flex-col gap-5">
+			<button
+				class="btn btn-sm lg:hidden"
+				onclick={() => (filtersOpen = !filtersOpen)}
+				aria-expanded={filtersOpen}
+				aria-controls="board-filters"
+			>
+				<Icon name="tag" size={13} />
+				{t('browse.filters')}
+				{#if activeFilterCount}<span class="chip">{activeFilterCount}</span>{/if}
+				<Icon name={filtersOpen ? 'chevronUp' : 'chevronDown'} size={12} />
+			</button>
+			<div
+				id="board-filters"
+				class="mt-3 flex-col gap-5 lg:sticky lg:top-20 lg:mt-0 lg:flex"
+				class:flex={filtersOpen}
+				class:hidden={!filtersOpen}
+			>
 				{#if data.tags.length}
 					<div>
 						<h2 class="label !mb-2">{t('nav.tags')}</h2>

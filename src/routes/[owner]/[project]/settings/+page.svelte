@@ -146,7 +146,7 @@
 		</form>
 
 		<div class="mt-5 border-t pt-4">
-			<h3 class="mb-2 text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">
+			<h3 class="mb-2 text-sm font-semibold">
 				{t('boardForm.orPush')}
 			</h3>
 			<CloneBox url={data.cloneUrl} username={data.user?.username} />

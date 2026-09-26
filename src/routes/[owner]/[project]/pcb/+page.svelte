@@ -223,7 +223,7 @@
 					bind:this={panZoom}
 					contentWidth={box.width}
 					contentHeight={box.height}
-					class="h-[calc(100vh-15rem)] min-h-[32rem]"
+					class="h-[calc(100svh-15rem)] min-h-[32rem]"
 				>
 					{#snippet toolbar()}
 						<div class="flex overflow-hidden rounded-md border bg-[var(--surface-1)]/92 backdrop-blur">

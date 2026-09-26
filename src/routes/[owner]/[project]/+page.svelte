@@ -289,7 +289,7 @@
 				<CloneBox url={data.cloneUrl} username={data.user?.username} />
 
 				<div class="surface p-4">
-					<h3 class="mb-2.5 text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">
+					<h3 class="mb-2.5 text-sm font-semibold">
 						{t('overview.thisVersion')}
 					</h3>
 					<dl class="flex flex-col gap-2 text-xs">
@@ -326,9 +326,9 @@
 				</div>
 
 				<div class="surface p-4">
-					<h3 class="mb-2.5 flex items-baseline justify-between gap-2 text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">
+					<h3 class="mb-2.5 flex items-baseline justify-between gap-2 text-sm font-semibold">
 						{t('overview.license')}
-						<span class="normal-case tracking-normal text-[var(--text-primary)]">
+						<span class="text-xs font-medium text-[var(--text-secondary)]">
 							{data.project.license ? licenseName(data.project.license, t('license.proprietary')) : t('boardForm.noLicense')}
 						</span>
 					</h3>
@@ -336,7 +336,7 @@
 				</div>
 
 				<div class="surface p-4">
-					<h3 class="mb-2.5 text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">
+					<h3 class="mb-2.5 text-sm font-semibold">
 						{t('overview.downloads')}
 					</h3>
 					<div class="flex flex-col gap-1.5">
@@ -376,7 +376,7 @@
 
 				{#if fabZip}
 					<div class="surface p-4">
-						<h3 class="mb-2.5 text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">
+						<h3 class="mb-2.5 text-sm font-semibold">
 							{t('overview.gerbers')}
 						</h3>
 						<div class="flex flex-col gap-1.5">
@@ -416,9 +416,9 @@
 				{/if}
 
 				<div class="surface p-4">
-					<h3 class="mb-2.5 flex items-center justify-between text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">
+					<h3 class="mb-2.5 flex items-center justify-between text-sm font-semibold">
 						{t('overview.recent')}
-						<a href="{base}/history" class="font-normal normal-case hover:text-[var(--accent)]">{t('common.all')}</a>
+						<a href="{base}/history" class="text-xs font-normal text-[var(--text-muted)] hover:text-[var(--accent)]">{t('common.all')}</a>
 					</h3>
 					<ul class="flex flex-col gap-2">
 						{#each data.recentCommits as commit}

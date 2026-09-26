@@ -139,7 +139,7 @@
 		<div class="flex-1"></div>
 
 		<!-- What this board actually ships: the four things you came to look at. -->
-		<div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-[0.6875rem] text-[var(--text-muted)]">
+		<div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-[0.6875rem] tabular-nums text-[var(--text-muted)]">
 			{#if dimensions}<span class="flex items-center gap-1"><Icon name="ruler" size={11} />{dimensions}</span>{/if}
 			{#if project.layer_count}<span class="flex items-center gap-1"><Icon name="layers" size={11} />{project.layer_count}L</span>{/if}
 			{#if project.part_count}<span class="flex items-center gap-1"><Icon name="chip" size={11} />{t('card.parts', { count: project.part_count })}</span>{/if}

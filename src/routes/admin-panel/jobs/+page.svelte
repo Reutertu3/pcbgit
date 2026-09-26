@@ -116,10 +116,10 @@
 					<td class="px-3 py-2 text-xs text-[var(--text-muted)]">{relativeTime(job.queued_at)}</td>
 					<td class="px-3 py-2">
 						<div class="flex justify-end gap-1">
-							<a href={logHref(job.id)} class="btn btn-sm" title={t('history.log')}><Icon name="file" size={12} /></a>
+							<a href={logHref(job.id)} class="btn btn-sm" title={t('history.log')} aria-label={t('history.log')}><Icon name="file" size={12} /></a>
 							<form method="POST" action="?/retry" use:enhance>
 								<input type="hidden" name="id" value={job.id} />
-								<button class="btn btn-sm" type="submit" title={t('jobs.requeue')}><Icon name="refresh" size={12} /></button>
+								<button class="btn btn-sm" type="submit" title={t('jobs.requeue')} aria-label={t('jobs.requeue')}><Icon name="refresh" size={12} /></button>
 							</form>
 						</div>
 					</td>

@@ -13,12 +13,13 @@
 
 <svelte:head><title>{page.status} · {title}</title></svelte:head>
 
-<div class="mx-auto flex min-h-[calc(100vh-14rem)] max-w-md flex-col items-center justify-center gap-3 px-4 py-16 text-center">
+<div class="mx-auto flex min-h-[calc(100dvh-14rem)] max-w-md flex-col items-center justify-center gap-3 px-4 py-16 text-center">
 	<Icon name={page.status === 404 ? 'search' : 'alert'} size={30} class="text-[var(--text-muted)]" />
-	<p class="mono text-sm text-[var(--text-muted)]">{page.status}</p>
-	<h1 class="text-xl font-semibold tracking-tight">{title}</h1>
-	{#if message && message !== title}
-		<p class="text-sm text-[var(--text-secondary)]">{message}</p>
+	<!-- The specific reason is the heading; the generic title moves up next to the code. -->
+	<p class="mono text-sm text-[var(--text-muted)]">{page.status} · {title}</p>
+	<h1 class="text-xl font-semibold tracking-tight">{message || title}</h1>
+	{#if page.error?.message === 'error.boardNotFound'}
+		<p class="text-sm text-[var(--text-secondary)]">{t('error.boardNotFoundHint')}</p>
 	{/if}
 	<a href="/" class="btn btn-sm mt-2">{t('error.home')}</a>
 </div>

@@ -228,6 +228,47 @@
 		font-feature-settings: 'cv02', 'cv03', 'cv04';
 	}
 
+	h1,
+	h2,
+	h3 {
+		text-wrap: balance;
+	}
+	p {
+		text-wrap: pretty;
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		*,
+		*::before,
+		*::after {
+			transition-duration: 0.01ms !important;
+			animation-duration: 0.01ms !important;
+			animation-iteration-count: 1 !important;
+			scroll-behavior: auto !important;
+		}
+	}
+
+	/* Hidden until focused: the first stop for keyboard users, past the header. */
+	.skip-link {
+		position: absolute;
+		left: 0.75rem;
+		top: -3rem;
+		z-index: 60;
+		padding: 0.45rem 0.8rem;
+		border-radius: 0.45rem;
+		background: var(--accent);
+		color: var(--on-accent);
+		font-size: 0.8125rem;
+		font-weight: 500;
+	}
+	.skip-link:focus {
+		top: 0.6rem;
+	}
+	/* The skip link's target takes focus only to move the tab order on. */
+	#main:focus {
+		outline: none;
+	}
+
 	:focus-visible {
 		outline: 2px solid var(--accent);
 		outline-offset: 2px;

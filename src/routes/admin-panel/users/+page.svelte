@@ -148,7 +148,7 @@
 								{#if !user.is_owner}
 									<form method="POST" action="?/toggleActive" use:enhance>
 										<input type="hidden" name="id" value={user.id} />
-										<button class="btn btn-sm" type="submit" title={user.is_active ? t('users.disable') : t('users.enable')}>
+										<button class="btn btn-sm" type="submit" title={user.is_active ? t('users.disable') : t('users.enable')} aria-label={user.is_active ? t('users.disable') : t('users.enable')}>
 											<Icon name={user.is_active ? 'lock' : 'check'} size={12} />
 										</button>
 									</form>

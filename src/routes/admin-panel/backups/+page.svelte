@@ -204,7 +204,7 @@
 							</p>
 						</div>
 						<div class="flex gap-1">
-							<a class="btn btn-sm" href="/admin-panel/backups/download/{snap.name}" title={t('backups.download')}>
+							<a class="btn btn-sm" href="/admin-panel/backups/download/{snap.name}" title={t('backups.download')} aria-label={t('backups.download')}>
 								<Icon name="download" size={12} />
 							</a>
 							<button
@@ -221,7 +221,7 @@
 								if (!confirm(t('backups.confirmDelete', { name: snap.name }))) cancel();
 							}}>
 								<input type="hidden" name="name" value={snap.name} />
-								<button class="btn btn-danger btn-sm" type="submit" title={t('common.delete')}><Icon name="trash" size={12} /></button>
+								<button class="btn btn-danger btn-sm" type="submit" title={t('common.delete')} aria-label={t('common.delete')}><Icon name="trash" size={12} /></button>
 							</form>
 						</div>
 					</div>

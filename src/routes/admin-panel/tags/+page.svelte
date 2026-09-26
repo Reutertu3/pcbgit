@@ -258,7 +258,7 @@
 									}}
 								>
 									<input type="hidden" name="id" value={tag.id} />
-									<button class="btn btn-danger btn-sm" type="submit" title={t('adminTags.delete')}>
+									<button class="btn btn-danger btn-sm" type="submit" title={t('adminTags.delete')} aria-label={t('adminTags.delete')}>
 										<Icon name="trash" size={12} />
 									</button>
 								</form>

@@ -98,7 +98,7 @@
 					disabled={severity === 'info' || severity === 'exclusion'}
 				>
 					<div class="text-xs uppercase tracking-wide text-[var(--text-muted)]">{label}</div>
-					<div class="mt-0.5 text-xl font-semibold" style:color={counts[severity] ? SEVERITY[severity].color : 'var(--text-muted)'}>
+					<div class="mt-0.5 text-xl font-semibold tabular-nums" style:color={counts[severity] ? SEVERITY[severity].color : 'var(--text-muted)'}>
 						{counts[severity]}
 					</div>
 				</button>
@@ -185,7 +185,7 @@
 										</button>
 									{/if}
 									{#if violation.x_mm !== null && violation.source !== 'erc'}
-										<a class="btn btn-ghost btn-sm !px-1.5" href="{base}/pcb{versionQuery ? `${versionQuery}&` : '?'}marker={violation.id}" title={t('checks.showOnBoard')}>
+										<a class="btn btn-ghost btn-sm !px-1.5" href="{base}/pcb{versionQuery ? `${versionQuery}&` : '?'}marker={violation.id}" title={t('checks.showOnBoard')} aria-label={t('checks.showOnBoard')}>
 											<Icon name="board" size={12} />
 										</a>
 									{/if}

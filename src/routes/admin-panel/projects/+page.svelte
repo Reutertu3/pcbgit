@@ -104,13 +104,13 @@
 						<div class="flex justify-end gap-1">
 							<form method="POST" action="?/resync" use:enhance>
 								<input type="hidden" name="id" value={project.id} />
-								<button class="btn btn-sm" type="submit" title={t('adminBoards.resync')}>
+								<button class="btn btn-sm" type="submit" title={t('adminBoards.resync')} aria-label={t('adminBoards.resync')}>
 									<Icon name="git" size={12} />
 								</button>
 							</form>
 							<form method="POST" action="?/rerender" use:enhance>
 								<input type="hidden" name="id" value={project.id} />
-								<button class="btn btn-sm" type="submit" title={t('adminBoards.rerender')}>
+								<button class="btn btn-sm" type="submit" title={t('adminBoards.rerender')} aria-label={t('adminBoards.rerender')}>
 									<Icon name="refresh" size={12} />
 								</button>
 							</form>

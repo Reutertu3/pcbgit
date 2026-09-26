@@ -104,21 +104,21 @@
 
 						<div class="flex shrink-0 flex-wrap items-center gap-1">
 							<a href="{base}?v={commit.sha}" class="btn btn-sm">{t('common.view')}</a>
-							<a href="{base}/bom?v={commit.sha}&compare={data.commits[index + 1]?.sha ?? ''}" class="btn btn-sm" title={t('history.compareBom')}>
+							<a href="{base}/bom?v={commit.sha}&compare={data.commits[index + 1]?.sha ?? ''}" class="btn btn-sm" title={t('history.compareBom')} aria-label={t('history.compareBom')}>
 								<Icon name="list" size={12} />
 							</a>
-							<a href="{base}/archive/{commit.sha}.zip" class="btn btn-sm" title={t('history.downloadSource')}>
+							<a href="{base}/archive/{commit.sha}.zip" class="btn btn-sm" title={t('history.downloadSource')} aria-label={t('history.downloadSource')}>
 								<Icon name="download" size={12} />
 							</a>
 							{#if job}
-								<a href={logHref(commit.id)} class="btn btn-sm" title={t('history.log')}>
+								<a href={logHref(commit.id)} class="btn btn-sm" title={t('history.log')} aria-label={t('history.log')}>
 									<Icon name="file" size={12} />
 								</a>
 							{/if}
 							{#if data.editable}
 								<form method="POST" action="?/rerender" use:enhance>
 									<input type="hidden" name="commit" value={commit.id} />
-									<button class="btn btn-sm" type="submit" title={t('history.rerender')}>
+									<button class="btn btn-sm" type="submit" title={t('history.rerender')} aria-label={t('history.rerender')}>
 										<Icon name="refresh" size={12} />
 									</button>
 								</form>
