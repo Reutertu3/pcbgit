@@ -36,6 +36,7 @@ and **Optional** wait until they matter, **Observe** is fixed but worth watching
 | Low | Eagle | `>LAST_DATE_TIME` stays empty |
 | Low | Database | PostgreSQL only if several app instances or HA are ever needed |
 | Low | Front page | Board card hover is too busy; rethink the preview highlight |
+| Low | Front page | Tag filter in the sidebar: group by category with subtle category labels |
 | Optional | Fabrication | JLCPCB assembly files (CPL, BOM with LCSC numbers) |
 | Optional | Fabrication | AISLER drill "2:4 precision", only if its import misreads ours |
 | Optional | Rendering | Board as PDF (assembly drawings) |
@@ -177,6 +178,11 @@ without external buffers, the schematic fallback confined to the checkout.
       (they clipped into the thumbnail); the old 2px frame and accent-filled
       label looked unprofessional. Keep the outer glow; pick one inner cue.
       Rules are the `board-card-*` classes in `app.css`.
+- [ ] The tag filter on the front page (left sidebar) is one unsorted heap:
+      `popularTags(24)` orders by board count, so components, interfaces,
+      applications and layer counts are mixed. Group it by tag category, in the
+      categories' order as on `/tags`, with a small, quiet label per group
+      (not full headings). Decide what happens to the 24-tag cap per group.
 
 ## Observe
 - [ ] Card thumbnails (SCH, PCB) sometimes stayed blank after going back to the
