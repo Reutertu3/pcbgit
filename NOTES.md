@@ -338,3 +338,15 @@ starts the zoom, which makes the browser redraw. The likely cause was
 `decoding="async"` on thumbnails taken from the browser cache, which Firefox and
 Chromium sometimes draw late. It is removed (`loading="lazy"` stays); the bug no
 longer showed up in a first test, and is kept in TODO.md for observation.
+
+## 2026-09-26
+
+### Last activity tracked on the account
+The Users page's "Last sign-in" was read from the newest session, but signing
+out, a password change and expiry all delete sessions, so users turned into
+"never"; and a 30-day session kept showing a sign-in from weeks ago while the
+user was active daily, with pushes not counting at all. Accounts now keep
+`last_login_at` (every sign-in) and `last_seen_at` (any signed-in request or
+token use, written at most every 5 minutes). The column is "Last active", with
+the last sign-in as its tooltip; existing accounts took their sign-in from the
+sessions still there.

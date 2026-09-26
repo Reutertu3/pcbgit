@@ -27,7 +27,8 @@ interface AdminUserRow {
 	created_at: number;
 	project_count: number;
 	token_count: number;
-	last_session: number | null;
+	last_login_at: number | null;
+	last_seen_at: number | null;
 }
 
 export const load: PageServerLoad = async ({ url, locals }) => {
@@ -39,7 +40,7 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 			   u.approved, u.is_owner, u.limit_boards, u.limit_storage_mb, u.created_at,
 			   (SELECT COUNT(*) FROM projects p WHERE p.owner_id = u.id) AS project_count,
 			   (SELECT COUNT(*) FROM access_tokens t WHERE t.user_id = u.id) AS token_count,
-			   (SELECT MAX(s.created_at) FROM sessions s WHERE s.user_id = u.id) AS last_session
+			   u.last_login_at, u.last_seen_at
 			 FROM users u
 			 WHERE (? = '' OR u.username LIKE ? OR u.email LIKE ? OR u.display_name LIKE ?)
 			 ORDER BY u.approved ASC, u.created_at DESC`,

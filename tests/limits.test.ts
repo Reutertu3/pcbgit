@@ -154,3 +154,30 @@ test('below the free-disk minimum, writes are refused for everyone, admins inclu
 	}
 	await limits.checkStorage(admin.id);
 });
+
+test('sign-in and activity are kept on the account, not derived from sessions', () => {
+	const walker = auth.createUser({ username: 'walker', email: 'w@example.com', password: 'password123' });
+	assert.equal(walker.last_login_at, null);
+
+	const session = auth.createSession(walker.id);
+	const signedIn = auth.getUserById(walker.id)!.last_login_at;
+	assert.ok(signedIn, 'a sign-in is recorded');
+
+	// Activity: written when it is older than a few minutes, not on every request.
+	run('UPDATE users SET last_seen_at = 1 WHERE id = ?', walker.id);
+	auth.getSessionUser(session.id);
+	const seen = auth.getUserById(walker.id)!.last_seen_at!;
+	assert.ok(seen > 1);
+	run('UPDATE users SET last_seen_at = ? WHERE id = ?', seen - 1000, walker.id);
+	auth.getSessionUser(session.id);
+	assert.equal(auth.getUserById(walker.id)!.last_seen_at, seen - 1000, 'not rewritten within five minutes');
+
+	// A push with a token counts as activity too.
+	run('UPDATE users SET last_seen_at = 1 WHERE id = ?', walker.id);
+	auth.authenticateToken('walker', auth.createAccessToken(walker.id, 'laptop'));
+	assert.ok(auth.getUserById(walker.id)!.last_seen_at! > 1);
+
+	// Signing out used to erase "last sign-in" with the session.
+	auth.destroySession(session.id);
+	assert.equal(auth.getUserById(walker.id)!.last_login_at, signedIn);
+});

@@ -17,6 +17,8 @@ export interface User {
 	approved: number;
 	/** The instance's owner, whom other admins cannot demote, disable, delete or reset. */
 	is_owner: number;
+	last_login_at: number | null;
+	last_seen_at: number | null;
 	limit_boards: number | null;
 	limit_storage_mb: number | null;
 	created_at: number;
@@ -109,6 +111,8 @@ export function createSession(userId: string, userAgent = '') {
 		now(),
 		userAgent.slice(0, 200)
 	);
+	// A session is a sign-in (form, or right after registering).
+	run('UPDATE users SET last_login_at = ?, last_seen_at = ? WHERE id = ?', now(), now(), userId);
 	return { id, expiresAt: new Date(now() + SESSION_TTL) };
 }
 
@@ -121,7 +125,16 @@ export function getSessionUser(sessionId: string | undefined) {
 		sessionId,
 		now()
 	);
+	if (row) touchLastSeen(row);
 	return row ?? null;
+}
+
+const SEEN_EVERY = 5 * 60 * 1000;
+
+/** Notes activity for the admin's user list; at most one write per user every few minutes. */
+function touchLastSeen(user: Pick<User, 'id' | 'last_seen_at'>) {
+	if (user.last_seen_at && now() - user.last_seen_at < SEEN_EVERY) return;
+	run('UPDATE users SET last_seen_at = ? WHERE id = ?', now(), user.id);
 }
 
 export function destroySession(sessionId: string) {
@@ -186,5 +199,6 @@ export function authenticateToken(username: string, token: string) {
 	if (!user || !user.is_active) return null;
 	if (username && user.username.toLowerCase() !== username.toLowerCase()) return null;
 	run('UPDATE access_tokens SET last_used_at = ? WHERE id = ?', now(), row.id);
+	touchLastSeen(user);
 	return user;
 }

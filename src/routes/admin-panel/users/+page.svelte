@@ -4,7 +4,7 @@
 	import Icon from '$lib/components/Icon.svelte';
 	import Avatar from '$lib/components/Avatar.svelte';
 	import FormError from '$lib/components/FormError.svelte';
-	import { formatBytes, formatDate, relativeTime } from '$lib/format';
+	import { formatBytes, formatDate, formatDateTime, relativeTime } from '$lib/format';
 	import { t, tParts } from '$lib/i18n/t';
 
 	let { data, form } = $props();
@@ -80,7 +80,7 @@
 				<th class="px-3 py-2 font-semibold">{t('admin.nav.boards')}</th>
 				<th class="px-3 py-2 font-semibold">{t('users.storage')}</th>
 				<th class="px-3 py-2 font-semibold">{t('users.joined')}</th>
-				<th class="px-3 py-2 font-semibold">{t('users.lastSignIn')}</th>
+				<th class="px-3 py-2 font-semibold">{t('users.lastActive')}</th>
 				<th class="px-3 py-2"></th>
 			</tr>
 		</thead>
@@ -128,8 +128,11 @@
 						{ofLimit(formatBytes(user.storage), user.storageLimit === null ? null : formatBytes(user.storageLimit))}
 					</td>
 					<td class="px-3 py-2 text-xs text-[var(--text-muted)]">{formatDate(user.created_at)}</td>
-					<td class="px-3 py-2 text-xs text-[var(--text-muted)]">
-						{user.last_session ? relativeTime(user.last_session) : t('time.never')}
+					<td
+						class="px-3 py-2 text-xs text-[var(--text-muted)]"
+						title={user.last_login_at ? t('users.signedIn', { time: formatDateTime(user.last_login_at) }) : undefined}
+					>
+						{user.last_seen_at || user.last_login_at ? relativeTime((user.last_seen_at ?? user.last_login_at)!) : t('time.never')}
 					</td>
 					<td class="px-3 py-2">
 						<div class="flex justify-end gap-1">

@@ -122,7 +122,9 @@ const ADDED_COLUMNS: [table: string, column: string, definition: string][] = [
 	['users', 'limit_boards', 'INTEGER'],
 	['users', 'limit_storage_mb', 'INTEGER'],
 	['projects', 'repo_bytes', 'INTEGER NOT NULL DEFAULT -1'],
-	['users', 'is_owner', 'INTEGER NOT NULL DEFAULT 0']
+	['users', 'is_owner', 'INTEGER NOT NULL DEFAULT 0'],
+	['users', 'last_login_at', 'INTEGER'],
+	['users', 'last_seen_at', 'INTEGER']
 ];
 
 /**
@@ -131,6 +133,9 @@ const ADDED_COLUMNS: [table: string, column: string, definition: string][] = [
  */
 const POST_MIGRATION_SQL = `
 CREATE INDEX IF NOT EXISTS idx_comments_parent ON comments(parent_id);
+-- Accounts from before last_login_at: the newest session left is the best guess.
+UPDATE users SET last_login_at = (SELECT MAX(created_at) FROM sessions s WHERE s.user_id = users.id)
+ WHERE last_login_at IS NULL;
 `;
 
 function addMissingColumns(database: DatabaseSync) {
