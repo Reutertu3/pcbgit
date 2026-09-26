@@ -9,6 +9,7 @@ import {
 	autoUpdateEnabled,
 	requestCheck,
 	requestUpdate,
+	runningTag,
 	runningVersion,
 	setAutoUpdate,
 	updateAvailability,
@@ -24,6 +25,7 @@ export const load: PageServerLoad = async () => ({
 	},
 	limits: instanceLimits(),
 	version: runningVersion(),
+	tag: runningTag(),
 	update: updateState(),
 	availability: updateAvailability(),
 	autoUpdate: autoUpdateEnabled()

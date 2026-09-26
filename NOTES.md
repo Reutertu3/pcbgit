@@ -23,6 +23,7 @@ the code live in CLAUDE.md.
 | v0.6.1 | 2026-09-25 | Renderer memory and CPU limits and a minimum of free disk space in `.env` |
 | v0.6.2 | 2026-09-25 | Admin panel at /admin-panel (admin profile at /admin), untranslated front page texts, thumbnails drawn without hover |
 | v0.6.3 | 2026-09-26 | Updates follow releases (image built only for releases, Install button), master built on the server, last activity per user |
+| v0.6.4 | 2026-09-26 | Update section in plain words: release name in the header, one-line explanation, hint under the build button |
 
 ## 2026-09-22
 
@@ -366,3 +367,11 @@ first deploy.
 With automatic updates off, the panel could name a new release but not install
 it; an **Install v…** button next to it now does, as a download like an
 automatic update.
+
+### Update section in plain words · v0.6.4
+On the live server the section's explanation read as one block of four
+sentences, one said twice, with the image registry and "master" in it. It is now
+one sentence at the top; the build button explains itself underneath, in plain
+words; the registry is only mentioned for a server that builds releases itself;
+and the header names the release ("v0.6.3 (a303f88) · downloaded"). The build
+button is no longer the highlighted one: installing a release is the usual way.

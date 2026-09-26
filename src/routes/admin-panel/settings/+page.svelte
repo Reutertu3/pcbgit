@@ -142,7 +142,7 @@
 	<div class="mb-1 flex flex-wrap items-center justify-between gap-2">
 		<h3 class="text-sm font-semibold">{t('instance.updates')}</h3>
 		<span class="mono text-xs text-[var(--text-muted)]">
-			{t('instance.running', { version: data.version })}{#if runningHow}{' · '}{t(`instance.how.${runningHow}`)}{/if}
+			{data.tag ? t('instance.runningTag', { tag: data.tag, version: data.version }) : t('instance.running', { version: data.version })}{#if runningHow}{' · '}{t(`instance.how.${runningHow}`)}{/if}
 		</span>
 	</div>
 
@@ -154,12 +154,9 @@
 		{@const available = data.availability}
 		<p class="mb-4 text-xs leading-relaxed text-[var(--text-secondary)]">
 			{t('instance.updatesHint')}
-			{#if available?.checked}
-				{#if available.source}
-					{#each tParts('instance.sourceImage') as part}{#if typeof part === 'string'}{part}{:else}<span class="mono">{available.source}</span>{/if}{/each}
-				{:else}
-					{#each tParts('instance.sourceBuild') as part}{#if typeof part === 'string'}{part}{:else}<span class="mono">PCBGIT_UPDATE_IMAGE=build</span>{/if}{/each}
-				{/if}
+			<!-- Downloading release images is the normal case; only the exception is worth a word. -->
+			{#if available?.checked && !available.source}
+				{#each tParts('instance.sourceBuild') as part}{#if typeof part === 'string'}{part}{:else}<span class="mono">PCBGIT_UPDATE_IMAGE=build</span>{/if}{/each}
 			{/if}
 		</p>
 
@@ -285,7 +282,7 @@
 		{/if}
 
 		<form method="POST" action="?/update" use:enhance class="flex flex-wrap items-center gap-3">
-			<button class="btn btn-primary btn-sm" type="submit" disabled={busy}>
+			<button class="btn btn-sm" type="submit" disabled={busy}>
 				<Icon name="download" size={13} />
 				{busy ? t('instance.updating') : t('instance.update')}
 			</button>
@@ -295,6 +292,7 @@
 			</button>
 			<Switch name="force" size="sm" class="text-xs text-[var(--text-secondary)]">{t('instance.force')}</Switch>
 		</form>
+		<p class="mt-2 text-xs leading-relaxed text-[var(--text-muted)]">{t('instance.buildHint')}</p>
 
 		<!-- Everything this section reports goes here, under its buttons. -->
 		{#if form?.scope === 'updates' && 'error' in form && form.error}
