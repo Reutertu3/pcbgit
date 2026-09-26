@@ -375,3 +375,11 @@ one sentence at the top; the build button explains itself underneath, in plain
 words; the registry is only mentioned for a server that builds releases itself;
 and the header names the release ("v0.6.3 (a303f88) · downloaded"). The build
 button is no longer the highlighted one: installing a release is the usual way.
+
+### Builds on the server no longer need Docker Hub for the build syntax
+"Update from GitHub" failed on the live server with a TLS timeout to Docker Hub,
+before the build had started: the first line of the Dockerfile
+(`# syntax=docker/dockerfile:1`) makes BuildKit fetch that frontend image on
+every build. The Dockerfile uses nothing beyond the built-in syntax, so the line
+is gone. Base images still come from Docker Hub, but only when they are not
+cached on the server yet.

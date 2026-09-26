@@ -1,5 +1,3 @@
-# syntax=docker/dockerfile:1
-
 # ---- build: compile the SvelteKit app ---------------------------------------
 FROM node:24-bookworm-slim AS build
 WORKDIR /app
