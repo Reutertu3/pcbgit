@@ -62,7 +62,25 @@ export const actions: Actions = {
 			return fail(409, { scope: 'updates', error: translate(locals.locale, 'instance.error.busy') });
 		}
 		requestUpdate(locals.user!.username, force);
-		audit(locals.user!.id, 'admin.update_request', force ? 'forced reinstall' : 'update');
+		audit(locals.user!.id, 'admin.update_request', force ? 'build master, forced' : 'build master');
+		return { success: true, scope: 'updates' };
+	},
+
+	/** Installs the newest release now, as automatic updates would (the "Install v…" button). */
+	installRelease: async ({ request, locals }) => {
+		const release = String((await request.formData()).get('release') ?? '');
+		const state = updateState();
+		const availability = updateAvailability();
+		if (!state || !availability) return fail(400, { scope: 'updates', error: translate(locals.locale, 'instance.error.notConfigured') });
+		if (state.requested || state.status?.state === 'running') {
+			return fail(409, { scope: 'updates', error: translate(locals.locale, 'instance.error.busy') });
+		}
+		// Only the release the last check found new: update.sh would refuse anything else anyway.
+		if (!availability.releaseNew || release !== availability.release) {
+			return fail(400, { scope: 'updates', error: translate(locals.locale, 'instance.error.noRelease') });
+		}
+		requestUpdate(locals.user!.username, false, release);
+		audit(locals.user!.id, 'admin.update_request', release);
 		return { success: true, scope: 'updates' };
 	},
 

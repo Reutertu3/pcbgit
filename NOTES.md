@@ -362,3 +362,6 @@ wait for a release that comes after it. Tested against a local origin with
 release tags: install, skip of a pre-release, build of master, refusal to go
 back, the next release, a missing image, a failed release not retried, and a
 first deploy.
+With automatic updates off, the panel could name a new release but not install
+it; an **Install v…** button next to it now does, as a download like an
+automatic update.

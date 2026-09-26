@@ -131,3 +131,15 @@ test('the newest release and whether automatic updates would install it are read
 	const none = updater.updateAvailability()!;
 	assert.deepEqual([none.release, none.releaseNew, none.image], [null, false, null]);
 });
+
+test('a release request names the release; the build button\'s request does not', () => {
+	updater.requestUpdate('admin', false, 'v1.1.0');
+	const release = fs.readFileSync(path.join(control, 'update-request'), 'utf8');
+	// update.sh reads it with sed; keep the shape it expects.
+	assert.match(release, /"release": *"v1.1.0"/);
+	assert.doesNotMatch(release, /"auto"/, 'a manual install, not an automatic one');
+
+	updater.requestUpdate('admin', false);
+	assert.doesNotMatch(fs.readFileSync(path.join(control, 'update-request'), 'utf8'), /"release"/);
+	fs.rmSync(path.join(control, 'update-request'));
+});

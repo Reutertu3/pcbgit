@@ -196,25 +196,29 @@
 						{#each tParts('instance.checkFailed', { time: relativeTime(available.checked) }) as part}{#if typeof part === 'string'}{part}{:else}<span class="mono">/var/lib/pcbgit-control/check.log</span>{/if}{/each}
 					</p>
 				{:else}
-					<!-- Releases: what automatic updates install. -->
-					<p class="mb-2 flex flex-wrap items-center gap-2 text-xs">
+					<!-- Releases: what automatic updates install, or the button right away. -->
+					<div class="mb-2 flex flex-wrap items-center gap-2 text-xs">
 						{#if available.release && available.releaseNew}
 							<span class="chip !border-[var(--accent)] !text-[var(--accent)]">{t('instance.releaseNew', { release: available.release })}</span>
+							<form method="POST" action="?/installRelease" use:enhance>
+								<input type="hidden" name="release" value={available.release} />
+								<button class="btn btn-primary btn-sm" type="submit" disabled={busy}>
+									<Icon name="download" size={13} />
+									{t('instance.installRelease', { release: available.release })}
+								</button>
+							</form>
 						{:else if available.release}
 							<span class="text-[var(--text-secondary)]">{t('instance.releaseCurrent', { release: available.release })}</span>
 						{:else}
 							<span class="text-[var(--text-secondary)]">{t('instance.noRelease')}</span>
 						{/if}
 						<span class="text-[var(--text-muted)]">· {t('instance.checked', { time: relativeTime(available.checked) })}</span>
-					</p>
+					</div>
 					{#if available.releaseNew && available.image}
 						<p class="mb-2 flex items-start gap-1.5 text-xs" style:color={IMAGE_COLOR[available.image]}>
 							<Icon name={available.image === 'ready' ? 'check' : available.image === 'building' ? 'clock' : 'info'} size={13} class="mt-px shrink-0" />
 							<span>{t(`instance.image.${available.image}`)}</span>
 						</p>
-						{#if !data.autoUpdate}
-							<p class="mb-2 text-xs text-[var(--text-muted)]">{t('instance.releaseNeedsAuto')}</p>
-						{/if}
 					{/if}
 
 					<!-- master: what the button builds here. -->

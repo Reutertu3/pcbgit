@@ -49,11 +49,16 @@ export function updateState() {
 	};
 }
 
-export function requestUpdate(by: string, force: boolean) {
+/**
+ * Without `release`, update.sh builds the newest master commit on the server (the
+ * "Update from GitHub" button); with one, it installs that release's image, as an
+ * automatic update would.
+ */
+export function requestUpdate(by: string, force: boolean, release?: string) {
 	if (!updaterEnabled()) throw new Error('Updates are not configured on this server.');
 	fs.writeFileSync(
 		path.join(CONTROL_DIR, 'update-request'),
-		JSON.stringify({ by, force, requested_at: new Date().toISOString() }, null, 1)
+		JSON.stringify({ by, force, ...(release ? { release } : {}), requested_at: new Date().toISOString() }, null, 1)
 	);
 }
 

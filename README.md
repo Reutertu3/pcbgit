@@ -224,12 +224,13 @@ the commits on `master` since the running version, as a changelog.
 
 There are two ways to update:
 
-- **Automatic updates** (switch under **Admin → Instance**) install each new
-  **release** (a tag `vX.Y.Z`, published on GitHub; pre-releases are skipped).
+- **Releases** (a tag `vX.Y.Z`, published on GitHub; pre-releases are skipped):
   GitHub Actions builds the Docker image of every published release, and the
-  server only downloads it: about a minute, nothing built on the server. A
-  release published a few minutes ago may still be building; the update waits.
-  `deploy/update.sh --release` does the same by hand.
+  server only downloads it: about a minute, nothing built on the server. Install
+  one with its **Install v…** button under **Admin → Instance**, or turn on
+  **Automatic updates** there to have each new release installed after the
+  hourly check. A release published a few minutes ago may still be building;
+  the update waits. `deploy/update.sh --release` does the same by hand.
 - **Update from GitHub** (button under **Admin → Instance**, or
   `/opt/pcbgit/deploy/update.sh` on the server) builds the **newest commit on
   `master`** on the server itself, which takes several minutes. For trying
