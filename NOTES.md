@@ -406,3 +406,13 @@ files inside a folder are indented under it. On phones the start page's hero is
 shorter and the filters fold behind a button, so boards start on the first
 screen. The 404 page names what is missing ("Board not found", with the reason
 it may be gone) instead of saying it twice. The board-card hover glow stays.
+
+### Board card previews: a calmer hover
+Hovering the schematic or board preview on a card drew a 2px accent frame inside
+the glowing card and filled its label with the accent: two coloured shapes
+nested in a coloured glow. Now the preview's backdrop takes a light accent tint,
+the image zooms a little further than the rest of the card, an accent line opens
+from the middle of its bottom edge (the active tab's marker, since the preview opens that
+tab), and the label unfolds smoothly to say where it leads (`SCH · Schematic →`, `PCB · Board →`).
+Keyboard focus shows the same. Corner marks were tried and dropped: they clipped
+into the thumbnails. It is still busy; TODO has it.

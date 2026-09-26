@@ -71,6 +71,8 @@
 	},
 	"card.schematicAlt": "Schaltplanvorschau von {name}",
 	"card.boardAlt": "Platinenvorschau von {name}",
+	"card.toSchematic": "Schaltplan",
+	"card.toBoard": "Platine",
 	"common.private": "Privat",
 	"common.public": "Öffentlich",
 	"card.parts": {

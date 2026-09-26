@@ -71,6 +71,8 @@
 	},
 	"card.schematicAlt": "Schematic preview of {name}",
 	"card.boardAlt": "Board preview of {name}",
+	"card.toSchematic": "Schematic",
+	"card.toBoard": "Board",
 	"common.private": "Private",
 	"common.public": "Public",
 	"card.parts": {

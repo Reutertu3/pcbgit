@@ -37,7 +37,7 @@
 			<svelte:element
 				this={project.has_schematic && schematicSrc ? 'a' : 'div'}
 				href={project.has_schematic && schematicSrc ? `${href}/schematic` : undefined}
-				class="relative m-0 block overflow-hidden bg-[var(--preview-bg)]"
+				class="board-card-tile relative m-0 block overflow-hidden"
 				class:board-card-preview={project.has_schematic && schematicSrc}
 				class:z-10={project.has_schematic && schematicSrc}
 			>
@@ -47,7 +47,7 @@
 					<img
 						src={schematicSrc}
 						alt={t('card.schematicAlt', { name: project.name })}
-						class="h-full w-full object-contain p-2 opacity-90 transition-transform duration-[1600ms] ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-[1.04] group-hover:duration-300"
+						class="board-card-img h-full w-full object-contain p-2 opacity-90"
 						loading="lazy"
 					/>
 				{:else}
@@ -58,14 +58,16 @@
 				<span
 					class="board-card-label mono absolute left-1.5 top-1.5 rounded px-1.5 py-0.5 text-[0.625rem]"
 				>
-					SCH
+					SCH<span class="board-card-label-more" aria-hidden="true"
+						><span>&nbsp;· {t('card.toSchematic')} <span class="arrow">→</span></span></span
+					>
 				</span>
 			</svelte:element>
 
 			<svelte:element
 				this={project.has_pcb && previewSrc ? 'a' : 'div'}
 				href={project.has_pcb && previewSrc ? `${href}/pcb` : undefined}
-				class="relative m-0 block overflow-hidden bg-[var(--preview-bg)]"
+				class="board-card-tile relative m-0 block overflow-hidden"
 				class:board-card-preview={project.has_pcb && previewSrc}
 				class:z-10={project.has_pcb && previewSrc}
 			>
@@ -73,7 +75,7 @@
 					<img
 						src={previewSrc}
 						alt={t('card.boardAlt', { name: project.name })}
-						class="h-full w-full object-contain p-2 transition-transform duration-[1600ms] ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-[1.04] group-hover:duration-300"
+						class="board-card-img h-full w-full object-contain p-2"
 						loading="lazy"
 					/>
 				{:else}
@@ -84,7 +86,9 @@
 				<span
 					class="board-card-label mono absolute left-1.5 top-1.5 rounded px-1.5 py-0.5 text-[0.625rem]"
 				>
-					PCB
+					PCB<span class="board-card-label-more" aria-hidden="true"
+						><span>&nbsp;· {t('card.toBoard')} <span class="arrow">→</span></span></span
+					>
 				</span>
 			</svelte:element>
 		</div>

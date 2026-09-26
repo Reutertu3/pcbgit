@@ -336,33 +336,84 @@
 			0 14px 32px -16px color-mix(in srgb, var(--accent) 60%, transparent);
 		transition-duration: 0.3s;
 	}
-	/* The frame is a layer above the image; an inset shadow would be painted under it. */
+	/*
+	 * The two previews are links of their own. Hovering one tints its backdrop,
+	 * zooms it a little further and spells out where the label leads. Backgrounds, zoom
+	 * and colours live here, not as utilities: those sit in a later layer and
+	 * would win over the hover rules.
+	 */
+	.board-card-tile {
+		background: var(--preview-bg);
+		transition: background-color 1.6s var(--board-card-ease);
+	}
+	.board-card-preview:is(:hover, :focus-visible) {
+		background: color-mix(in srgb, var(--accent) 12%, var(--preview-bg));
+		transition-duration: 0.3s;
+	}
+	.board-card-img {
+		transition: transform 1.6s var(--board-card-ease);
+	}
+	.board-card:hover .board-card-img {
+		transform: scale(1.04);
+		transition-duration: 0.3s;
+	}
+	.board-card-preview:is(:hover, :focus-visible) .board-card-img {
+		transform: scale(1.08);
+	}
+	/* The same marker as the active tab on a board page, whose tab the preview opens. */
 	.board-card-preview::after {
 		content: '';
 		position: absolute;
-		inset: 0;
-		border: 2px solid var(--accent);
-		opacity: 0;
+		left: 0;
+		right: 0;
+		bottom: 0;
+		height: 2px;
+		background: var(--accent);
 		pointer-events: none;
-		transition: opacity 1.6s var(--board-card-ease);
+		transform: scaleX(0);
+		transform-origin: center;
+		transition: transform 0.9s var(--board-card-ease);
 	}
-	.board-card-preview:hover::after {
-		opacity: 1;
-		transition-duration: 0.3s;
+	.board-card-preview:is(:hover, :focus-visible)::after {
+		transform: scaleX(1);
+		transition-duration: 0.35s;
 	}
-	/* Colours and timing here, not as utilities: those sit in a later layer and would win. */
 	.board-card-label {
 		z-index: 1;
+		display: inline-flex;
+		align-items: center;
 		background: rgb(0 0 0 / 0.55);
 		color: rgb(255 255 255 / 0.8);
 		transition:
 			background-color 1.6s var(--board-card-ease),
 			color 1.6s var(--board-card-ease);
 	}
-	.board-card-preview:hover .board-card-label {
-		background: var(--accent);
-		color: var(--on-accent);
+	.board-card-preview:is(:hover, :focus-visible) .board-card-label {
+		background: rgb(0 0 0 / 0.72);
+		color: rgb(255 255 255 / 0.95);
 		transition-duration: 0.3s;
+	}
+	/* The destination unfolds from zero width: a grid track animates, a width of auto cannot. */
+	.board-card-label-more {
+		display: inline-grid;
+		grid-template-columns: 0fr;
+		opacity: 0;
+		transition:
+			grid-template-columns 0.9s var(--board-card-ease),
+			opacity 0.6s var(--board-card-ease);
+	}
+	.board-card-label-more > span {
+		min-width: 0;
+		overflow: hidden;
+		white-space: nowrap;
+	}
+	.board-card-preview:is(:hover, :focus-visible) .board-card-label-more {
+		grid-template-columns: 1fr;
+		opacity: 1;
+		transition-duration: 0.35s, 0.35s;
+	}
+	.board-card-label-more .arrow {
+		color: var(--accent);
 	}
 
 	.btn {
