@@ -142,9 +142,13 @@ export interface Availability {
 	repoUrl: string | null;
 	commits: ChangelogEntry[];
 	checkRequested: boolean;
-	/** Registry updates pull from; null when this server builds each version itself. */
+	/** Registry releases are pulled from; null when this server builds them itself. */
 	source: string | null;
-	/** Whether the newest commit's image can be pulled (update.sh `image_state`); null when up to date. */
+	/** The newest release (tag vX.Y.Z), and whether it follows what runs (automatic updates install it). */
+	release: string | null;
+	releaseCommit: string | null;
+	releaseNew: boolean;
+	/** Whether that release's image can be pulled (update.sh `image_state`); null when it is not new. */
 	image: ImageState | null;
 }
 
@@ -165,6 +169,8 @@ export interface UpdateStatus {
 	to: string;
 	/** Short commit the update is going to. */
 	target?: string;
+	/** The release being installed; empty for a build of master. */
+	release?: string;
 }
 
 export type ImageState = 'ready' | 'building' | 'failed' | 'missing' | 'unreadable' | 'local' | 'off';

@@ -117,3 +117,17 @@ test('automatic updates are a file the host script looks for', () => {
 	// Turning it off twice is fine.
 	updater.setAutoUpdate(false, 'admin');
 });
+
+test('the newest release and whether automatic updates would install it are read back', () => {
+	fs.writeFileSync(
+		path.join(control, 'update-available.json'),
+		'{"checked":1700000000,"ok":true,"branch":"master","current":"aaa1111","latest":"ccc3333","behind":3,"ahead":0,"remote":"x","source":"ghcr.io/me/pcbgit","release":"v1.1.0","release_commit":"bbb2222","release_new":true,"image":"ready"}\n'
+	);
+	const available = updater.updateAvailability()!;
+	assert.deepEqual([available.release, available.releaseCommit, available.releaseNew, available.image], ['v1.1.0', 'bbb2222', true, 'ready']);
+
+	// Before any release, and from checks written by an older update.sh.
+	fs.writeFileSync(path.join(control, 'update-available.json'), '{"checked":1700000000,"ok":true,"behind":0,"ahead":0}\n');
+	const none = updater.updateAvailability()!;
+	assert.deepEqual([none.release, none.releaseNew, none.image], [null, false, null]);
+});

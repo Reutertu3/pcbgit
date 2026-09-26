@@ -67,12 +67,19 @@ export function githubWebUrl(remote: string) {
 export function updateAvailability(): Availability | null {
 	if (!updaterEnabled()) return null;
 	const checkRequested = fs.existsSync(path.join(CONTROL_DIR, 'check-request'));
-	let raw: Partial<Omit<Availability, 'source' | 'image'>> & { remote?: string; source?: string; image?: string };
+	let raw: Partial<Omit<Availability, 'source' | 'image' | 'release' | 'releaseCommit' | 'releaseNew'>> & {
+		remote?: string;
+		source?: string;
+		image?: string;
+		release?: string;
+		release_commit?: string;
+		release_new?: boolean;
+	};
 	try {
 		raw = JSON.parse(fs.readFileSync(path.join(CONTROL_DIR, 'update-available.json'), 'utf8'));
 	} catch {
 		// Never checked yet.
-		return { checked: 0, ok: true, branch: '', current: '', latest: '', behind: 0, ahead: 0, repoUrl: null, commits: [], checkRequested, source: null, image: null };
+		return { checked: 0, ok: true, branch: '', current: '', latest: '', behind: 0, ahead: 0, repoUrl: null, commits: [], checkRequested, source: null, release: null, releaseCommit: null, releaseNew: false, image: null };
 	}
 
 	const repoUrl = raw.remote ? githubWebUrl(raw.remote) : null;
@@ -109,13 +116,16 @@ export function updateAvailability(): Availability | null {
 		commits,
 		checkRequested,
 		source: raw.source || null,
+		release: raw.release || null,
+		releaseCommit: raw.release_commit || null,
+		releaseNew: raw.release_new === true,
 		image: IMAGE_STATES.includes(raw.image as ImageState) ? (raw.image as ImageState) : null
 	};
 }
 
 /**
- * Automatic updates: update.sh --check (hourly) requests the update itself when a
- * new version can be installed. The switch is a file the host script looks for.
+ * Automatic updates: update.sh --check (hourly) requests the newest release itself
+ * when it can be installed. The switch is a file the host script looks for.
  */
 export function autoUpdateEnabled() {
 	return updaterEnabled() && fs.existsSync(path.join(CONTROL_DIR, 'auto-update'));

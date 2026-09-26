@@ -1,20 +1,23 @@
-# Tests and type checks on every push and pull request, so a broken commit shows
-# up on GitHub before the admin panel's "Update" pulls it onto a server. Commits
-# on master that pass are built into the Docker image, which deploy/update.sh
-# pulls instead of building on the server.
+# Tests and type checks on every push and pull request. The Docker image is built
+# only for a published release: that is what servers install automatically
+# (deploy/update.sh --release), pulling it instead of building on the server.
+# Run it by hand (Actions → CI → Run workflow) to build a commit's image before
+# releasing it.
 name: CI
 
 on:
   push:
     branches: [master]
   pull_request:
+  release:
+    types: [published]
   workflow_dispatch:
 
 permissions:
   contents: read
 
-# A newer push replaces a pull request's run; runs on master are never cancelled,
-# so the newest commit there always gets its image.
+# A newer push replaces a pull request's run; runs on master and releases are
+# never cancelled.
 concurrency:
   group: ci-${{ github.ref }}-${{ github.event_name == 'pull_request' && 'pr' || github.sha }}
   cancel-in-progress: true
@@ -44,7 +47,7 @@ jobs:
 
   image:
     needs: test
-    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    if: github.event_name == 'release' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     permissions:
@@ -76,9 +79,10 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # Tagged with the full commit SHA: a server pulls exactly the commit it
-      # checked out. The registry cache keeps the KiCad layers identical between
-      # builds, so a server downloads only the layers that changed.
+      # Tagged with the full commit SHA, which is what a server looks up: it pulls
+      # exactly the commit it checked out. Releases also get their version, and the
+      # newest full release "latest". The registry cache keeps the KiCad layers
+      # identical between builds, so a server downloads only the layers that changed.
       - uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
         with:
           context: .
@@ -86,6 +90,7 @@ jobs:
           build-args: PCBGIT_VERSION=${{ env.SHORT_SHA }}
           tags: |
             ${{ env.IMAGE }}:sha-${{ github.sha }}
-            ${{ env.IMAGE }}:latest
+            ${{ github.event_name == 'release' && format('{0}:{1}', env.IMAGE, github.event.release.tag_name) || '' }}
+            ${{ github.event_name == 'release' && !github.event.release.prerelease && format('{0}:latest', env.IMAGE) || '' }}
           cache-from: type=registry,ref=${{ env.IMAGE }}:buildcache
           cache-to: type=registry,ref=${{ env.IMAGE }}:buildcache,mode=max

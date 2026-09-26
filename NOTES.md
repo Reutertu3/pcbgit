@@ -350,3 +350,15 @@ user was active daily, with pushes not counting at all. Accounts now keep
 token use, written at most every 5 minutes). The column is "Last active", with
 the last sign-in as its tooltip; existing accounts took their sign-in from the
 sessions still there.
+
+### Production follows releases, the button builds master
+Every commit pushed to master was a production candidate: CI built its image,
+and automatic updates installed it within the hour, before it was tested or had
+release notes. Now CI builds the image only for a published release (or a manual
+run), automatic updates install only releases (tags vX.Y.Z, no pre-releases) by
+pulling that image, and "Update from GitHub" builds the newest master commit on
+the server. Neither goes backwards: after a build of master, automatic updates
+wait for a release that comes after it. Tested against a local origin with
+release tags: install, skip of a pre-release, build of master, refusal to go
+back, the next release, a missing image, a failed release not retried, and a
+first deploy.

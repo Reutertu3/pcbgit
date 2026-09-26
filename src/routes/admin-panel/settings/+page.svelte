@@ -41,14 +41,17 @@
 		off: 'var(--text-muted)'
 	};
 
-	// update.sh's steps in order; downloading and building share a place.
-	const STEPS = ['fetch', 'wait', 'install', 'restart'] as const;
-	function stepIndex(step: UpdateStep | undefined) {
-		if (step === 'pull' || step === 'build') return 2;
-		if (step === 'done') return STEPS.length;
-		return Math.max(0, STEPS.indexOf((step ?? 'fetch') as (typeof STEPS)[number]));
+	// update.sh's steps in order; downloading and building share a place. Installing
+	// a release may wait for its image; the button's build of master never does.
+	type Step = 'fetch' | 'wait' | 'install' | 'restart';
+	const RELEASE_STEPS: Step[] = ['fetch', 'wait', 'install', 'restart'];
+	const BUILD_STEPS: Step[] = ['fetch', 'install', 'restart'];
+	function stepIndex(steps: Step[], step: UpdateStep | undefined) {
+		if (step === 'pull' || step === 'build') return steps.indexOf('install');
+		if (step === 'done') return steps.length;
+		return Math.max(0, steps.indexOf((step ?? 'fetch') as Step));
 	}
-	function stepLabel(step: (typeof STEPS)[number], status: UpdateStatus | null) {
+	function stepLabel(step: Step, status: UpdateStatus | null) {
 		if (step !== 'install') return t(`instance.step.${step}`);
 		if (status?.step === 'build' || status?.how === 'built') return t('instance.step.build');
 		if (status?.step === 'pull' || status?.how === 'pulled') return t('instance.step.pull');
@@ -192,26 +195,41 @@
 					<p class="text-xs" style:color="var(--err)">
 						{#each tParts('instance.checkFailed', { time: relativeTime(available.checked) }) as part}{#if typeof part === 'string'}{part}{:else}<span class="mono">/var/lib/pcbgit-control/check.log</span>{/if}{/each}
 					</p>
-				{:else if available.behind > 0}
+				{:else}
+					<!-- Releases: what automatic updates install. -->
 					<p class="mb-2 flex flex-wrap items-center gap-2 text-xs">
-						<span class="chip !border-[var(--accent)] !text-[var(--accent)]">
-							{t('instance.available', { count: available.behind })}
-						</span>
-						<span class="mono text-[var(--text-muted)]">{t('instance.range', { from: available.current, to: available.latest, branch: available.branch })}</span>
+						{#if available.release && available.releaseNew}
+							<span class="chip !border-[var(--accent)] !text-[var(--accent)]">{t('instance.releaseNew', { release: available.release })}</span>
+						{:else if available.release}
+							<span class="text-[var(--text-secondary)]">{t('instance.releaseCurrent', { release: available.release })}</span>
+						{:else}
+							<span class="text-[var(--text-secondary)]">{t('instance.noRelease')}</span>
+						{/if}
 						<span class="text-[var(--text-muted)]">· {t('instance.checked', { time: relativeTime(available.checked) })}</span>
 					</p>
-					{#if available.image}
+					{#if available.releaseNew && available.image}
 						<p class="mb-2 flex items-start gap-1.5 text-xs" style:color={IMAGE_COLOR[available.image]}>
 							<Icon name={available.image === 'ready' ? 'check' : available.image === 'building' ? 'clock' : 'info'} size={13} class="mt-px shrink-0" />
 							<span>{t(`instance.image.${available.image}`)}</span>
 						</p>
+						{#if !data.autoUpdate}
+							<p class="mb-2 text-xs text-[var(--text-muted)]">{t('instance.releaseNeedsAuto')}</p>
+						{/if}
 					{/if}
-					<Changelog commits={available.commits} total={available.behind} />
-				{:else}
-					<p class="flex items-center gap-1.5 text-xs" style:color="var(--ok)">
-						<Icon name="check" size={13} /> {t('instance.upToDate')}
-						<span class="text-[var(--text-muted)]">· {#each tParts('instance.upToDateDetail', { branch: available.branch, time: relativeTime(available.checked) }) as part}{#if typeof part === 'string'}{part}{:else}<span class="mono">{available.current}</span>{/if}{/each}</span>
-					</p>
+
+					<!-- master: what the button builds here. -->
+					{#if available.behind > 0}
+						<p class="mb-2 mt-3 flex flex-wrap items-center gap-2 text-xs">
+							<span class="chip">{t('instance.available', { count: available.behind })}</span>
+							<span class="mono text-[var(--text-muted)]">{t('instance.range', { from: available.current, to: available.latest, branch: available.branch })}</span>
+						</p>
+						<Changelog commits={available.commits} total={available.behind} />
+					{:else}
+						<p class="mt-2 flex items-center gap-1.5 text-xs" style:color="var(--ok)">
+							<Icon name="check" size={13} /> {t('instance.upToDate')}
+							<span class="text-[var(--text-muted)]">· {#each tParts('instance.upToDateDetail', { branch: available.branch }) as part}{#if typeof part === 'string'}{part}{:else}<span class="mono">{available.current}</span>{/if}{/each}</span>
+						</p>
+					{/if}
 				{/if}
 				{#if available.ahead > 0}
 					<p class="mt-2 text-xs" style:color="var(--warn)">
@@ -224,10 +242,11 @@
 		{@const status = data.update.status}
 		{#if data.update.requested || status?.state === 'running' || (status?.state === 'failed' && status.step)}
 			<!-- Where the update is: every step before the current one is done. -->
-			{@const current = data.update.requested ? -1 : stepIndex(status?.step)}
+			{@const steps = !data.update.requested && status?.release ? RELEASE_STEPS : BUILD_STEPS}
+			{@const current = data.update.requested ? -1 : stepIndex(steps, status?.step)}
 			<div class="mb-3 rounded-md border px-3 py-2 text-xs">
 				<ol class="flex flex-wrap items-center gap-x-3 gap-y-1">
-					{#each STEPS as step, index (step)}
+					{#each steps as step, index (step)}
 						{@const failed = status?.state === 'failed' && !data.update.requested && index === current}
 						<li
 							class="flex items-center gap-1"

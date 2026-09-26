@@ -1,19 +1,27 @@
 #!/usr/bin/env bash
-# Updates pcbgit to the latest commit on GitHub and restarts it.
+# Updates pcbgit from GitHub and restarts it. Two ways:
 #
-#   sudo deploy/update.sh            update (FORCE=1 reinstalls even if unchanged)
-#   sudo deploy/update.sh --check    only fetch and record what an update would bring
+#   sudo deploy/update.sh             build the newest master commit here (the
+#                                     panel's button; FORCE=1 rebuilds even if unchanged)
+#   sudo deploy/update.sh --release   install the newest release (tag vX.Y.Z), as
+#                                     the image GitHub Actions built for it
+#   sudo deploy/update.sh --check     only fetch and record what either would bring
 #
 # Run by systemd: pcbgit-update when the admin panel asks for an update,
 # pcbgit-check hourly and when the panel asks for a check. With automatic updates
-# on (the panel's switch), a check that finds a new version requests the update.
+# on (the panel's switch), a check that finds a new release requests it: automatic
+# updates only ever install releases.
 #
 # Only fast-forward pulls are done: local edits on the server are never merged
 # or overwritten; the update fails instead and says why.
 set -Eeuo pipefail
 
 MODE=update
-[[ "${1:-}" == --check ]] && MODE=check
+RELEASE=""
+case "${1:-}" in
+	--check) MODE=check ;;
+	--release) RELEASE=latest ;;
+esac
 
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 CONTROL_DIR="${PCBGIT_CONTROL_DIR:-/var/lib/pcbgit-control}"
@@ -23,7 +31,7 @@ LOG="$CONTROL_DIR/update.log"
 REQUEST="$CONTROL_DIR/update-request"
 # Written by the admin panel's switch; its presence turns automatic updates on.
 AUTO="$CONTROL_DIR/auto-update"
-# How long to wait for GitHub Actions to publish the image of a new commit.
+# How long to wait for GitHub Actions to publish the image of a new release.
 IMAGE_WAIT=$((20 * 60))
 
 git_() { git -c safe.directory="$REPO_DIR" -C "$REPO_DIR" "$@"; }
@@ -58,10 +66,10 @@ github_repo() {
 	return 0
 }
 
-# Where the image comes from: GitHub Actions builds one for every commit on master
-# that passes its tests (.github/workflows/ci.yml), so this small server does not
-# have to. PCBGIT_UPDATE_IMAGE in .env: unset follows a GitHub remote
-# (ghcr.io/<owner>/<repo>), "build" always builds here. Nothing means build here.
+# Where a release's image comes from: GitHub Actions builds one for every published
+# release (.github/workflows/ci.yml), so this small server does not have to.
+# PCBGIT_UPDATE_IMAGE in .env: unset follows a GitHub remote (ghcr.io/<owner>/<repo>),
+# "build" always builds here. Nothing means build here.
 image_repo() {
 	local setting repo
 	setting=$(sed -n 's/^PCBGIT_UPDATE_IMAGE=//p' "$REPO_DIR/.env" 2>/dev/null | tail -1 | tr -d "\"'")
@@ -107,12 +115,25 @@ image_state() { # repo, full commit
 	esac
 }
 
-# Records what an update would bring: the commits on GitHub that the server does
-# not have yet (newest first, with their messages as the changelog), whether the
-# server copy has commits of its own, which would block a fast-forward, and
-# whether the newest commit's image is ready.
+# The newest release: tags vX.Y.Z by version number, pre-releases (v1.2.0-rc1) left out.
+latest_release() {
+	git_ tag -l 'v*' --sort=-v:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | head -1 || true
+}
+
+# Whether a release is ahead of what runs: its commit follows HEAD. A release the
+# server has already passed (a manual build of master) or that sits on another
+# line is never installed, so an update can never go backwards.
+release_is_new() { # full commit of the release
+	[[ "$1" != "$(git_ rev-parse HEAD)" ]] && git_ merge-base --is-ancestor HEAD "$1"
+}
+
+# Records what an update would bring: the master commits the server does not have
+# yet (newest first, with their messages as the changelog; the panel's button builds
+# them here), whether the server copy has commits of its own, which would block a
+# fast-forward, and the newest release with whether its image is ready (automatic
+# updates install that).
 write_availability() {
-	local branch upstream behind ahead remote repo image=""
+	local branch upstream behind ahead remote repo release release_commit="" release_new=false image=""
 	branch=$(git_ rev-parse --abbrev-ref HEAD)
 	upstream="origin/$branch"
 	behind=$(git_ rev-list --count "HEAD..$upstream")
@@ -120,32 +141,40 @@ write_availability() {
 	# Strip any credentials embedded in an https remote URL.
 	remote=$(git_ remote get-url origin | sed -E 's#^([a-z+]+://)[^/@]*@#\1#')
 	repo=$(image_repo)
-	((behind > 0)) && image=$(image_state "$repo" "$(git_ rev-parse "$upstream")")
+	release=$(latest_release)
+	if [[ -n "$release" ]]; then
+		release_commit=$(git_ rev-parse "refs/tags/$release^{commit}")
+		if release_is_new "$release_commit"; then
+			release_new=true
+			image=$(image_state "$repo" "$release_commit")
+		fi
+	fi
 	git_ log --max-count=50 --format='%H%x1f%h%x1f%an%x1f%ct%x1f%s' "HEAD..$upstream" \
 		>"$CONTROL_DIR/update-commits.txt.tmp"
 	publish "$CONTROL_DIR/update-commits.txt"
-	printf '{"checked":%s,"ok":true,"branch":"%s","current":"%s","latest":"%s","behind":%s,"ahead":%s,"remote":"%s","source":"%s","image":"%s"}\n' \
+	printf '{"checked":%s,"ok":true,"branch":"%s","current":"%s","latest":"%s","behind":%s,"ahead":%s,"remote":"%s","source":"%s","release":"%s","release_commit":"%s","release_new":%s,"image":"%s"}\n' \
 		"$(date +%s)" "$branch" "$(git_ rev-parse --short HEAD)" "$(git_ rev-parse --short "$upstream")" \
-		"$behind" "$ahead" "$remote" "$repo" "$image" >"$CONTROL_DIR/update-available.json.tmp"
+		"$behind" "$ahead" "$remote" "$repo" "$release" "${release_commit:0:7}" "$release_new" "$image" \
+		>"$CONTROL_DIR/update-available.json.tmp"
 	publish "$CONTROL_DIR/update-available.json"
 }
 
-# With automatic updates on, a check that finds a new version requests the update,
-# as the panel's button does. Only when it can go ahead now: the image is ready (or
-# this server builds), nothing blocks a fast-forward, and the last automatic
-# attempt at this version did not fail (it waits for a newer one instead).
+# With automatic updates on, a check that finds a new release requests it. Only when
+# it can go ahead now: the release follows what runs, its image is ready (or this
+# server builds), and the last automatic attempt at it did not fail (it waits for a
+# newer one instead).
 auto_update() {
 	[[ -f "$AUTO" ]] || return 0
-	local available latest
+	local available release commit
 	available=$(cat "$CONTROL_DIR/update-available.json")
-	grep -q '"behind":0,' <<<"$available" && return 0
-	grep -q '"ahead":0,' <<<"$available" || return 0
+	grep -q '"release_new":true,' <<<"$available" || return 0
 	grep -Eq '"image":"(ready|off)"' <<<"$available" || return 0
-	latest=$(sed -n 's/.*"latest":"\([0-9a-f]*\)".*/\1/p' <<<"$available")
-	if [[ -f "$STATUS" ]] && grep -q '"state":"failed"' "$STATUS" && grep -q "\"target\":\"$latest\"" "$STATUS"; then
+	release=$(sed -n 's/.*"release":"\([^"]*\)".*/\1/p' <<<"$available")
+	commit=$(sed -n 's/.*"release_commit":"\([0-9a-f]*\)".*/\1/p' <<<"$available")
+	if [[ -f "$STATUS" ]] && grep -q '"state":"failed"' "$STATUS" && grep -q "\"target\":\"$commit\"" "$STATUS"; then
 		return 0
 	fi
-	printf '{"by":"automatic","auto":true,"force":false,"requested_at":"%s"}\n' "$(date -Is)" >"$REQUEST.tmp"
+	printf '{"by":"automatic","auto":true,"release":"%s","force":false,"requested_at":"%s"}\n' "$release" "$(date -Is)" >"$REQUEST.tmp"
 	publish "$REQUEST"
 }
 
@@ -159,7 +188,7 @@ fi
 
 if [[ "$MODE" == check ]]; then
 	rm -f "$CONTROL_DIR/check-request"
-	if git_ fetch --prune origin >"$CONTROL_DIR/check.log.tmp" 2>&1; then
+	if git_ fetch --prune --prune-tags --tags origin >"$CONTROL_DIR/check.log.tmp" 2>&1; then
 		publish "$CONTROL_DIR/check.log"
 		write_availability
 		# The update this may request waits for the lock; let it go first.
@@ -181,11 +210,14 @@ if [[ "$COMPOSE_FILES" == *prod* ]] && ! grep -Eq '^PCBGIT_DOMAIN=[A-Za-z0-9.-]+
 	exit 1
 fi
 
-# A request from the panel may ask for a reinstall even without new commits.
+# A request from the panel may ask for a rebuild even without new commits; one from
+# automatic updates names the release to install.
 trigger=manual
 if [[ -f "$REQUEST" ]]; then
 	grep -q '"force": *true' "$REQUEST" && FORCE=1
 	grep -q '"auto": *true' "$REQUEST" && trigger=auto
+	requested=$(sed -n 's/.*"release": *"\([^"]*\)".*/\1/p' "$REQUEST")
+	[[ -n "$requested" ]] && RELEASE=$requested
 fi
 rm -f "$REQUEST"
 
@@ -199,8 +231,8 @@ how=""
 write_status() { # state, step, message
 	local finished=null
 	[[ "$1" != running ]] && finished=$(date +%s)
-	printf '{"state":"%s","step":"%s","how":"%s","trigger":"%s","message":"%s","started":%s,"finished":%s,"from":"%s","to":"%s","target":"%s"}\n' \
-		"$1" "$2" "$how" "$trigger" "$3" "$started" "$finished" "$from" "$to" "${target:0:7}" >"$STATUS.tmp"
+	printf '{"state":"%s","step":"%s","how":"%s","trigger":"%s","message":"%s","started":%s,"finished":%s,"from":"%s","to":"%s","target":"%s","release":"%s"}\n' \
+		"$1" "$2" "$how" "$trigger" "$3" "$started" "$finished" "$from" "$to" "${target:0:7}" "$RELEASE" >"$STATUS.tmp"
 	publish "$STATUS"
 }
 # A download or build that fails leaves the old version running: move the checkout
@@ -223,10 +255,34 @@ chmod 644 "$LOG"
 {
 	echo "== $(date -Is) update started (at $from)"
 	branch=$(git_ rev-parse --abbrev-ref HEAD)
-	git_ fetch --prune origin
+	git_ fetch --prune --prune-tags --tags origin
 } >>"$LOG" 2>&1
-# The exact commit to update to, so a push during the wait below changes nothing.
-target=$(git_ rev-parse "origin/$branch")
+# The exact commit to update to, so a push during the wait below changes nothing:
+# a release's commit, or the newest on master for a build here.
+if [[ -n "$RELEASE" ]]; then
+	[[ "$RELEASE" == latest ]] && RELEASE=$(latest_release)
+	if [[ -z "$RELEASE" ]] || ! target=$(git_ rev-parse --verify --quiet "refs/tags/$RELEASE^{commit}"); then
+		echo "== no release to install" >>"$LOG"
+		write_status success done "No release found"
+		exit 0
+	fi
+	if ! release_is_new "$target"; then
+		if [[ -n "$(compose ps -q pcbgit 2>/dev/null)" ]]; then
+			# Already there, or past it with a build of master: never go backwards.
+			echo "== $RELEASE is not newer than what runs" >>"$LOG"
+			write_availability
+			write_status success done "Already at or past $RELEASE"
+			exit 0
+		fi
+		# Nothing running (first deploy) on a checkout at or past the release: start
+		# what is checked out, built here, rather than nothing.
+		echo "== nothing running and $RELEASE is not newer: building the checkout" >>"$LOG"
+		RELEASE=""
+		target=$(git_ rev-parse HEAD)
+	fi
+else
+	target=$(git_ rev-parse "origin/$branch")
+fi
 
 # Nothing running yet (first deploy, or stopped): build regardless.
 [[ -z "$(compose ps -q pcbgit 2>/dev/null)" ]] && FORCE=1
@@ -240,11 +296,14 @@ if [[ "$(git_ rev-parse HEAD)" == "$target" && "${FORCE:-0}" != 1 ]]; then
 	exit 0
 fi
 
+# A release comes as the image GitHub Actions built; the panel's button (no release)
+# always builds here.
 pull_ref=""
-repo=$(image_repo)
+repo=""
+[[ -n "$RELEASE" ]] && repo=$(image_repo)
 state=$(image_state "$repo" "$target")
-# The image appears a few minutes after the push (tests, then the build). Only a
-# build still running is worth waiting for.
+# The image appears a few minutes after the release is published (tests, then the
+# build). Only a build still running is worth waiting for.
 waited=0
 while [[ "$state" == building || ("$state" == missing && waited -eq 0) ]]; do
 	if ((waited >= IMAGE_WAIT)); then break; fi
@@ -309,4 +368,4 @@ write_status running restart "Restarting pcbgit"
 	echo "== $(date -Is) done ($how)"
 } >>"$LOG" 2>&1
 write_availability
-if [[ "$from" == "$to" ]]; then write_status success done "Reinstalled $to"; else write_status success done "Updated $from → $to"; fi
+if [[ "$from" == "$to" ]]; then write_status success done "Rebuilt $to"; else write_status success done "Updated $from → ${RELEASE:-$to}"; fi

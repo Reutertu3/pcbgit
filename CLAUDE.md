@@ -17,13 +17,17 @@ npm run seed     # demo boards
 
 Run `npm test` and `npm run check` before calling a change done. GitHub Actions
 (`.github/workflows/ci.yml`) runs both on every push, with Node 24 as in the image,
-and builds the image of each passing `master` commit into
-`ghcr.io/reutertu3/pcbgit:sha-<commit>`. `deploy/update.sh` pulls that and tags
-it `pcbgit:latest` (what compose runs), or builds locally when there is none.
+and builds the Docker image only for a published release (or a manual run) into
+`ghcr.io/reutertu3/pcbgit:sha-<commit>` and `:<tag>`. Servers update two ways:
+automatic updates install the newest release (`update.sh --release`: pull that
+image, tag it `pcbgit:latest`, which compose runs), and the panel's button builds
+the newest `master` commit on the server (`update.sh`). Neither goes backwards: a
+release is installed only if its commit follows the running one.
 The release tag is a runtime variable (`PCBGIT_TAG`), not built in, since a tag
 can come after the image. The app and `update.sh` talk only through files in
 `PCBGIT_CONTROL_DIR`: requests and the `auto-update` switch from the app, status
-(`state`, `step`, `how`, `trigger`), availability (`image`, `source`) and the log
+(`state`, `step`, `how`, `trigger`, `release`), availability (`release`,
+`release_new`, `image`, `source`) and the log
 from the script. A field added on one side needs the other (`updater.ts`,
 `$lib/types`).
 
