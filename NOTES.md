@@ -32,6 +32,7 @@ Each tag links to its release notes on GitHub.
 | [**v0.6.5**](https://github.com/Reutertu3/pcbgit/releases/tag/v0.6.5) | 2026-09-26 | Design audit (neutral tag chips, consistent headings, accessibility), calmer board card hover, toolbar menus no longer stack, server builds without Docker Hub for the build syntax |
 | [**v0.6.6**](https://github.com/Reutertu3/pcbgit/releases/tag/v0.6.6) | 2026-09-27 | Calmer board card hover: only the hovered preview reacts (tint, zoom, soft glow, label on a second line); card outline and name fade out slowly |
 | [**v0.6.7**](https://github.com/Reutertu3/pcbgit/releases/tag/v0.6.7) | 2026-09-27 | Tag requests (users ask, admins approve or decline), front page tags grouped by category with counts following the filters, `/tags` lists only tags in use, colour presets for categories |
+| [**v0.6.8**](https://github.com/Reutertu3/pcbgit/releases/tag/v0.6.8) | 2026-09-27 | Security fixes from a small audit (sign-in redirect, comment limit, reserved usernames, private boards over git, sign-in timing); NOTES and TODO easier to scan |
 
 ---
 
