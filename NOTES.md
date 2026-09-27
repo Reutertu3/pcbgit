@@ -26,6 +26,7 @@ the code live in CLAUDE.md.
 | v0.6.4 | 2026-09-26 | Update section in plain words: release name in the header, one-line explanation, hint under the build button |
 | v0.6.5 | 2026-09-26 | Design audit (neutral tag chips, consistent headings, accessibility), calmer board card hover, toolbar menus no longer stack, server builds without Docker Hub for the build syntax |
 | v0.6.6 | 2026-09-27 | Calmer board card hover: only the hovered preview reacts (tint, zoom, soft glow, label on a second line); card outline and name fade out slowly |
+| v0.6.7 | 2026-09-27 | Tag requests (users ask, admins approve or decline), front page tags grouped by category with counts following the filters, `/tags` lists only tags in use, colour presets for categories |
 
 ## 2026-09-22
 
