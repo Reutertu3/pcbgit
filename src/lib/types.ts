@@ -193,7 +193,7 @@ export interface CommentThread extends CommentView {
 
 export interface NotificationView {
 	id: string;
-	kind: 'comment' | 'reply' | 'version' | 'signup';
+	kind: 'comment' | 'reply' | 'version' | 'signup' | 'tag_request' | 'tag_decision';
 	created_at: number;
 	read_at: number | null;
 	comment_id: string | null;
@@ -208,4 +208,7 @@ export interface NotificationView {
 	short_sha: string | null;
 	/** Sign-ups: the account still waits for approval. */
 	pending: number | null;
+	/** Tag requests and decisions: the tag asked for, and where the request stands. */
+	tag_name: string | null;
+	tag_status: 'open' | 'approved' | 'rejected' | null;
 }

@@ -471,3 +471,17 @@ also had a row of quick picks. Both now use one `ColorField` (colour input plus
 swatches). The presets were three similar greens, a sand and no red or indigo;
 they are now twelve hues around the wheel at a similar, muted lightness, and
 a grey, so any pick reads on light and dark themes.
+
+### Tag requests
+Only admins create tags, so boards keep one spelling per tag; letting users
+add their own would soon give ESP32S3 next to ESP32-S3 and USBC next to USB-C.
+Users now ask for a missing tag on `/tags/request` (linked from the tag picker
+and `/tags`): a name, one of the existing categories and an optional note.
+Names are compared without case, spaces or punctuation, so another spelling of
+an existing tag is refused with its name, and asking for a tag someone else
+already asked for joins that request. At most five open requests per person.
+Admins get a notification and a Requests list on the admin Tags page, where
+they approve (name, category and colour adjustable) or decline with a reason.
+An approved tag is added to the board it was asked from; everyone who asked is
+notified either way. Admins creating a tag get the same spelling check. The
+notifications table is rebuilt once for the two new kinds.

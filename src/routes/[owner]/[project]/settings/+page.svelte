@@ -86,7 +86,11 @@
 
 			<div class="mb-4">
 				<span class="label">{t('nav.tags')}</span>
-				<TagPicker tags={data.allTags} selected={data.project.tags.map((tag) => tag.slug)} />
+				<TagPicker
+					tags={data.allTags}
+					selected={data.project.tags.map((tag) => tag.slug)}
+					requestFor="{data.project.owner_username}/{data.project.slug}"
+				/>
 			</div>
 
 			<div class="flex flex-wrap items-center gap-3">

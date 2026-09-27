@@ -14,8 +14,13 @@
 		tags: PickerTag[];
 		selected: string[];
 		name?: string;
+		/** The board (`owner/slug`) a requested tag should land on once approved. */
+		requestFor?: string;
 	}
-	let { tags, selected, name = 'tags' }: Props = $props();
+	let { tags, selected, name = 'tags', requestFor }: Props = $props();
+
+	// A new tab: the form here keeps what was filled in.
+	const requestHref = $derived(requestFor ? `/tags/request?board=${encodeURIComponent(requestFor)}` : '/tags/request');
 
 	// Seeded from the prop; after that the checkboxes are the source of truth.
 	let chosen = $state<string[]>([]);
@@ -58,6 +63,9 @@
 	</div>
 	<p class="hint">{t('tagPicker.selected', { count: chosen.length })}</p>
 {/if}
+<p class="hint">
+	<a href={requestHref} target="_blank" rel="noopener" class="hover:text-[var(--accent)]">{t('tagPicker.request')} ↗</a>
+</p>
 
 <style>
 	.pick {

@@ -27,15 +27,16 @@ function open() {
 
 /**
  * Notifications began as comments only: a CHECK allowing just comment/reply and a
- * required comment_id; later every one needed a board, until sign-up notifications.
- * SQLite cannot change either in place, so a table in an older shape is copied into
- * the current one (schema.sql) once.
+ * required comment_id; later every one needed a board, until sign-up notifications;
+ * tag requests added two kinds and tag_request_id. SQLite cannot change a CHECK in
+ * place, so a table in an older shape is copied into the current one (schema.sql)
+ * once; that also brings the new column, so it needs no ADDED_COLUMNS entry.
  */
 function rebuildNotifications(database: DatabaseSync) {
 	const current = database.prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'notifications'").get() as
 		| { sql: string }
 		| undefined;
-	if (!current || current.sql.includes("'signup'")) return;
+	if (!current || current.sql.includes("'tag_decision'")) return;
 
 	const create = /CREATE TABLE IF NOT EXISTS notifications \(([\s\S]*?)\n\);/.exec(SCHEMA_SQL)?.[1];
 	if (!create) throw new Error('notifications table missing from schema.sql');
@@ -51,7 +52,7 @@ function rebuildNotifications(database: DatabaseSync) {
 		database.exec('ALTER TABLE notifications_next RENAME TO notifications');
 		database.exec('CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id, read_at, created_at DESC)');
 		database.exec('COMMIT');
-		console.log('[db] notifications table rebuilt (version and sign-up notifications)');
+		console.log('[db] notifications table rebuilt (new notification kinds)');
 	} catch (error) {
 		database.exec('ROLLBACK');
 		throw error;

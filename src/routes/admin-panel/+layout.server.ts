@@ -15,6 +15,8 @@ export const load: LayoutServerLoad = async ({ locals, url }) => {
 			pending: count('SELECT COUNT(*) FROM users WHERE approved = 0'),
 			projects: count('SELECT COUNT(*) FROM projects'),
 			tags: count('SELECT COUNT(*) FROM tags'),
+			// Tags users asked for, highlighted next to Tags.
+			tagRequests: count("SELECT COUNT(*) FROM tag_requests WHERE status = 'open'"),
 			jobs: queueStats().queued + queueStats().running,
 			updates: updateAvailability()?.behind ?? 0
 		}

@@ -7,6 +7,7 @@
 	import ColorField from '$lib/components/ColorField.svelte';
 	import { t } from '$lib/i18n/t';
 	import { categoryLabel } from '$lib/tagcategory';
+	import { relativeTime } from '$lib/format';
 
 	let { data, form } = $props();
 
@@ -46,6 +47,48 @@
 
 {#if form?.message}<FormError message={form.message} kind="success" />{/if}
 {#if form?.error}<FormError message={form.error} />{/if}
+
+{#if data.requests.length}
+	<section id="requests" class="surface mb-4 scroll-mt-20 p-4">
+		<h3 class="mb-1 flex items-center gap-2 text-sm font-semibold">
+			{t('tagRequest.adminTitle')}
+			<span class="chip">{data.requests.length}</span>
+		</h3>
+		<p class="mb-3 text-xs text-[var(--text-muted)]">{t('tagRequest.adminHint')}</p>
+		<ul class="divide-y rounded-lg border">
+			{#each data.requests as request (request.id)}
+				{@const categoryColor = data.categories.find((c) => c.id === request.category)?.color ?? '#8a9a8b'}
+				<li class="flex flex-col gap-3 px-3 py-3">
+					<div class="flex flex-wrap items-baseline gap-x-2 gap-y-1 text-sm">
+						<span class="font-semibold">{request.name}</span>
+						<span class="chip">{categoryName(request.category)}</span>
+						<span class="text-xs text-[var(--text-muted)]">
+							{t('tagRequest.askedBy', { count: request.people.length })}
+							{#each request.people as person, index}{index ? ', ' : ''}<a class="hover:text-[var(--accent)]" href="/{person.username}">{person.username}</a
+								>{#if person.board}&nbsp;(<a class="mono hover:text-[var(--accent)]" href="/{person.board}">{person.board}</a>){/if}{/each}
+							· {relativeTime(request.created_at)}
+						</span>
+					</div>
+					{#if request.note}<p class="text-xs text-[var(--text-secondary)]">“{request.note}”</p>{/if}
+					<form method="POST" action="?/approveRequest" use:enhance class="flex flex-wrap items-center gap-2">
+						<input type="hidden" name="id" value={request.id} />
+						<input class="input !w-auto min-w-40 flex-1 !py-1" name="name" value={request.name} maxlength="40" required aria-label={t('boardForm.name')} />
+						<select class="select !w-auto !py-1" name="category" value={request.category} aria-label={t('adminTags.category')}>
+							{#each data.categories as category}<option value={category.id}>{categoryLabel(category.id, category.name)}</option>{/each}
+						</select>
+						<ColorField name="color" value={categoryColor} />
+						<button class="btn btn-primary btn-sm" type="submit"><Icon name="check" size={13} /> {t('tagRequest.approve')}</button>
+					</form>
+					<form method="POST" action="?/rejectRequest" use:enhance class="flex flex-wrap items-center gap-2">
+						<input type="hidden" name="id" value={request.id} />
+						<input class="input !w-auto min-w-40 flex-1 !py-1" name="reason" maxlength="300" placeholder={t('tagRequest.reasonPlaceholder')} aria-label={t('tagRequest.reasonLabel')} />
+						<button class="btn btn-danger btn-sm" type="submit"><Icon name="x" size={13} /> {t('tagRequest.reject')}</button>
+					</form>
+				</li>
+			{/each}
+		</ul>
+	</section>
+{/if}
 
 <section class="surface mb-4 p-4">
 	<h3 class="mb-1 text-sm font-semibold">{t('adminTags.categories')}</h3>

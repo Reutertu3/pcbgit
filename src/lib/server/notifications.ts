@@ -83,17 +83,21 @@ export function removeNotificationsFor(commentId: string) {
 
 /**
  * Only boards the recipient can still see: a board turned private must not
- * leave dead links (or its comment text) in someone else's list. Sign-ups have
- * no board and are for admins only.
+ * leave dead links (or its comment text) in someone else's list. Sign-ups and
+ * tag requests have no board and are for admins only; a tag decision is for
+ * whoever asked.
  */
-const VISIBLE = `(CASE WHEN n.kind = 'signup' THEN u_me.role = 'admin' ELSE (p.visibility = 'public' OR p.owner_id = n.user_id OR u_me.role = 'admin'
+const VISIBLE = `(CASE WHEN n.kind IN ('signup','tag_request') THEN u_me.role = 'admin' WHEN n.kind = 'tag_decision' THEN 1
+	ELSE (p.visibility = 'public' OR p.owner_id = n.user_id OR u_me.role = 'admin'
 	OR EXISTS (SELECT 1 FROM project_members m WHERE m.project_id = p.id AND m.user_id = n.user_id)) END)`;
 
 /**
  * A comment notification disappears with its comment, a version one with its
- * commit, a sign-up with the account (a rejected one is deleted).
+ * commit, a sign-up with the account (a rejected one is deleted), a tag one
+ * with its request.
  */
-const SHOWN = `(CASE WHEN n.kind = 'version' THEN v.id IS NOT NULL WHEN n.kind = 'signup' THEN a.id IS NOT NULL ELSE c.deleted_at IS NULL END)`;
+const SHOWN = `(CASE WHEN n.kind = 'version' THEN v.id IS NOT NULL WHEN n.kind = 'signup' THEN a.id IS NOT NULL
+	WHEN n.kind IN ('tag_request','tag_decision') THEN r.id IS NOT NULL ELSE c.deleted_at IS NULL END)`;
 
 export function unreadCount(userId: string) {
 	return Number(
@@ -104,6 +108,7 @@ export function unreadCount(userId: string) {
 			 LEFT JOIN comments c ON c.id = n.comment_id
 			 LEFT JOIN commits v ON v.id = n.commit_id
 			 LEFT JOIN users a ON a.id = n.actor_id
+			 LEFT JOIN tag_requests r ON r.id = n.tag_request_id
 			 WHERE n.user_id = ? AND n.read_at IS NULL AND ${SHOWN} AND ${VISIBLE}`,
 			userId
 		)?.n ?? 0
@@ -115,8 +120,12 @@ export function listNotifications(userId: string, limit = 30, offset = 0): Notif
 		`SELECT n.id, n.kind, n.created_at, n.read_at, n.comment_id, n.version_count,
 		   COALESCE(a.username, 'someone') AS actor,
 		   p.name AS project_name, p.slug AS project_slug, o.username AS project_owner,
-		   CASE WHEN n.kind = 'version' THEN substr(v.message, 1, 140) ELSE substr(c.body, 1, 140) END AS excerpt,
-		   substr(v.sha, 1, 7) AS short_sha, a.approved = 0 AS pending
+		   CASE WHEN n.kind = 'version' THEN substr(v.message, 1, 140)
+		     WHEN n.kind = 'tag_request' THEN NULLIF(substr(r.note, 1, 140), '')
+		     WHEN n.kind = 'tag_decision' THEN NULLIF(substr(r.reason, 1, 140), '')
+		     ELSE substr(c.body, 1, 140) END AS excerpt,
+		   substr(v.sha, 1, 7) AS short_sha, a.approved = 0 AS pending,
+		   r.name AS tag_name, r.status AS tag_status
 		 FROM notifications n
 		 LEFT JOIN projects p ON p.id = n.project_id
 		 LEFT JOIN users o ON o.id = p.owner_id
@@ -124,6 +133,7 @@ export function listNotifications(userId: string, limit = 30, offset = 0): Notif
 		 LEFT JOIN comments c ON c.id = n.comment_id
 		 LEFT JOIN commits v ON v.id = n.commit_id
 		 LEFT JOIN users a ON a.id = n.actor_id
+		 LEFT JOIN tag_requests r ON r.id = n.tag_request_id
 		 WHERE n.user_id = ? AND ${SHOWN} AND ${VISIBLE}
 		 ORDER BY n.created_at DESC, n.rowid DESC
 		 LIMIT ? OFFSET ?`,
@@ -142,6 +152,7 @@ export function notificationCount(userId: string) {
 			 LEFT JOIN comments c ON c.id = n.comment_id
 			 LEFT JOIN commits v ON v.id = n.commit_id
 			 LEFT JOIN users a ON a.id = n.actor_id
+			 LEFT JOIN tag_requests r ON r.id = n.tag_request_id
 			 WHERE n.user_id = ? AND ${SHOWN} AND ${VISIBLE}`,
 			userId
 		)?.n ?? 0

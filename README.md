@@ -56,6 +56,7 @@
 
 - Push and clone over **HTTPS with personal access tokens**, or upload a ZIP
 - **Public and private boards**, stars, threaded comments with notifications
+- **Curated tags** in categories; users request missing ones, admins approve them
 - **Admin panel**: users, boards, colour-coded tags, render queue, backups, updates,
   limits per user (boards, storage, uploads and pushes per hour), approval of new accounts
 - **Snapshots** for backup and moving to a new server
@@ -397,6 +398,7 @@ src/lib/server/
   git.ts           bare repositories, commits from uploads
   githttp.ts       git smart-HTTP (clone and push)
   projects.ts      boards, tags, stars, commit indexing
+  tagrequests.ts   tags users ask for, approved or declined by admins
   render/          render queue, kicad-cli wrapper, parsers, GLB optimisation
   backups.ts       snapshots
   restore.ts       snapshot validation and restore

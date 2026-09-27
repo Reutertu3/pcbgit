@@ -471,11 +471,12 @@ export function updateTagCategory(id: string, name: string, color: string) {
 	run('UPDATE tag_categories SET name = ?, color = ? WHERE id = ?', name.trim().slice(0, 40), color, id);
 }
 
-/** Deletes a category; its tags move to the fallback category. */
+/** Deletes a category; its tags and open tag requests move to the fallback category. */
 export function deleteTagCategory(id: string) {
 	if (id === FALLBACK_CATEGORY) return false;
 	tx(() => {
 		run('UPDATE tags SET category = ? WHERE category = ?', FALLBACK_CATEGORY, id);
+		run("UPDATE tag_requests SET category = ? WHERE category = ? AND status = 'open'", FALLBACK_CATEGORY, id);
 		run('DELETE FROM tag_categories WHERE id = ?', id);
 	});
 	return true;

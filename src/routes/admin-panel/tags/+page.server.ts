@@ -14,8 +14,11 @@ import {
 	slugify,
 	updateTagCategory
 } from '$lib/server/projects';
+import { sameTag } from '$lib/tagname';
+import { TagRequestError, approveTagRequest, listOpenTagRequests, rejectTagRequest } from '$lib/server/tagrequests';
 
 export const load: PageServerLoad = async () => ({
+	requests: listOpenTagRequests(),
 	tags: listTags(),
 	categories: listTagCategories(),
 	fallbackCategory: FALLBACK_CATEGORY
@@ -28,6 +31,35 @@ function formCategory(form: FormData) {
 }
 
 export const actions: Actions = {
+	approveRequest: async ({ request, locals }) => {
+		const form = await request.formData();
+		const id = String(form.get('id') ?? '');
+		try {
+			const result = approveTagRequest(id, locals.user!, {
+				name: String(form.get('name') ?? ''),
+				category: String(form.get('category') ?? ''),
+				color: String(form.get('color') ?? '')
+			});
+			audit(locals.user!.id, 'admin.tag_request_approve', result.name);
+			return { success: true, message: translate(locals.locale, 'tagRequest.approved', { name: result.name }) };
+		} catch (thrown) {
+			if (thrown instanceof TagRequestError) return fail(400, { error: thrown.in(locals.locale) });
+			throw thrown;
+		}
+	},
+
+	rejectRequest: async ({ request, locals }) => {
+		const form = await request.formData();
+		try {
+			const result = rejectTagRequest(String(form.get('id') ?? ''), locals.user!, String(form.get('reason') ?? ''));
+			audit(locals.user!.id, 'admin.tag_request_reject', result.name);
+			return { success: true, message: translate(locals.locale, 'tagRequest.rejected', { name: result.name }) };
+		} catch (thrown) {
+			if (thrown instanceof TagRequestError) return fail(400, { error: thrown.in(locals.locale) });
+			throw thrown;
+		}
+	},
+
 	create: async ({ request, locals }) => {
 		const form = await request.formData();
 		const name = String(form.get('name') ?? '').trim();
@@ -41,6 +73,9 @@ export const actions: Actions = {
 		if (get('SELECT 1 AS x FROM tags WHERE slug = ?', slug)) {
 			return fail(409, { error: translate(locals.locale, 'adminTags.error.exists', { slug }) });
 		}
+		// Another spelling of a tag that exists (USBC for USB-C) would split its boards.
+		const similar = sameTag(listTags(), name);
+		if (similar) return fail(409, { error: translate(locals.locale, 'adminTags.error.similar', { name: similar.name }) });
 
 		run(
 			'INSERT INTO tags (id, slug, name, category, color, description, created_at) VALUES (?,?,?,?,?,?,?)',

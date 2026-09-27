@@ -103,10 +103,16 @@ converter takes untrusted XML: keep its reader entity-free and capped
   (`project_members`) can do everything an owner can except delete the board and manage
   collaborators. SQL that filters by access (`visibleTo`, `VISIBLE` in notifications.ts)
   repeats the rule; keep all of them in step.
-- **Notifications** are `comment`, `reply`, `version` or `signup`. `syncCommits()` sends a
-  version notification only when it gets an actor (uploads, pushes); re-syncs pass none.
-  `signup` goes to active admins, has no board (`project_id` NULL, `actor_id` is the new
-  account) and is deleted with the account; queries join projects with LEFT JOIN.
+- **Notifications** are `comment`, `reply`, `version`, `signup`, `tag_request` or
+  `tag_decision`. `syncCommits()` sends a version notification only when it gets an actor
+  (uploads, pushes); re-syncs pass none. `signup` goes to active admins, has no board
+  (`project_id` NULL, `actor_id` is the new account) and is deleted with the account;
+  queries join projects with LEFT JOIN. The tag kinds carry `tag_request_id` and no board:
+  `tag_request` goes to admins, `tag_decision` to everyone who asked. A new kind means
+  changing the CHECK, and `rebuildNotifications()` must look for the newest kind.
+- **Tags** are created by admins only; users ask for missing ones on `/tags/request`
+  (tagrequests.ts). Names are compared normalized (`sameTag()`, $lib/tagname.ts:
+  ESP32S3 = ESP32-S3), for requests and for tags admins create.
 - **The owner** (`users.is_owner`, one account: the `.env` admin, else the first to
   register or the oldest admin; `ensureOwner()` in bootstrap.ts) cannot be demoted,
   disabled or deleted, and only the owner resets its password (`ownerRefusal()` in

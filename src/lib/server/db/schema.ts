@@ -97,6 +97,34 @@ CREATE TABLE IF NOT EXISTS project_tags (
 );
 CREATE INDEX IF NOT EXISTS idx_project_tags_tag ON project_tags(tag_id);
 
+-- Tags users asked for; only admins create tags. \`normalized\` is the name without
+-- case, spaces or punctuation (ESP32S3 = ESP32-S3), so one open request per tag.
+CREATE TABLE IF NOT EXISTS tag_requests (
+  id         TEXT PRIMARY KEY,
+  name       TEXT NOT NULL,
+  normalized TEXT NOT NULL,
+  category   TEXT NOT NULL,
+  note       TEXT NOT NULL DEFAULT '',
+  status     TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open','approved','rejected')),
+  reason     TEXT NOT NULL DEFAULT '',
+  tag_id     TEXT REFERENCES tags(id) ON DELETE SET NULL,
+  decided_by TEXT REFERENCES users(id) ON DELETE SET NULL,
+  decided_at INTEGER,
+  created_at INTEGER NOT NULL
+);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_tag_requests_open ON tag_requests(normalized) WHERE status = 'open';
+
+-- Everyone who asked for a request's tag (the first one included), and the board
+-- to tag once it is approved, if they asked from one.
+CREATE TABLE IF NOT EXISTS tag_request_users (
+  request_id TEXT NOT NULL REFERENCES tag_requests(id) ON DELETE CASCADE,
+  user_id    TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  project_id TEXT REFERENCES projects(id) ON DELETE SET NULL,
+  created_at INTEGER NOT NULL,
+  PRIMARY KEY (request_id, user_id)
+);
+CREATE INDEX IF NOT EXISTS idx_tag_request_users_user ON tag_request_users(user_id);
+
 CREATE TABLE IF NOT EXISTS stars (
   user_id    TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
@@ -219,12 +247,15 @@ CREATE TABLE IF NOT EXISTS notifications (
   id            TEXT PRIMARY KEY,
   user_id       TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   -- 'signup': a new account, sent to admins; it has no board, actor_id is the account.
-  kind          TEXT NOT NULL CHECK (kind IN ('comment','reply','version','signup')),
+  -- 'tag_request': a tag asked for, sent to admins; 'tag_decision': the answer, sent
+  -- to whoever asked. Both have tag_request_id and no board.
+  kind          TEXT NOT NULL CHECK (kind IN ('comment','reply','version','signup','tag_request','tag_decision')),
   project_id    TEXT REFERENCES projects(id) ON DELETE CASCADE,
   comment_id    TEXT REFERENCES comments(id) ON DELETE CASCADE,
   commit_id     TEXT REFERENCES commits(id) ON DELETE CASCADE,
   version_count INTEGER NOT NULL DEFAULT 1,
   actor_id      TEXT REFERENCES users(id) ON DELETE SET NULL,
+  tag_request_id TEXT REFERENCES tag_requests(id) ON DELETE CASCADE,
   created_at    INTEGER NOT NULL,
   read_at       INTEGER,
   UNIQUE (user_id, comment_id)

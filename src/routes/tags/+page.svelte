@@ -13,6 +13,7 @@
 	<h1 class="text-xl font-semibold tracking-tight">{t('nav.tags')}</h1>
 	<p class="mt-1 text-sm text-[var(--text-secondary)]">
 		{t('tags.intro')}
+		{#if data.user}<a href="/tags/request" class="text-[var(--accent)] hover:underline">{t('tags.requestLink')}</a>{/if}
 	</p>
 
 	{#each data.groups as group}
