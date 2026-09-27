@@ -6,6 +6,7 @@
 	import Icon from '$lib/components/Icon.svelte';
 	import ProjectCardView from '$lib/components/ProjectCard.svelte';
 	import TagChip from '$lib/components/TagChip.svelte';
+	import { categoryLabel } from '$lib/tagcategory';
 	import { formatCount } from '$lib/format';
 
 	let { data } = $props();
@@ -87,19 +88,38 @@
 				class:flex={filtersOpen}
 				class:hidden={!filtersOpen}
 			>
-				{#if data.tags.length}
+				{#if data.tagGroups.length}
 					<div>
 						<h2 class="label !mb-2">{t('nav.tags')}</h2>
-						<div class="flex flex-wrap gap-1.5">
-							{#each data.tags as tag}
-								{@const active = data.filters.tags.includes(tag.slug)}
-								<TagChip
-									{tag}
-									href={toggleMulti('tag', tag.slug)}
-									{active}
-									count={tag.project_count}
-									title={t('browse.nBoards', { count: tag.project_count })}
-								/>
+						<div class="flex flex-col gap-2.5">
+							{#each data.tagGroups as group (group.category)}
+								<section aria-label={categoryLabel(group.category, group.name)}>
+									<!-- A quiet caption, not a heading: the chips are what you scan. -->
+									<p class="mb-1 text-[0.6875rem] font-normal text-[var(--text-muted)]">
+										{categoryLabel(group.category, group.name)}
+									</p>
+									<div class="flex flex-wrap items-center gap-1.5">
+										{#each group.tags as tag}
+											{@const active = data.filters.tags.includes(tag.slug)}
+											<TagChip
+												{tag}
+												href={toggleMulti('tag', tag.slug)}
+												{active}
+												count={tag.project_count}
+												title={t('browse.nBoards', { count: tag.project_count })}
+											/>
+										{/each}
+										{#if group.more}
+											<a
+												href="/tags#category-{group.category}"
+												class="text-[0.6875rem] text-[var(--text-muted)] hover:text-[var(--accent)]"
+												title={t('browse.moreTags', { count: group.more })}
+											>
+												+{group.more}
+											</a>
+										{/if}
+									</div>
+								</section>
 							{/each}
 						</div>
 						<a href="/tags" class="hint inline-block hover:text-[var(--accent)]">{t('browse.allTags')} →</a>

@@ -478,6 +478,10 @@
 		"one": "{count} Board",
 		"other": "{count} Boards"
 	},
+	"browse.moreTags": {
+		"one": "{count} weiterer Tag in dieser Kategorie",
+		"other": "{count} weitere Tags in dieser Kategorie"
+	},
 	"browse.allTags": "Alle Tags",
 	"browse.filters": "Filter",
 	"browse.author": "Autor",
@@ -522,7 +526,7 @@
 	"stars.title": "Markierte Boards",
 	"stars.empty": "Du hast noch keine Boards mit einem Stern markiert.",
 	"tags.intro": "Tags werden von den Administratoren gepflegt. Klicke auf einen, um die Board-Liste zu filtern.",
-	"tags.none": "Noch keine Tags.",
+	"tags.none": "Noch ist kein Board getaggt.",
 	"auth.loginSubtitle": "Greife auf deine Boards zu und pushe neue Versionen.",
 	"auth.usernameOrEmail": "Benutzername oder E-Mail",
 	"auth.password": "Passwort",

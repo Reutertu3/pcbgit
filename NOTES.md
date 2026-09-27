@@ -446,3 +446,21 @@ the card's own glow. The previews' z-index moved from utilities into
 hidden under it. The card's outline now fades out over 2s, and the board name, which
 takes the accent with it, fades back as slowly instead of blinking when the
 pointer sweeps across the grid.
+
+### Front page tags sorted by category
+The tag filter on the left was one heap: the 24 most used tags, components,
+interfaces, applications and layer counts mixed. It is now grouped by category,
+in the categories' order, each under a small, light caption. Every category
+shows its five tags used on the most public boards, plus any tag being filtered
+by, so a selected one can always be switched off. A muted `+N` leads to that
+category on `/tags` when there are more. Popularity is the public board count
+`listTags()` already had; nothing new is stored. The grouping is one pure
+helper (`$lib/taggroups.ts`) shared with `/tags`.
+`/tags` now lists only tags some public board uses (an unused tag leads to an
+empty list), in alphabetical order within each category. Admins still see and
+manage every tag in the admin panel.
+The sidebar's counts first stayed those of all public boards when filtering by
+author (or search, or other tags). They are now counted over the boards the list
+matches, with the same filters and visibility (`browseWhere()`, shared by
+`browseProjects()` and `browseTagCounts()`): each number says how many boards
+would be left after clicking that tag, and tags that would leave none drop out.

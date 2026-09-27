@@ -478,6 +478,10 @@
 		"one": "{count} board",
 		"other": "{count} boards"
 	},
+	"browse.moreTags": {
+		"one": "{count} more tag in this category",
+		"other": "{count} more tags in this category"
+	},
 	"browse.allTags": "All tags",
 	"browse.filters": "Filters",
 	"browse.author": "Author",
@@ -522,7 +526,7 @@
 	"stars.title": "Starred boards",
 	"stars.empty": "You have not starred any boards yet.",
 	"tags.intro": "Tags are curated by the administrators. Click one to filter the board list.",
-	"tags.none": "No tags yet.",
+	"tags.none": "No board is tagged yet.",
 	"auth.loginSubtitle": "Access your boards and push new versions.",
 	"auth.usernameOrEmail": "Username or email",
 	"auth.password": "Password",

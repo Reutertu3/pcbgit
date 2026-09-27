@@ -16,7 +16,7 @@
 	</p>
 
 	{#each data.groups as group}
-		<section class="mt-6">
+		<section id="category-{group.category}" class="mt-6 scroll-mt-20">
 			<h2 class="mb-2.5 flex items-center gap-1.5 text-sm font-semibold">
 				<Icon name="tag" size={14} class="text-[var(--text-muted)]" />
 				{categoryLabel(group.category, group.name)}
@@ -24,10 +24,7 @@
 			</h2>
 			<div class="flex flex-wrap gap-2">
 				{#each group.tags as tag}
-					<span
-						class:opacity-55={tag.project_count === 0}
-						title={tag.description || undefined}
-					>
+					<span title={tag.description || undefined}>
 						<TagChip {tag} href="/?tag={tag.slug}" count={tag.project_count} />
 					</span>
 				{/each}

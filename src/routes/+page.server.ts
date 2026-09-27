@@ -1,5 +1,6 @@
 import type { PageServerLoad } from './$types';
-import { browseAuthors, browseProjects, popularTags } from '$lib/server/projects';
+import { browseAuthors, browseProjects, browseTagCounts, listTagCategories, listTags } from '$lib/server/projects';
+import { topTagGroups } from '$lib/taggroups';
 import { count } from '$lib/server/db';
 
 const SORTS = ['name', 'recent', 'created', 'stars'] as const;
@@ -30,7 +31,7 @@ export const load: PageServerLoad = async ({ url, locals, cookies }) => {
 	}
 	const author = params.get('author') ?? '';
 
-	const result = browseProjects({
+	const query = {
 		viewer: locals.user,
 		search: params.get('q') ?? '',
 		tags: params.getAll('tag'),
@@ -38,11 +39,16 @@ export const load: PageServerLoad = async ({ url, locals, cookies }) => {
 		sort,
 		page: Number(params.get('page')) || 1,
 		perPage: 24
-	});
+	};
+	const result = browseProjects(query);
+	// Tag counts follow the filters, so each says what clicking it would leave.
+	const tagCounts = browseTagCounts(query);
+	const tags = listTags().map((tag) => ({ ...tag, project_count: tagCounts.get(tag.slug) ?? 0 }));
 
 	return {
 		...result,
-		tags: popularTags(24),
+		// The five most used per category, and whichever are being filtered by.
+		tagGroups: topTagGroups(listTagCategories(), tags, 5, query.tags),
 		authors: browseAuthors(locals.user),
 		filters: {
 			q: params.get('q') ?? '',

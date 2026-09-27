@@ -100,10 +100,8 @@ export function browseAuthors(viewer: User | null) {
 	);
 }
 
-export function browseProjects(query: BrowseQuery) {
-	const perPage = Math.min(Math.max(query.perPage ?? 24, 1), 100);
-	const page = Math.max(query.page ?? 1, 1);
-
+/** The boards a browse query matches, as a WHERE over `projects p JOIN users u`. */
+function browseWhere(query: BrowseQuery) {
 	const visible = visibleTo(query.viewer ?? null);
 	const where: string[] = [visible.sql];
 	const params: unknown[] = [...visible.params];
@@ -131,7 +129,13 @@ export function browseProjects(query: BrowseQuery) {
 		params.push(tag);
 	}
 
-	const whereSql = `WHERE ${where.join(' AND ')}`;
+	return { whereSql: `WHERE ${where.join(' AND ')}`, params };
+}
+
+export function browseProjects(query: BrowseQuery) {
+	const perPage = Math.min(Math.max(query.perPage ?? 24, 1), 100);
+	const page = Math.max(query.page ?? 1, 1);
+	const { whereSql, params } = browseWhere(query);
 	const orderSql = {
 		recent: 'p.updated_at DESC',
 		created: 'p.created_at DESC',
@@ -157,6 +161,22 @@ export function browseProjects(query: BrowseQuery) {
 		perPage,
 		pageCount: Math.max(1, Math.ceil(total / perPage))
 	};
+}
+
+/**
+ * How many of the boards a browse query matches carry each tag: for a tag not
+ * yet filtered by, the boards left if it were added. Same filters and visibility
+ * as the list, so the numbers agree with it.
+ */
+export function browseTagCounts(query: BrowseQuery) {
+	const { whereSql, params } = browseWhere(query);
+	const rows = all<{ slug: string; n: number }>(
+		`SELECT t.slug, COUNT(*) AS n FROM projects p JOIN users u ON u.id = p.owner_id
+		 JOIN project_tags pt ON pt.project_id = p.id JOIN tags t ON t.id = pt.tag_id
+		 ${whereSql} GROUP BY t.id`,
+		...params
+	);
+	return new Map(rows.map((row) => [row.slug, row.n]));
 }
 
 function withTags(project: ProjectCard): ProjectCard {
@@ -405,14 +425,6 @@ export function listTags() {
 		 FROM tags t LEFT JOIN tag_categories c ON c.id = t.category
 		 ORDER BY COALESCE(c.position, 1e9), t.name`
 	);
-}
-
-/** Tags actually in use, most popular first — what the browse sidebar shows. */
-export function popularTags(limit = 40) {
-	return listTags()
-		.filter((tag) => tag.project_count > 0)
-		.sort((a, b) => b.project_count - a.project_count || a.name.localeCompare(b.name))
-		.slice(0, limit);
 }
 
 /* ------------------------------------------------------- tag categories */
