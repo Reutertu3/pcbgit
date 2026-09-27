@@ -1,7 +1,8 @@
 /**
  * Per-user limits: how many boards a user may own, how much storage their boards
- * may take (repositories plus rendered output), and how many uploads and pushes
- * they may make per hour. Instance defaults are settings (`limit_*`), a user row
+ * may take (repositories plus rendered output), how many uploads and pushes they
+ * may make per hour, and how many comments they may post per hour (each one
+ * notifies the board's people, so a flood of them floods inboxes too). Instance defaults are settings (`limit_*`), a user row
  * can override the first two, and admins have none.
  *
  * Storage belongs to the board's owner, so a collaborator's push counts against
@@ -21,6 +22,7 @@ import { DATA_DIR, repoPath } from './paths';
 export class LimitError extends UserError {}
 
 export const DEFAULT_WRITES_PER_HOUR = 30;
+export const DEFAULT_COMMENTS_PER_HOUR = 60;
 const MB = 1024 ** 2;
 const HOUR = 60 * 60 * 1000;
 
@@ -36,6 +38,7 @@ export interface UserLimits {
 	boards: number | null;
 	storageBytes: number | null;
 	writesPerHour: number | null;
+	commentsPerHour: number | null;
 }
 
 /** The instance defaults; 0 means no limit. */
@@ -44,19 +47,21 @@ export function instanceLimits() {
 	return {
 		boards: read('limit_boards', 0),
 		storageMb: read('limit_storage_mb', 0),
-		writesPerHour: read('limit_writes_per_hour', DEFAULT_WRITES_PER_HOUR)
+		writesPerHour: read('limit_writes_per_hour', DEFAULT_WRITES_PER_HOUR),
+		commentsPerHour: read('limit_comments_per_hour', DEFAULT_COMMENTS_PER_HOUR)
 	};
 }
 
 export function limitsFor(user: LimitedUser): UserLimits {
-	if (user.role === 'admin') return { boards: null, storageBytes: null, writesPerHour: null };
+	if (user.role === 'admin') return { boards: null, storageBytes: null, writesPerHour: null, commentsPerHour: null };
 	const defaults = instanceLimits();
 	const boards = user.limit_boards ?? defaults.boards;
 	const storageMb = user.limit_storage_mb ?? defaults.storageMb;
 	return {
 		boards: boards > 0 ? boards : null,
 		storageBytes: storageMb > 0 ? storageMb * MB : null,
-		writesPerHour: defaults.writesPerHour > 0 ? defaults.writesPerHour : null
+		writesPerHour: defaults.writesPerHour > 0 ? defaults.writesPerHour : null,
+		commentsPerHour: defaults.commentsPerHour > 0 ? defaults.commentsPerHour : null
 	};
 }
 
@@ -136,15 +141,21 @@ export async function checkNewBoard(ownerId: string) {
 	await checkStorage(ownerId);
 }
 
-// Uploads and pushes of the last hour per user, in memory like the sign-in limit:
-// a restart forgets them, which only ever errs on the generous side.
+// Uploads and pushes, and comments, of the last hour per user, in memory like the
+// sign-in limit: a restart forgets them, which only ever errs on the generous side.
 const writes = new Map<string, number[]>();
+const comments = new Map<string, number[]>();
 
-function recentWrites(userId: string, now: number) {
-	const recent = (writes.get(userId) ?? []).filter((at) => now - at < HOUR);
-	writes.set(userId, recent);
+function recentIn(log: Map<string, number[]>, userId: string, now: number) {
+	const recent = (log.get(userId) ?? []).filter((at) => now - at < HOUR);
+	log.set(userId, recent);
 	return recent;
 }
+
+const recentWrites = (userId: string, now: number) => recentIn(writes, userId, now);
+
+/** Minutes until the oldest counted event leaves the hour. */
+const minutesLeft = (oldest: number, now: number) => Math.max(1, Math.ceil((HOUR - (now - oldest)) / 60_000));
 
 /** Throws when the user has used up this hour's uploads and pushes. */
 export function checkWriteRate(user: LimitedUser, now = Date.now()) {
@@ -152,8 +163,7 @@ export function checkWriteRate(user: LimitedUser, now = Date.now()) {
 	if (!limit) return;
 	const recent = recentWrites(user.id, now);
 	if (recent.length >= limit) {
-		const minutes = Math.max(1, Math.ceil((HOUR - (now - recent[0])) / 60_000));
-		throw new LimitError('limits.error.rate', { limit, count: minutes });
+		throw new LimitError('limits.error.rate', { limit, count: minutesLeft(recent[0], now) });
 	}
 }
 
@@ -161,4 +171,17 @@ export function checkWriteRate(user: LimitedUser, now = Date.now()) {
 export function takeWrite(user: LimitedUser, now = Date.now()) {
 	checkWriteRate(user, now);
 	if (limitsFor(user).writesPerHour) recentWrites(user.id, now).push(now);
+}
+
+/** Throws when the user has posted this hour's comments; checked before posting. */
+export function checkCommentRate(user: LimitedUser, now = Date.now()) {
+	const limit = limitsFor(user).commentsPerHour;
+	if (!limit) return;
+	const recent = recentIn(comments, user.id, now);
+	if (recent.length >= limit) throw new LimitError('limits.error.comments', { limit, count: minutesLeft(recent[0], now) });
+}
+
+/** Counts a posted comment; a refused one (empty, too long) does not count. */
+export function countComment(user: LimitedUser, now = Date.now()) {
+	if (limitsFor(user).commentsPerHour) recentIn(comments, user.id, now).push(now);
 }

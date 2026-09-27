@@ -1,7 +1,7 @@
 import { fail, redirect } from '@sveltejs/kit';
 import { translate } from '$lib/i18n';
 import type { Actions, PageServerLoad } from './$types';
-import { createSession, findUserByLogin, verifyPassword } from '$lib/server/auth';
+import { createSession, findUserByLogin, verifyNoAccount, verifyPassword } from '$lib/server/auth';
 import { clearLoginFailures, loginRetryAfter, recordLoginFailure, safeNextPath } from '$lib/server/loginguard';
 import { SESSION_COOKIE } from '../../hooks.server';
 import { audit } from '$lib/server/db';
@@ -34,8 +34,10 @@ export const actions: Actions = {
 			return fail(429, { error: translate(locals.locale, 'auth.error.tooMany', { count: Math.ceil(wait / 60_000) }), login });
 		}
 
-		// One message for both cases, so this cannot be used to enumerate accounts.
-		if (!user || !(await verifyPassword(password, user.password_hash))) {
+		// One message and the same work for both cases, so neither the text nor the
+		// response time tells whether the account exists.
+		const valid = user ? await verifyPassword(password, user.password_hash) : await verifyNoAccount(password);
+		if (!user || !valid) {
 			recordLoginFailure(ip, account);
 			return fail(401, { error: translate(locals.locale, 'auth.error.incorrect'), login });
 		}

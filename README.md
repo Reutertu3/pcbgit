@@ -58,7 +58,7 @@
 - **Public and private boards**, stars, threaded comments with notifications
 - **Curated tags** in categories; users request missing ones, admins approve them
 - **Admin panel**: users, boards, colour-coded tags, render queue, backups, updates,
-  limits per user (boards, storage, uploads and pushes per hour), approval of new accounts
+  limits per user (boards, storage, uploads and pushes per hour, comments per hour), approval of new accounts
 - **Snapshots** for backup and moving to a new server
 - **One-click updates** from GitHub with a changelog
 - **English and German** interface, eight colour themes

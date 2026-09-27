@@ -1076,5 +1076,10 @@
 	"notifications.tagRequest": "[[actor]] hat den Tag [[tag]] angefragt",
 	"notifications.tagApproved": "[[actor]] hat deinen Tag [[tag]] freigegeben",
 	"notifications.tagRejected": "[[actor]] hat deinen Tag [[tag]] abgelehnt",
-	"adminTags.error.similar": "{name} gibt es schon in anderer Schreibweise."
+	"adminTags.error.similar": "{name} gibt es schon in anderer Schreibweise.",
+	"instance.limitComments": "Kommentare pro Stunde",
+	"limits.error.comments": {
+		"one": "Zu viele Kommentare (Limit: {limit} pro Stunde). Versuche es in {count} Minute erneut.",
+		"other": "Zu viele Kommentare (Limit: {limit} pro Stunde). Versuche es in {count} Minuten erneut."
+	}
 }

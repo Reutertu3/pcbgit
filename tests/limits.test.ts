@@ -35,16 +35,16 @@ const fresh = () => auth.getUserById(user.id)!;
 const MB = 1024 ** 2;
 
 test('limits come from the instance defaults, a user can override them, and admins have none', () => {
-	assert.deepEqual(limits.limitsFor(fresh()), { boards: null, storageBytes: null, writesPerHour: 30 }, 'defaults: no board or storage limit');
+	assert.deepEqual(limits.limitsFor(fresh()), { boards: null, storageBytes: null, writesPerHour: 30, commentsPerHour: 60 }, 'defaults: no board or storage limit');
 
 	setSetting('limit_boards', '5');
 	setSetting('limit_storage_mb', '100');
-	assert.deepEqual(limits.limitsFor(fresh()), { boards: 5, storageBytes: 100 * MB, writesPerHour: 30 });
+	assert.deepEqual(limits.limitsFor(fresh()), { boards: 5, storageBytes: 100 * MB, writesPerHour: 30, commentsPerHour: 60 });
 
 	run('UPDATE users SET limit_boards = 2, limit_storage_mb = 0 WHERE id = ?', user.id);
-	assert.deepEqual(limits.limitsFor(fresh()), { boards: 2, storageBytes: null, writesPerHour: 30 }, '0 overrides to no limit');
+	assert.deepEqual(limits.limitsFor(fresh()), { boards: 2, storageBytes: null, writesPerHour: 30, commentsPerHour: 60 }, '0 overrides to no limit');
 
-	assert.deepEqual(limits.limitsFor(admin), { boards: null, storageBytes: null, writesPerHour: null });
+	assert.deepEqual(limits.limitsFor(admin), { boards: null, storageBytes: null, writesPerHour: null, commentsPerHour: null });
 });
 
 test('the board limit counts the boards a user owns', async () => {
@@ -104,6 +104,21 @@ test('uploads and pushes are limited per hour, and the window moves on', () => {
 	limits.takeWrite(fresh(), start + 60 * 60 * 1000);
 	// Admins are never counted.
 	for (let i = 0; i < 5; i++) limits.takeWrite(admin, start);
+});
+
+test('comments are limited per hour; refused ones do not count, admins are never counted', () => {
+	setSetting('limit_comments_per_hour', '2');
+	const start = 5_000_000;
+	limits.checkCommentRate(fresh(), start);
+	limits.countComment(fresh(), start);
+	limits.checkCommentRate(fresh(), start + 1000); // checked, then refused as empty: not counted
+	limits.countComment(fresh(), start + 2000);
+	assert.throws(() => limits.checkCommentRate(fresh(), start + 3000), /Too many comments \(limit: 2 per hour\)/);
+	limits.checkCommentRate(fresh(), start + 60 * 60 * 1000 + 1);
+	for (let i = 0; i < 5; i++) limits.countComment(admin, start);
+	limits.checkCommentRate(admin, start);
+	setSetting('limit_comments_per_hour', '0');
+	limits.checkCommentRate(fresh(), start + 3000);
 });
 
 test('a refused push is an ERR line in git\'s ref advertisement', async () => {

@@ -50,6 +50,7 @@ export const actions: Actions = {
 		setSetting('limit_boards', read('limit_boards'));
 		setSetting('limit_storage_mb', read('limit_storage_mb'));
 		setSetting('limit_writes_per_hour', read('limit_writes_per_hour'));
+		setSetting('limit_comments_per_hour', read('limit_comments_per_hour'));
 		audit(locals.user!.id, 'admin.limits_save', '', JSON.stringify(instanceLimits()));
 		return { success: true, saved: true, scope: 'limits', message: translate(locals.locale, 'instance.saved') };
 	},

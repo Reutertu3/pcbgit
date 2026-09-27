@@ -37,6 +37,7 @@ Only what is left to do; details in the linked sections.
 | 🟡 Low | Security | A compromised renderer can falsify its own GLB or iBOM output | [Hardening](#low-hardening) |
 | 🟡 Low | Security | Directory swap race in `/work` between check and open (needs `openat2`) | [Hardening](#low-hardening) |
 | 🟡 Low | Security | Full Content-Security-Policy for pages (`kit.csp`) | [Hardening](#low-hardening) |
+| 🟡 Low | Security | `git-http-backend` would accept a push on authenticated reads (`http.receivepack=false`) | [Hardening](#low-hardening) |
 | 🟡 Low | Boards | `/new` leaves an empty board when the upload fails to commit | [Known issues](#other-known-issues) |
 | 🟡 Low | Boards | `syncCommits()` only sees the newest 200 commits of a branch | [Known issues](#other-known-issues) |
 | 🟡 Low | Eagle | Nets joined by name only show as separate nets in ERC | [Eagle](#eagle-projects) |
@@ -260,6 +261,10 @@ scripts run by hand.
   (`render/outputs.ts`), and the app's own files there created exclusively
 - GLBs read without external buffers; the schematic fallback confined to the
   checkout
+- Audit of 2026-09-27: open redirect after sign-in (tabs and newlines in `next`),
+  an hourly comment limit, reserved usernames for every top-level route (checked
+  by a test), private board names no longer probeable over git, and sign-in
+  without an account costing the same scrypt work
 
 </details>
 
@@ -291,6 +296,11 @@ scripts run by hand.
       renderer that cannot keep processes alive between tool runs.
 - [ ] Full Content-Security-Policy for pages (SvelteKit `kit.csp`); pages send
       only `frame-ancestors 'self'` so far.
+- [ ] `git-http-backend` gets `REMOTE_USER` on authenticated reads, so it would
+      accept a push by itself; only pcbgit's `isWrite()` check stands in between.
+      Set `http.receivepack=false` (through `GIT_CONFIG_*`, like the push checks)
+      for every request that is not a checked write. Found in the audit of
+      2026-09-27; no way around `isWrite()` was found.
 
 ### Not reviewed yet
 

@@ -47,17 +47,34 @@ export async function verifyPassword(password: string, stored: string) {
 	return crypto.timingSafeEqual(expected, actual);
 }
 
+let dummyHash: string | null = null;
+
+/**
+ * For a sign-in that names no account: the same scrypt work as a real check, so
+ * the response time does not tell whether a username or email is registered.
+ */
+export async function verifyNoAccount(password: string) {
+	dummyHash ??= hashPassword(crypto.randomBytes(16).toString('hex'));
+	await verifyPassword(password, dummyHash);
+	return false;
+}
+
 export function validateUsername(username: string) {
 	if (!/^[a-z0-9][a-z0-9-]{1,30}[a-z0-9]$/i.test(username)) {
 		return 'validation.username' as const;
 	}
-	if (RESERVED.has(username.toLowerCase())) return 'validation.usernameReserved' as const;
+	if (RESERVED_USERNAMES.has(username.toLowerCase())) return 'validation.usernameReserved' as const;
 	return null;
 }
 
-const RESERVED = new Set([
+/**
+ * Names a profile at /<username> cannot have: every top-level route (a test checks
+ * src/routes against this list), plus a few kept free for later.
+ */
+export const RESERVED_USERNAMES = new Set([
 	'admin', 'admin-panel', 'api', 'git', 'login', 'logout', 'register', 'settings', 'new', 'browse',
-	'about', 'static', 'assets', 'artifacts', 'tags', 'search', 'explore', 'help', 'docs'
+	'about', 'static', 'assets', 'artifacts', 'tags', 'search', 'explore', 'help', 'docs',
+	'stars', 'messages', 'notifications', 'avatars'
 ]);
 
 export function createUser(opts: {

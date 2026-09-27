@@ -4,9 +4,22 @@
  * which is fine for slowing down guessing, and needs no table.
  */
 
-/** Only same-site paths; "//host" and "/\host" are other sites to a browser. */
+const SAME_SITE = 'http://pcbgit.invalid';
+
+/**
+ * Only same-site paths. "//host" and "/\host" are other sites to a browser, and
+ * browsers drop tabs and newlines while parsing, so "/<tab>/host" is one too:
+ * refuse control characters, whitespace and backslashes, then keep the path only
+ * if resolving it stays on this site.
+ */
 export function safeNextPath(next: string | null | undefined) {
-	return next && /^\/(?![/\\])/.test(next) ? next : '/';
+	if (!next || !next.startsWith('/') || /[\u0000-\u0020\u007f\\]/.test(next)) return '/';
+	try {
+		const url = new URL(next, SAME_SITE);
+		return url.origin === SAME_SITE ? url.pathname + url.search + url.hash : '/';
+	} catch {
+		return '/';
+	}
 }
 
 const WINDOW_MS = 15 * 60 * 1000;

@@ -16,6 +16,9 @@ interface Target {
 	owner_username: string;
 }
 
+/** The answer for a missing or private board without credentials: the same for both. */
+const HIDDEN = 'Repository not found, or private: sign in with your username and an access token.\n';
+
 /** Push requests are the ones that need write access. */
 function isWrite(pathInfo: string, queryString: string) {
 	return pathInfo.endsWith('/git-receive-pack') || queryString.includes('service=git-receive-pack');
@@ -27,15 +30,6 @@ async function handle(event: Parameters<RequestHandler>[0]) {
 	const slug = params.project.replace(/\.git$/, '');
 	const pathInfo = params.path ? `/${params.path}` : '/';
 	const queryString = url.search.replace(/^\?/, '');
-
-	const project = get<Target>(
-		`SELECT p.id, p.slug, p.default_branch, p.visibility, p.owner_id, u.username AS owner_username
-		 FROM projects p JOIN users u ON u.id = p.owner_id
-		 WHERE u.username = ? AND p.slug = ?`,
-		params.owner,
-		slug
-	);
-	if (!project) return new Response('Repository not found\n', { status: 404 });
 
 	const write = isWrite(pathInfo, queryString);
 	const credentials = parseBasicAuth(request.headers.get('authorization'));
@@ -49,8 +43,20 @@ async function handle(event: Parameters<RequestHandler>[0]) {
 		return new Response('Invalid username or access token\n', { status: 403 });
 	}
 
+	const project = get<Target>(
+		`SELECT p.id, p.slug, p.default_branch, p.visibility, p.owner_id, u.username AS owner_username
+		 FROM projects p JOIN users u ON u.id = p.owner_id
+		 WHERE u.username = ? AND p.slug = ?`,
+		params.owner,
+		slug
+	);
+	// Without credentials, a missing board answers like a private one: a 404 here
+	// and a 401 there would tell anyone which private board names exist. (git needs
+	// the 401 to ask for a token, so that is the answer for both.)
+	if (!project) return actor ? new Response('Repository not found\n', { status: 404 }) : authRequired(HIDDEN);
+
 	if (write) {
-		if (!actor) return authRequired('Push requires a personal access token as the password.\n');
+		if (!actor) return authRequired(project.visibility === 'private' ? HIDDEN : 'Push requires a personal access token as the password.\n');
 		// Owner, collaborators and admins, the same rule as the web interface.
 		const allowed = canEdit(project, actor);
 		if (!allowed) return new Response('You do not have write access to this repository\n', { status: 403 });
@@ -67,7 +73,7 @@ async function handle(event: Parameters<RequestHandler>[0]) {
 			return request.method === 'GET' ? refusePush(message) : new Response(`${message}\n`, { status: 403 });
 		}
 	} else if (project.visibility === 'private') {
-		if (!actor) return authRequired('This repository is private.\n');
+		if (!actor) return authRequired(HIDDEN);
 		const allowed = canView(project, actor);
 		if (!allowed) return new Response('Repository not found\n', { status: 404 });
 	}

@@ -8,6 +8,7 @@ import { repoPath } from '$lib/server/paths';
 import { artifactSummary, artifactUrl, loadProjectContext } from '$lib/server/projectcontext';
 import { canView, getProject } from '$lib/server/projects';
 import { CommentError, addComment, countComments, listThreads, removeComment } from '$lib/server/comments';
+import { LimitError, checkCommentRate, countComment } from '$lib/server/limits';
 
 const README = /^readme(\.(md|markdown|txt))?$/i;
 
@@ -80,10 +81,13 @@ export const actions: Actions = {
 		const form = await request.formData();
 		const parentId = String(form.get('parent_id') ?? '') || null;
 		try {
+			checkCommentRate(locals.user);
 			const { id } = addComment(project.id, locals.user.id, String(form.get('body') ?? ''), parentId);
+			countComment(locals.user);
 			return { success: true, commentId: id };
 		} catch (thrown) {
 			if (thrown instanceof CommentError) return fail(400, { error: thrown.in(locals.locale), parentId: parentId ?? '' });
+			if (thrown instanceof LimitError) return fail(429, { error: thrown.in(locals.locale), parentId: parentId ?? '' });
 			throw thrown;
 		}
 	},

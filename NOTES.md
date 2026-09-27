@@ -509,3 +509,25 @@ they approve (name, category and colour adjustable) or decline with a reason.
 An approved tag is added to the board it was asked from; everyone who asked is
 notified either way. Admins creating a tag get the same spelling check. The
 notifications table is rebuilt once for the two new kinds.
+
+### Small security audit
+A read-only pass over sign-in, git over HTTP, uploads, the Markdown and file
+routes, tag requests and the updater found five problems, all fixed:
+- **Open redirect after sign-in.** `safeNextPath()` refused `//host` and
+  `/\host` but not `/<tab>/host`; browsers drop tabs and newlines while parsing,
+  so a login link could send a freshly signed-in user to another site
+  (reproduced locally). Control characters, whitespace and backslashes are now
+  refused, and the path is kept only if resolving it stays on this site.
+- **No limit on comments.** Every comment notifies the board's people, so one
+  account could flood inboxes once registration opens. Comments now have an
+  hourly limit per user (Instance → Limits, 60 by default, admins exempt).
+- **Reserved usernames incomplete.** `stars`, `messages`, `notifications` and
+  `avatars` are routes, so accounts with those names lost their profile or
+  boards. They are reserved, and a test now checks every top-level route.
+- **Private board names probeable over git.** Without credentials, a private
+  board answered 401 and a missing one 404. Both now give the same 401 and text.
+- **Registered emails visible through timing.** Signing in as nobody skipped
+  the scrypt work. It now checks against a dummy hash, costing the same.
+
+Left as low-priority hardening in [TODO.md](TODO.md): `git-http-backend` itself
+would accept a push on authenticated reads; only pcbgit's own check prevents it.

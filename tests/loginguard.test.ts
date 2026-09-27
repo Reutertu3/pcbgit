@@ -6,7 +6,9 @@ import { clearLoginFailures, loginRetryAfter, recordLoginFailure, safeNextPath }
 test('only same-site paths survive as a post-login target', () => {
 	assert.equal(safeNextPath('/settings'), '/settings');
 	assert.equal(safeNextPath('/alice/board?v=abc'), '/alice/board?v=abc');
-	for (const bad of ['//evil.example/x', '/\\evil.example', 'https://evil.example', 'evil', '', null, undefined]) {
+	assert.equal(safeNextPath('/tags/request?board=ada%2Fcharger#top'), '/tags/request?board=ada%2Fcharger#top');
+	// Browsers drop tabs and newlines while parsing, so these become "//evil.example".
+	for (const bad of ['//evil.example/x', '/\\evil.example', '/\t/evil.example', '/\n/evil.example', '/\r/evil.example', '/ /x', 'https://evil.example', 'evil', '', null, undefined]) {
 		assert.equal(safeNextPath(bad), '/', String(bad));
 	}
 });

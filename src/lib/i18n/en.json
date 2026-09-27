@@ -1076,5 +1076,10 @@
 	"notifications.tagRequest": "[[actor]] asked for the tag [[tag]]",
 	"notifications.tagApproved": "[[actor]] approved your tag [[tag]]",
 	"notifications.tagRejected": "[[actor]] declined your tag [[tag]]",
-	"adminTags.error.similar": "{name} already exists; this is another spelling of it."
+	"adminTags.error.similar": "{name} already exists; this is another spelling of it.",
+	"instance.limitComments": "Comments per hour",
+	"limits.error.comments": {
+		"one": "Too many comments (limit: {limit} per hour). Try again in {count} minute.",
+		"other": "Too many comments (limit: {limit} per hour). Try again in {count} minutes."
+	}
 }
