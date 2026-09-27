@@ -417,3 +417,31 @@ from the middle of its bottom edge (the active tab's marker, since the preview o
 tab), and the label unfolds smoothly to say where it leads (`SCH · Schematic →`, `PCB · Board →`).
 Keyboard focus shows the same. Corner marks were tried and dropped: they clipped
 into the thumbnails. It is still busy; TODO has it.
+
+## 2026-09-27
+
+### v0.6.5 was invisible to servers
+The release was published with the tag `v.0.6.5`. `update.sh` only takes tags
+of the form `vX.Y.Z` as releases, so servers kept reporting v0.6.4 as the
+newest and nothing to install. A push to master after a release is harmless: a
+release is installed whenever the running commit comes before it. Fixed by
+tagging the same commit `v0.6.5` and publishing the release again.
+
+### Board card hover, muted
+Yesterday's hover still did too much. Hovering anywhere on a card zoomed both
+previews, and the hovered one added a tint, more zoom, an underline and a
+label that widened sideways. Now hovering the card only lights its outline.
+Only the preview under the pointer reacts: a light tint, a small zoom, and its
+label unfolds a second line below (`SCH`, then `Schematic →`). The underline
+is gone. Dimming, then blurring the other preview was tried and dropped: any
+change to the preview you are not pointing at pulls the eye away from the one
+you are. The preview effects now also leave in 0.35s instead of 1.6s, so moving
+across the grid leaves no trail of fading highlights; only the card's outline
+keeps its slow fade.
+Then a little more flourish for the hovered preview: a thin accent ring and a
+soft accent glow that spills past its edges onto the card, a small copy of
+the card's own glow. The previews' z-index moved from utilities into
+`app.css`, so the hovered one sits above its neighbour and its glow is not
+hidden under it. The card's outline now fades out over 2s, and the board name, which
+takes the accent with it, fades back as slowly instead of blinking when the
+pointer sweeps across the grid.

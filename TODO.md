@@ -1,6 +1,6 @@
 # TODO
 
-Open work on pcbgit, as of 2026-09-26. Registration is closed on pcbgit.com, so
+Open work on pcbgit, as of 2026-09-27. Registration is closed on pcbgit.com, so
 items marked **before opening registration** only become real once strangers
 can sign up.
 
@@ -35,7 +35,6 @@ and **Optional** wait until they matter, **Observe** is fixed but worth watching
 | Low | Eagle | Multi-sheet schematics tested with a synthetic file only |
 | Low | Eagle | `>LAST_DATE_TIME` stays empty |
 | Low | Database | PostgreSQL only if several app instances or HA are ever needed |
-| Low | Front page | Board card hover is too busy; rethink the preview highlight |
 | Low | Front page | Tag filter in the sidebar: group by category with subtle category labels |
 | Optional | Fabrication | JLCPCB assembly files (CPL, BOM with LCSC numbers) |
 | Optional | Fabrication | AISLER drill "2:4 precision", only if its import misreads ours |
@@ -171,13 +170,6 @@ without external buffers, the schematic fallback confined to the checkout.
 - [ ] `/new` creates the board before committing the upload; if that fails, an
       empty board is left behind.
 - [ ] `syncCommits()` only looks at the newest 200 commits of a branch.
-- [ ] Board card hover does too much at once: outer accent glow, both previews
-      zooming, the hovered one zooming further on a tinted backdrop with an
-      accent underline opening from the middle of its bottom edge, and its label unfolding
-      (`SCH · Schematic →`). Corner marks were tried and dropped
-      (they clipped into the thumbnail); the old 2px frame and accent-filled
-      label looked unprofessional. Keep the outer glow; pick one inner cue.
-      Rules are the `board-card-*` classes in `app.css`.
 - [ ] The tag filter on the front page (left sidebar) is one unsorted heap:
       `popularTags(24)` orders by board count, so components, interfaces,
       applications and layer counts are mixed. Group it by tag category, in the

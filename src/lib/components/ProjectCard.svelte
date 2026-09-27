@@ -25,21 +25,21 @@
 
 <!--
 	The whole card opens the board: the title link stretches over it (after:inset-0).
-	Links that go somewhere else sit above that overlay (z-10): the two previews open
+	Links that go somewhere else sit above that overlay (z-10; the previews get theirs
+	in app.css, with their hover): the two previews open
 	their own tab, the owner and tags their own pages.
 -->
 <article
 	class="surface board-card group relative flex flex-col overflow-hidden"
 >
 	<div class="relative">
-		<div class="grid h-40 grid-cols-2 gap-px bg-[var(--border-subtle)]">
+		<div class="board-card-previews grid h-40 grid-cols-2 gap-px bg-[var(--border-subtle)]">
 			<!-- Schematic and board previews sit side by side, the way you compare them on a bench. -->
 			<svelte:element
 				this={project.has_schematic && schematicSrc ? 'a' : 'div'}
 				href={project.has_schematic && schematicSrc ? `${href}/schematic` : undefined}
 				class="board-card-tile relative m-0 block overflow-hidden"
 				class:board-card-preview={project.has_schematic && schematicSrc}
-				class:z-10={project.has_schematic && schematicSrc}
 			>
 				{#if project.has_schematic && schematicSrc}
 					<!-- No decoding="async" on either preview: back on this page, the browser took
@@ -59,7 +59,7 @@
 					class="board-card-label mono absolute left-1.5 top-1.5 rounded px-1.5 py-0.5 text-[0.625rem]"
 				>
 					SCH<span class="board-card-label-more" aria-hidden="true"
-						><span>&nbsp;· {t('card.toSchematic')} <span class="arrow">→</span></span></span
+						><span><span>{t('card.toSchematic')} <span class="arrow">→</span></span></span></span
 					>
 				</span>
 			</svelte:element>
@@ -69,7 +69,6 @@
 				href={project.has_pcb && previewSrc ? `${href}/pcb` : undefined}
 				class="board-card-tile relative m-0 block overflow-hidden"
 				class:board-card-preview={project.has_pcb && previewSrc}
-				class:z-10={project.has_pcb && previewSrc}
 			>
 				{#if project.has_pcb && previewSrc}
 					<img
@@ -87,7 +86,7 @@
 					class="board-card-label mono absolute left-1.5 top-1.5 rounded px-1.5 py-0.5 text-[0.625rem]"
 				>
 					PCB<span class="board-card-label-more" aria-hidden="true"
-						><span>&nbsp;· {t('card.toBoard')} <span class="arrow">→</span></span></span
+						><span><span>{t('card.toBoard')} <span class="arrow">→</span></span></span></span
 					>
 				</span>
 			</svelte:element>
@@ -103,7 +102,7 @@
 	<div class="flex flex-1 flex-col gap-2 p-3">
 		<div class="flex items-start justify-between gap-2">
 			<h3 class="min-w-0 text-[0.9375rem] font-semibold leading-tight">
-				<a {href} class="after:absolute after:inset-0 hover:text-[var(--accent)] group-hover:text-[var(--accent)]">{project.name}</a>
+				<a {href} class="board-card-title after:absolute after:inset-0">{project.name}</a>
 			</h3>
 			<StatusDot status={project.head_status} />
 		</div>
