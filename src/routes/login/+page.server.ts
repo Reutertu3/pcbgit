@@ -5,6 +5,7 @@ import { createSession, findUserByLogin, verifyNoAccount, verifyPassword } from 
 import { clearLoginFailures, loginRetryAfter, recordLoginFailure, safeNextPath } from '$lib/server/loginguard';
 import { SESSION_COOKIE } from '../../hooks.server';
 import { audit } from '$lib/server/db';
+import { CHALLENGE_COOKIE, CHALLENGE_TTL, createChallenge } from '$lib/server/twofactor';
 
 export const load: PageServerLoad = async ({ locals, url }) => {
 	const next = safeNextPath(url.searchParams.get('next'));
@@ -41,10 +42,24 @@ export const actions: Actions = {
 			recordLoginFailure(ip, account);
 			return fail(401, { error: translate(locals.locale, 'auth.error.incorrect'), login });
 		}
-		clearLoginFailures(account);
 		if (!user.is_active) {
+			clearLoginFailures(account);
 			return fail(403, { error: translate(locals.locale, user.approved ? 'auth.error.disabled' : 'auth.error.pending'), login });
 		}
+
+		// The account's failure count is cleared only after the code, or someone with
+		// the password could reset it between rounds of guessing codes.
+		if (user.totp_secret) {
+			cookies.set(CHALLENGE_COOKIE, createChallenge(user.id, next), {
+				path: '/login',
+				httpOnly: true,
+				sameSite: 'lax',
+				secure: url.protocol === 'https:',
+				maxAge: CHALLENGE_TTL / 1000
+			});
+			redirect(303, '/login/2fa');
+		}
+		clearLoginFailures(account);
 
 		const session = createSession(user.id, request.headers.get('user-agent') ?? '');
 		cookies.set(SESSION_COOKIE, session.id, {

@@ -3,6 +3,7 @@ import { translate } from '$lib/i18n';
 import type { Actions, PageServerLoad } from './$types';
 import { all, audit, count, get, newId, now, run } from '$lib/server/db';
 import {
+	type User,
 	createUser,
 	destroyUserSessions,
 	getUserById,
@@ -11,6 +12,7 @@ import {
 	validateUsername
 } from '$lib/server/auth';
 import { instanceLimits, limitsFor, storageUsed } from '$lib/server/limits';
+import { disableTwoFactor } from '$lib/server/twofactor';
 
 interface AdminUserRow {
 	id: string;
@@ -29,6 +31,7 @@ interface AdminUserRow {
 	token_count: number;
 	last_login_at: number | null;
 	last_seen_at: number | null;
+	two_factor: number;
 }
 
 export const load: PageServerLoad = async ({ url, locals }) => {
@@ -40,7 +43,7 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 			   u.approved, u.is_owner, u.limit_boards, u.limit_storage_mb, u.created_at,
 			   (SELECT COUNT(*) FROM projects p WHERE p.owner_id = u.id) AS project_count,
 			   (SELECT COUNT(*) FROM access_tokens t WHERE t.user_id = u.id) AS token_count,
-			   u.last_login_at, u.last_seen_at
+			   u.last_login_at, u.last_seen_at, u.totp_secret IS NOT NULL AS two_factor
 			 FROM users u
 			 WHERE (? = '' OR u.username LIKE ? OR u.email LIKE ? OR u.display_name LIKE ?)
 			 ORDER BY u.approved ASC, u.created_at DESC`,
@@ -60,6 +63,7 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 		),
 		defaults: instanceLimits(),
 		me: locals.user!.id,
+		meOwner: Boolean(locals.user!.is_owner),
 		search
 	};
 };
@@ -73,6 +77,17 @@ function ownerRefusal(targetId: string, actorId: string, { ownerMay = false } = 
 	const target = getUserById(targetId);
 	if (!target?.is_owner || (ownerMay && targetId === actorId)) return null;
 	return 'users.error.owner' as const;
+}
+
+/**
+ * Demoting an admin, or resetting its password or two-factor sign-in, would let
+ * one admin take over another's account (demoted, it is an ordinary user whose
+ * password any admin resets). Only the owner may; admins change their own
+ * password and 2FA under settings.
+ */
+function adminRefusal(targetId: string, actor: User) {
+	if (actor.is_owner || getUserById(targetId)?.role !== 'admin') return null;
+	return 'users.error.adminOwnerOnly' as const;
 }
 
 /** The instance must never be left without a way in. */
@@ -109,7 +124,7 @@ export const actions: Actions = {
 		const id = String(form.get('id') ?? '');
 		const role = form.get('role') === 'admin' ? 'admin' : 'user';
 
-		const refused = role === 'user' && ownerRefusal(id, locals.user!.id);
+		const refused = role === 'user' && (ownerRefusal(id, locals.user!.id) || adminRefusal(id, locals.user!));
 		if (refused) return fail(403, { error: translate(locals.locale, refused) });
 		if (role === 'user' && isLastAdmin(id)) {
 			return fail(400, { error: translate(locals.locale, 'users.error.lastAdmin') });
@@ -171,13 +186,24 @@ export const actions: Actions = {
 
 		const user = getUserById(id);
 		if (!user) return fail(404, { error: translate(locals.locale, 'error.userNotFound') });
-		const refused = ownerRefusal(id, locals.user!.id, { ownerMay: true });
+		const refused = ownerRefusal(id, locals.user!.id, { ownerMay: true }) || adminRefusal(id, locals.user!);
 		if (refused) return fail(403, { error: translate(locals.locale, refused) });
 
 		run('UPDATE users SET password_hash = ?, updated_at = ? WHERE id = ?', hashPassword(password), now(), id);
 		destroyUserSessions(id);
 		audit(locals.user!.id, 'admin.user_password_reset', user.username);
 		return { success: true, message: translate(locals.locale, 'users.passwordReset', { name: user.username }) };
+	},
+
+	/** For a lost authenticator without recovery codes; the password still guards the account. */
+	disableTwoFactor: async ({ request, locals }) => {
+		const id = String((await request.formData()).get('id') ?? '');
+		const user = getUserById(id);
+		if (!user) return fail(404, { error: translate(locals.locale, 'error.userNotFound') });
+		const refused = ownerRefusal(id, locals.user!.id, { ownerMay: true }) || adminRefusal(id, locals.user!);
+		if (refused) return fail(403, { error: translate(locals.locale, refused) });
+		disableTwoFactor(user, locals.user!.id);
+		return { success: true, message: translate(locals.locale, 'users.twoFactorOff', { name: user.username }) };
 	},
 
 	delete: async ({ request, locals }) => {

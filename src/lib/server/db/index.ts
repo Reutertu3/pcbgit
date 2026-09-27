@@ -125,7 +125,10 @@ const ADDED_COLUMNS: [table: string, column: string, definition: string][] = [
 	['projects', 'repo_bytes', 'INTEGER NOT NULL DEFAULT -1'],
 	['users', 'is_owner', 'INTEGER NOT NULL DEFAULT 0'],
 	['users', 'last_login_at', 'INTEGER'],
-	['users', 'last_seen_at', 'INTEGER']
+	['users', 'last_seen_at', 'INTEGER'],
+	['users', 'totp_secret', 'TEXT'],
+	['users', 'totp_pending', 'TEXT'],
+	['users', 'totp_last_step', 'INTEGER']
 ];
 
 /**

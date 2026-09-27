@@ -542,3 +542,35 @@ requests made in the same millisecond came back in either order (about 3 runs
 in 8). The three orderings in `tagrequests.ts` now break ties by insertion
 order (`rowid`); 30 runs of that test and 3 of the suite passed. v0.6.9 carries
 the fix, so servers go straight from v0.6.7 to v0.6.9.
+
+### Two-factor sign-in
+Optional TOTP for every account, from **Settings → Two-factor sign-in**: a QR
+code (and the key to type in) for any authenticator app, confirmed with a code,
+then ten one-time recovery codes shown once. Signing in with the password then
+leads to `/login/2fa`; only after the code is a session made, and it lasts the
+usual 30 days, so nobody is asked again on every visit. Git over HTTP keeps
+using access tokens. Codes work once (the used time step is stored), a pending
+sign-in allows five wrong codes, and failures count towards the existing
+sign-in limits; the account's count is no longer reset by the password alone.
+Turning 2FA on signs out other devices; turning it off or new recovery codes
+need the password. Admins can switch it off for a user who lost everything.
+
+Admins could reset each other's passwords, and now 2FA, so one compromised admin
+account was enough to take over the others. Resetting an admin's password or
+2FA is now for the owner only, and so is demoting an admin: demoted, the account
+is an ordinary user whose password any admin may reset. Admins change their own
+under settings.
+
+That left the owner with no way back after losing both password and 2FA: no
+admin may reset it, and there is no mail. `scripts/reset-owner.ts`, run with
+`docker compose exec` on the server, sets a new random password, prints it,
+turns 2FA off and ends the owner's sessions. A shell on the server can reach
+the database anyway, so it opens nothing new. A boot-time environment switch
+was considered and dropped: left set, it would reset the owner at every restart. The TOTP maths is our own (RFC 6238, tested against its
+vectors); the QR code comes from `uqr`, a small dependency-free encoder.
+
+### Footer
+The footer's left side showed the site name, then a fixed `pcbgit.com` link.
+It is now the site name linking to the site itself, the licence, and Source
+pointing at the repository root; the exact running commit is already linked on
+the right.

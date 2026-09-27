@@ -75,11 +75,11 @@ instance; **Optional** needs outside services or is a niche.
 - **Render health on the overview: missing libraries, footprints or 3D models, files from a newer KiCad** · _Rendering_ \
   Today a missing 3D model just leaves a gap in the 3D view. kicad-cli reports
   these in its output; collect them per render and show a short warning list.
-- **Two-factor authentication (TOTP, with recovery codes; passkeys later)** · _Accounts_ \
-  A leaked password is enough to take over an account today, and an admin
-  account controls the whole instance. TOTP at sign-in (authenticator apps),
-  one-time recovery codes, an admin setting to require it for admins; git keeps
-  working, since pushes use access tokens.
+- **Require two-factor sign-in for admins; passkeys** · _Accounts_ \
+  Optional TOTP with recovery codes is in (NOTES, 2026-09-27), but an admin
+  account controls the whole instance and may still sign in with a password
+  alone. An admin setting to make it mandatory for admins; passkeys (WebAuthn)
+  as a second kind of factor.
 - **Scheduled snapshots with retention (e.g. daily, keep 7)** · _Operations_ \
   Snapshots are manual only; a homelab server usually has no other backup. A
   timer in the app, a retention count and a free-disk check; optionally copy to
@@ -265,6 +265,9 @@ scripts run by hand.
   an hourly comment limit, reserved usernames for every top-level route (checked
   by a test), private board names no longer probeable over git, and sign-in
   without an account costing the same scrypt work
+- Optional two-factor sign-in (TOTP, recovery codes, codes usable once); admins
+  can no longer demote or reset each other (owner only); a locked-out owner is
+  reset from the server's shell (`scripts/reset-owner.ts`)
 
 </details>
 

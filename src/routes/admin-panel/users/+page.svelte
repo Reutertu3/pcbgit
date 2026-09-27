@@ -96,6 +96,7 @@
 								</a>
 								<span class="mono block truncate text-[0.6875rem] text-[var(--text-muted)]">
 									@{user.username} · {user.email}
+									{#if user.two_factor}· <span title={t('users.twoFactorHint')}>2FA</span>{/if}
 								</span>
 							</div>
 						</div>
@@ -105,6 +106,8 @@
 							<span class="chip !border-[var(--accent)] !text-[var(--accent)]">{t('users.pending')}</span>
 						{:else if user.is_owner}
 							<span class="chip" title={t('users.ownerHint')}>{t('users.owner')}</span>
+						{:else if user.role === 'admin' && !data.meOwner}
+							<span class="chip" title={t('users.error.adminOwnerOnly')}>{t('profile.admin')}</span>
 						{:else}
 							<form method="POST" action="?/setRole" use:enhance={keepValues}>
 								<input type="hidden" name="id" value={user.id} />
@@ -160,7 +163,7 @@
 								>
 									<Icon name="settings" size={12} />
 								</button>
-								{#if !user.is_owner || user.id === data.me}
+								{#if user.role !== 'admin' || data.meOwner}
 									<button
 										class="btn btn-sm"
 										onclick={() => (resetting = resetting === user.id ? null : user.id)}
@@ -220,6 +223,16 @@
 								<button class="btn btn-ghost btn-sm" type="button" onclick={() => (resetting = null)}>{t('common.cancel')}</button>
 							</form>
 							<p class="hint">{t('users.signsOut')}</p>
+							{#if user.two_factor}
+								<form method="POST" action="?/disableTwoFactor" use:enhance={() => async ({ update }) => {
+									await update();
+									resetting = null;
+								}} class="mt-2.5 flex flex-wrap items-center gap-2 border-t pt-2.5">
+									<input type="hidden" name="id" value={user.id} />
+									<span class="flex-1 text-xs text-[var(--text-secondary)]">{t('users.twoFactorOffHint')}</span>
+									<button class="btn btn-sm" type="submit">{t('users.twoFactorOffButton')}</button>
+								</form>
+							{/if}
 						</td>
 					</tr>
 				{/if}

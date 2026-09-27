@@ -56,6 +56,7 @@
 
 - Push and clone over **HTTPS with personal access tokens**, or upload a ZIP
 - **Public and private boards**, stars, threaded comments with notifications
+- **Two-factor sign-in** (optional, authenticator app with recovery codes)
 - **Curated tags** in categories; users request missing ones, admins approve them
 - **Admin panel**: users, boards, colour-coded tags, render queue, backups, updates,
   limits per user (boards, storage, uploads and pushes per hour, comments per hour), approval of new accounts
@@ -311,6 +312,25 @@ Snapshots can also be copied in directly:
 > then restarts pcbgit. The previous data is moved to `backups/pre-restore-<time>/`
 > rather than deleted, so it can be recovered by hand.
 
+### Two-factor sign-in
+
+Anyone can turn it on under **Settings → Two-factor sign-in**: scan the QR code
+with an authenticator app, confirm with a code, and keep the ten recovery codes.
+After that, signing in asks for a code after the password; the session then lasts
+as long as any other (30 days), and git keeps using access tokens. An admin can
+turn it off for someone who lost both phone and codes (**Admin → Users**, the
+password reset row); for another admin, only the owner can, as with demoting an
+admin or resetting its password. Nobody can do it for the owner; if the owner is
+locked out:
+
+```sh
+docker compose exec pcbgit node --import ./tests/resolve-hook.mjs scripts/reset-owner.ts </dev/null
+```
+
+This sets a new random password for the owner and prints it, turns two-factor
+sign-in off and ends the owner's sessions. It needs a shell on the server, which
+can reach the database anyway; nothing in the web interface can do it.
+
 ## Configuration
 
 Set these in `.env`:
@@ -371,6 +391,7 @@ npm run dev      # http://localhost:5173
 npm test         # unit and end-to-end tests
 npm run check    # type check
 npm run seed     # demo boards
+npm run reset-owner   # new password for the owner, 2FA off
 ```
 
 After editing `src/lib/server/db/schema.sql`, run `npm run schema`. Columns added
@@ -395,6 +416,7 @@ messages and render logs stay in English.
 src/lib/server/
   db/              SQLite schema and queries
   auth.ts          passwords, sessions, access tokens
+  twofactor.ts     two-factor sign-in (TOTP maths in totp.ts)
   git.ts           bare repositories, commits from uploads
   githttp.ts       git smart-HTTP (clone and push)
   projects.ts      boards, tags, stars, commit indexing
@@ -408,8 +430,10 @@ src/lib/i18n/      translations (en.json, de.json) and lookup
 src/routes/
   [owner]/[project]/   board pages: overview, schematic, pcb, 3d, bom, drc, files, history
   git/                 git endpoint
-  admin/               admin panel
+  admin-panel/         admin panel
+  login/, settings/    sign-in (with the 2FA step), account, tokens, 2FA setup
 scripts/render-runner.ts   the renderer container's entry point
+scripts/reset-owner.ts     new password for a locked-out owner (see Two-factor sign-in)
 deploy/
   docker-compose.prod.yml, Caddyfile   production setup
   install.sh, update.sh                server setup and updates

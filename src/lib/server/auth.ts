@@ -19,6 +19,10 @@ export interface User {
 	is_owner: number;
 	last_login_at: number | null;
 	last_seen_at: number | null;
+	/** Base32 TOTP secret while two-factor sign-in is on; never leaves the server. */
+	totp_secret: string | null;
+	totp_pending: string | null;
+	totp_last_step: number | null;
 	limit_boards: number | null;
 	limit_storage_mb: number | null;
 	created_at: number;
@@ -158,8 +162,8 @@ export function destroySession(sessionId: string) {
 	run('DELETE FROM sessions WHERE id = ?', sessionId);
 }
 
-export function destroyUserSessions(userId: string) {
-	run('DELETE FROM sessions WHERE user_id = ?', userId);
+export function destroyUserSessions(userId: string, except = '') {
+	run('DELETE FROM sessions WHERE user_id = ? AND id != ?', userId, except);
 }
 
 export function purgeExpiredSessions() {

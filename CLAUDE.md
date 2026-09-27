@@ -13,6 +13,7 @@ npm test         # node --test with strip-types; unit + pipeline tests
 npm run check    # svelte-kit sync + svelte-check; must report 0 errors
 npm run schema   # after editing src/lib/server/db/schema.sql
 npm run seed     # demo boards
+npm run reset-owner   # locked-out owner: new password printed, 2FA off
 ```
 
 Run `npm test` and `npm run check` before calling a change done. GitHub Actions
@@ -98,6 +99,11 @@ converter takes untrusted XML: keep its reader entity-free and capped
   hourly limit (`checkCommentRate()` before posting, `countComment()` after). `checkStorage()` also
   keeps `PCBGIT_MIN_FREE_DISK` free, for admins too; snapshots check it themselves
   and renders wait for it (worker `runNextJob`).
+- **Two-factor sign-in** (twofactor.ts) sits between the password and the session:
+  `/login` hands 2FA accounts a challenge (in memory, like `loginguard.ts`) and
+  `/login/2fa` makes the session. Anything else that signs someone in with a
+  password must do the same. The account's failure count is cleared only after
+  the code. Access tokens (git) skip it by design.
 - **Pending accounts** (admin approval) have `approved = 0` and `is_active = 0`,
   so every `is_active = 1` filter already leaves them out.
 - **Permissions** go through `canView` / `canEdit` / `isOwner` (projects.ts). Collaborators
@@ -117,7 +123,11 @@ converter takes untrusted XML: keep its reader entity-free and capped
 - **The owner** (`users.is_owner`, one account: the `.env` admin, else the first to
   register or the oldest admin; `ensureOwner()` in bootstrap.ts) cannot be demoted,
   disabled or deleted, and only the owner resets its password (`ownerRefusal()` in
-  admin-panel/users). Any new admin action on another account needs the same check.
+  admin-panel/users). Other admins are protected from each other: only the owner
+  demotes them or resets their password or 2FA (`adminRefusal()`), since a demoted
+  admin's password is any admin's to reset. Any new admin action on another account
+  needs the same checks. A locked-out owner is reset from the server's shell
+  (`scripts/reset-owner.ts`, see README).
 - **Forms that edit existing values** use `use:enhance={keepValues}` ($lib/forms):
   SvelteKit resets a form after success, and with Svelte 5 that empties every field
   filled via `value={…}`. Forms that should clear (passwords, "create …") keep plain
@@ -192,7 +202,8 @@ converter takes untrusted XML: keep its reader entity-free and capped
   through `runGitBackend()` (see `tests/git-checks.test.ts`).
 - **Testing a form action with curl:** send `Accept: text/html`, or SvelteKit
   answers with the JSON meant for enhanced forms instead of the rendered page.
-- **Cookies:** `pcbgit_session` (login), `pcbgit-lang` (language), `pcbgit_sort`
+- **Cookies:** `pcbgit_session` (login), `pcbgit_2fa` (a sign-in waiting for its
+  code, path `/login`, 5 minutes), `pcbgit-lang` (language), `pcbgit_sort`
   (front-page sort, set only when the visitor picks one). Theme, 3D colours and the
   chosen board house are `localStorage`.
 - **Ports:** the app listens on 3000 in the container; `PCBGIT_PORT` in `.env`

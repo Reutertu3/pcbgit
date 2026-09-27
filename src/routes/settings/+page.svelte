@@ -24,6 +24,7 @@
 			<p class="mono text-xs text-[var(--text-muted)]">@{data.profile.username}</p>
 		</div>
 		<div class="flex-1"></div>
+		<a href="/settings/2fa" class="btn btn-sm"><Icon name="shield" size={13} /> {t('twofactor.title')}</a>
 		<a href="/settings/tokens" class="btn btn-sm"><Icon name="git" size={13} /> {t('nav.tokens')}</a>
 	</div>
 

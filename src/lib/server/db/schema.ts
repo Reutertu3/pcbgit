@@ -27,6 +27,12 @@ CREATE TABLE IF NOT EXISTS users (
   last_login_at INTEGER,
   -- Any signed-in request or git access with a token; written at most every 5 minutes.
   last_seen_at  INTEGER,
+  -- Two-factor sign-in (TOTP): the base32 secret while it is on, else NULL.
+  -- totp_pending holds a secret being set up until a code confirms it;
+  -- totp_last_step is the newest time step used, so no code works twice.
+  totp_secret    TEXT,
+  totp_pending   TEXT,
+  totp_last_step INTEGER,
   created_at    INTEGER NOT NULL,
   updated_at    INTEGER NOT NULL
 );
@@ -51,6 +57,13 @@ CREATE TABLE IF NOT EXISTS access_tokens (
   created_at   INTEGER NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_tokens_user ON access_tokens(user_id);
+
+-- One-time codes for signing in without the authenticator; only hashes, a used code is deleted.
+CREATE TABLE IF NOT EXISTS recovery_codes (
+  user_id   TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  code_hash TEXT NOT NULL,
+  PRIMARY KEY (user_id, code_hash)
+);
 
 CREATE TABLE IF NOT EXISTS projects (
   id             TEXT PRIMARY KEY,
