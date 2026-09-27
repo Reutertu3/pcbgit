@@ -464,3 +464,10 @@ author (or search, or other tags). They are now counted over the boards the list
 matches, with the same filters and visibility (`browseWhere()`, shared by
 `browseProjects()` and `browseTagCounts()`): each number says how many boards
 would be left after clicking that tag, and tags that would leave none drop out.
+
+### Colour presets for tag categories
+Categories in the admin panel only had the browser's colour input, while tags
+also had a row of quick picks. Both now use one `ColorField` (colour input plus
+swatches). The presets were three similar greens, a sand and no red or indigo;
+they are now twelve hues around the wheel at a similar, muted lightness, and
+a grey, so any pick reads on light and dark themes.

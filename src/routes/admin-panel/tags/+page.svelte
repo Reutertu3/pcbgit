@@ -4,18 +4,13 @@
 	import Icon from '$lib/components/Icon.svelte';
 	import FormError from '$lib/components/FormError.svelte';
 	import TagChip from '$lib/components/TagChip.svelte';
+	import ColorField from '$lib/components/ColorField.svelte';
 	import { t } from '$lib/i18n/t';
 	import { categoryLabel } from '$lib/tagcategory';
 
 	let { data, form } = $props();
 
 	const categoryName = (id: string) => categoryLabel(id, data.categories.find((c) => c.id === id)?.name);
-
-	/** Quick picks; the colour input still allows any colour. */
-	const PRESETS = [
-		'#9cb080', '#618764', '#2b5748', '#6ba4e8', '#82b4c8', '#c4829a',
-		'#e2b862', '#fe8019', '#e57f72', '#b39ddb', '#8a9a8b', '#d5c4a1'
-	];
 
 	let editing = $state<string | null>(null);
 	let newName = $state('');
@@ -52,22 +47,6 @@
 {#if form?.message}<FormError message={form.message} kind="success" />{/if}
 {#if form?.error}<FormError message={form.error} />{/if}
 
-{#snippet swatches(current: string, pick: (color: string) => void)}
-	<div class="flex flex-wrap gap-1">
-		{#each PRESETS as color}
-			<button
-				type="button"
-				class="h-5 w-5 rounded-full border-2 transition-transform hover:scale-110"
-				style:background={color}
-				style:border-color={current === color ? 'var(--text-primary)' : 'transparent'}
-				onclick={() => pick(color)}
-				title={color}
-				aria-label={t('adminTags.useColour', { color })}
-			></button>
-		{/each}
-	</div>
-{/snippet}
-
 <section class="surface mb-4 p-4">
 	<h3 class="mb-1 text-sm font-semibold">{t('adminTags.categories')}</h3>
 	<p class="mb-3 text-xs text-[var(--text-muted)]">{t('adminTags.categoriesHint')}</p>
@@ -76,7 +55,7 @@
 			<li class="flex flex-wrap items-center gap-2 px-3 py-2">
 				<form method="POST" action="?/updateCategory" use:enhance={keepValues} class="flex flex-1 flex-wrap items-center gap-2">
 					<input type="hidden" name="id" value={category.id} />
-					<input type="color" name="color" value={category.color} class="h-7 w-9 cursor-pointer rounded border bg-transparent" aria-label={t('adminTags.colour')} />
+					<ColorField name="color" value={category.color} />
 					<input
 						class="input !w-auto min-w-40 flex-1 !py-1"
 						name="name"
@@ -117,7 +96,7 @@
 		{/each}
 	</ul>
 	<form method="POST" action="?/createCategory" use:enhance class="flex flex-wrap items-center gap-2">
-		<input type="color" name="color" value="#8a9a8b" class="h-7 w-9 cursor-pointer rounded border bg-transparent" aria-label={t('adminTags.colour')} />
+		<ColorField name="color" />
 		<input class="input !w-auto min-w-40 flex-1 !py-1.5" name="name" maxlength="40" placeholder={t('adminTags.newCategory')} required aria-label={t('boardForm.name')} />
 		<button class="btn btn-sm" type="submit"><Icon name="plus" size={13} /> {t('adminTags.createCategory')}</button>
 	</form>
@@ -155,18 +134,7 @@
 		</div>
 		<div class="flex flex-wrap items-center gap-3">
 			<label class="label !mb-0" for="tag-color">{t('adminTags.colour')}</label>
-			<input
-				id="tag-color"
-				type="color"
-				name="color"
-				class="h-7 w-10 cursor-pointer rounded border bg-transparent"
-				bind:value={newColor}
-				oninput={() => (colorTouched = true)}
-			/>
-			{@render swatches(newColor, (color) => {
-				newColor = color;
-				colorTouched = true;
-			})}
+			<ColorField id="tag-color" name="color" bind:value={newColor} onpick={() => (colorTouched = true)} />
 			<span class="ml-auto flex items-center gap-2 text-xs text-[var(--text-muted)]">
 				{t('adminTags.preview')} <TagChip tag={{ slug: '', name: newName || t('adminTags.newTag'), color: newColor }} />
 			</span>
@@ -219,14 +187,7 @@
 								</div>
 								<div class="flex flex-wrap items-center gap-3">
 									<label class="label !mb-0" for="edit-color-{tag.id}">{t('adminTags.colour')}</label>
-									<input
-										id="edit-color-{tag.id}"
-										type="color"
-										name="color"
-										class="h-7 w-10 cursor-pointer rounded border bg-transparent"
-										bind:value={editColor}
-									/>
-									{@render swatches(editColor, (color) => (editColor = color))}
+									<ColorField id="edit-color-{tag.id}" name="color" bind:value={editColor} />
 									<span class="ml-auto"><TagChip tag={{ ...tag, color: editColor }} /></span>
 								</div>
 								<div class="flex gap-2">
