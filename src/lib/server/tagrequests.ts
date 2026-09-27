@@ -117,15 +117,16 @@ export function requestTag(opts: {
 	});
 }
 
+// Oldest first; rowid breaks ties, since requests often share a millisecond.
 export function listOpenTagRequests(): OpenTagRequest[] {
-	const requests = all<TagRequestRow>("SELECT * FROM tag_requests WHERE status = 'open' ORDER BY created_at");
+	const requests = all<TagRequestRow>("SELECT * FROM tag_requests WHERE status = 'open' ORDER BY created_at, rowid");
 	return requests.map((request) => ({
 		...request,
 		people: all<{ username: string; board: string | null }>(
 			`SELECT u.username, CASE WHEN p.id IS NULL THEN NULL ELSE o.username || '/' || p.slug END AS board
 			 FROM tag_request_users ru JOIN users u ON u.id = ru.user_id
 			 LEFT JOIN projects p ON p.id = ru.project_id LEFT JOIN users o ON o.id = p.owner_id
-			 WHERE ru.request_id = ? ORDER BY ru.created_at`,
+			 WHERE ru.request_id = ? ORDER BY ru.created_at, ru.rowid`,
 			request.id
 		)
 	}));
@@ -137,7 +138,7 @@ export function listOwnTagRequests(userId: string, limit = 20): OwnTagRequest[] 
 		 FROM tag_request_users ru JOIN tag_requests r ON r.id = ru.request_id
 		 LEFT JOIN tags t ON t.id = r.tag_id
 		 LEFT JOIN projects p ON p.id = ru.project_id LEFT JOIN users o ON o.id = p.owner_id
-		 WHERE ru.user_id = ? ORDER BY r.created_at DESC LIMIT ?`,
+		 WHERE ru.user_id = ? ORDER BY r.created_at DESC, r.rowid DESC LIMIT ?`,
 		userId,
 		limit
 	);

@@ -32,7 +32,8 @@ Each tag links to its release notes on GitHub.
 | [**v0.6.5**](https://github.com/Reutertu3/pcbgit/releases/tag/v0.6.5) | 2026-09-26 | Design audit (neutral tag chips, consistent headings, accessibility), calmer board card hover, toolbar menus no longer stack, server builds without Docker Hub for the build syntax |
 | [**v0.6.6**](https://github.com/Reutertu3/pcbgit/releases/tag/v0.6.6) | 2026-09-27 | Calmer board card hover: only the hovered preview reacts (tint, zoom, soft glow, label on a second line); card outline and name fade out slowly |
 | [**v0.6.7**](https://github.com/Reutertu3/pcbgit/releases/tag/v0.6.7) | 2026-09-27 | Tag requests (users ask, admins approve or decline), front page tags grouped by category with counts following the filters, `/tags` lists only tags in use, colour presets for categories |
-| [**v0.6.8**](https://github.com/Reutertu3/pcbgit/releases/tag/v0.6.8) | 2026-09-27 | Security fixes from a small audit (sign-in redirect, comment limit, reserved usernames, private boards over git, sign-in timing); NOTES and TODO easier to scan |
+| [**v0.6.8**](https://github.com/Reutertu3/pcbgit/releases/tag/v0.6.8) | 2026-09-27 | Security fixes from a small audit (sign-in redirect, comment limit, reserved usernames, private boards over git, sign-in timing); NOTES and TODO easier to scan (image never built, see v0.6.9) |
+| [**v0.6.9**](https://github.com/Reutertu3/pcbgit/releases/tag/v0.6.9) | 2026-09-27 | Same as v0.6.8, whose image was never built: a flaky test (ties in the tag request order) failed its release run |
 
 ---
 
@@ -532,3 +533,12 @@ routes, tag requests and the updater found five problems, all fixed:
 
 Left as low-priority hardening in [TODO.md](TODO.md): `git-http-backend` itself
 would accept a push on authenticated reads; only pcbgit's own check prevents it.
+
+### v0.6.8's image was never built · `v0.6.9`
+The release run's tests failed, so GitHub skipped the image, and the panel
+showed the build as failed; the same commit had passed on the push before it.
+The tag-request test compared who asked in `created_at` order, and two
+requests made in the same millisecond came back in either order (about 3 runs
+in 8). The three orderings in `tagrequests.ts` now break ties by insertion
+order (`rowid`); 30 runs of that test and 3 of the suite passed. v0.6.9 carries
+the fix, so servers go straight from v0.6.7 to v0.6.9.
