@@ -25,7 +25,7 @@ export const load: LayoutServerLoad = async ({ locals, url }) => {
 		},
 		pathname: url.pathname,
 		unreadNotifications: locals.user ? unreadCount(locals.user.id) : 0,
-		source: sourceLink(),
+		source: repoUrl(),
 		version: version()
 	};
 };
@@ -44,18 +44,10 @@ function version() {
 	};
 }
 
-function repoUrl() {
-	return (process.env.PCBGIT_SOURCE_URL || 'https://github.com/Reutertu3/pcbgit').replace(/\/+$/, '');
-}
-
 /**
  * AGPL-3.0 section 13: users of a network service get a link to its source.
  * Forks running modified code set PCBGIT_SOURCE_URL to their own repository.
- * On GitHub, link the exact commit this image was built from.
  */
-function sourceLink() {
-	const repo = repoUrl();
-	const version = runningVersion();
-	const exact = /^[0-9a-f]{7,40}$/.test(version) && repo.includes('github.com');
-	return exact ? `${repo}/tree/${version}` : repo;
+function repoUrl() {
+	return (process.env.PCBGIT_SOURCE_URL || 'https://github.com/Reutertu3/pcbgit').replace(/\/+$/, '');
 }
