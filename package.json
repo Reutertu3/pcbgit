@@ -29,7 +29,7 @@
     "@sveltejs/vite-plugin-svelte": "^5.0.3",
     "@tailwindcss/vite": "^4.0.9",
     "@types/adm-zip": "^0.5.8",
-    "@types/node": "^22.13.9",
+    "@types/node": "^26.6.2",
     "@types/three": "^0.186.0",
     "svelte": "^5.22.0",
     "svelte-check": "^4.1.4",
