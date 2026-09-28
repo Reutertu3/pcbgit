@@ -153,7 +153,7 @@ export interface Availability {
 }
 
 /** update.sh's status file. */
-export type UpdateStep = 'fetch' | 'wait' | 'pull' | 'build' | 'restart' | 'done';
+export type UpdateStep = 'fetch' | 'wait' | 'pull' | 'build' | 'backup' | 'restart' | 'verify' | 'done';
 
 export interface UpdateStatus {
 	state: 'running' | 'success' | 'failed';

@@ -1,11 +1,11 @@
 # TODO
 
 > [!NOTE]
-> Open work on pcbgit, as of 2026-09-27. Registration is closed on pcbgit.com, so
+> Open work on pcbgit, as of 2026-09-28. Registration is closed on pcbgit.com, so
 > items marked **before opening registration** only become real once strangers
 > can sign up. What was done, and why, is in [NOTES.md](NOTES.md).
 
-**Jump to:** [Open work](#open-work) · [Feature roadmap](#feature-roadmap) · [Features](#features) · [Security](#security) · [Other known issues](#other-known-issues) · [Observe](#observe)
+**Jump to:** [Open work](#open-work) · [Feature roadmap](#feature-roadmap) · [Features](#features) · [Delivery and operations](#delivery-and-operations) · [Security](#security) · [Other known issues](#other-known-issues) · [Observe](#observe)
 
 | | Priority | Meaning |
 |---|---|---|
@@ -28,6 +28,14 @@ Only what is left to do; details in the linked sections.
 | 🟠 Medium | Security | Email verification for new accounts (admin approval exists) | [Security](#medium-before-opening-registration) |
 | 🟠 Medium | Fabrication | Test one real order or upload preview with each board house | [Gerbers](#gerbers-per-board-house) |
 | 🟠 Medium | Rendering | A re-render empties the viewers until it finishes (render into staging, swap) | [Known issues](#other-known-issues) |
+| 🔴 High | CI | Automated dependency updates (npm, pinned actions, base images) | [Delivery](#delivery-and-operations) |
+| 🟠 Medium | CI | `npm run build`, and an image build for Dockerfile changes, on every push | [Delivery](#delivery-and-operations) |
+| 🟠 Medium | CI | Start the built image and check it before publishing | [Delivery](#delivery-and-operations) |
+| 🟠 Medium | CI | Refuse release tags that are not `vX.Y.Z` | [Delivery](#delivery-and-operations) |
+| 🟠 Medium | CI | Pin base images by digest; record the KiCad version | [Delivery](#delivery-and-operations) |
+| 🟠 Medium | CI | Scan the image and publish provenance | [Delivery](#delivery-and-operations) |
+| 🟠 Medium | CI | Smaller Docker build context (`.dockerignore`) | [Delivery](#delivery-and-operations) |
+| 🟠 Medium | Workflow | Branches and pull requests, with CI required before master | [Delivery](#delivery-and-operations) |
 | 🔍 Review | Security | `npm audit` and dependency updates (three.js, adm-zip, glTF Transform) | [Not reviewed](#not-reviewed-yet) |
 | 🔍 Review | Security | Snapshot restore: tar extraction and paths in `restore.ts` | [Not reviewed](#not-reviewed-yet) |
 | 🔍 Review | Security | Host-side updater (`install.sh`, `update.sh`, `/var/lib/pcbgit-control`) | [Not reviewed](#not-reviewed-yet) |
@@ -40,6 +48,11 @@ Only what is left to do; details in the linked sections.
 | 🟡 Low | Security | `git-http-backend` would accept a push on authenticated reads (`http.receivepack=false`) | [Hardening](#low-hardening) |
 | 🟡 Low | Boards | `/new` leaves an empty board when the upload fails to commit | [Known issues](#other-known-issues) |
 | 🟡 Low | Boards | `syncCommits()` only sees the newest 200 commits of a branch | [Known issues](#other-known-issues) |
+| 🟡 Low | Operations | Pre-release channel for a staging instance | [Delivery](#delivery-and-operations) |
+| 🟡 Low | Operations | Prune the build cache on servers that build locally | [Delivery](#delivery-and-operations) |
+| 🟡 Low | Workflow | One version number (`package.json` says 1.0.0) | [Delivery](#delivery-and-operations) |
+| 🟡 Low | CI | Lint and format checks | [Delivery](#delivery-and-operations) |
+| 🟡 Low | Workflow | Draft release notes from the commits | [Delivery](#delivery-and-operations) |
 | 🟡 Low | Eagle | Nets joined by name only show as separate nets in ERC | [Eagle](#eagle-projects) |
 | 🟡 Low | Eagle | Mixed shown and hidden pin numbers in one symbol all show | [Eagle](#eagle-projects) |
 | 🟡 Low | Eagle | Only one Eagle project per commit is rendered | [Eagle](#eagle-projects) |
@@ -239,6 +252,90 @@ scripts run by hand.
       (`COLLATE NOCASE`, `rowid` order, upserts, migrations), backup/restore via
       `pg_dump`, an extra container. About 1–2 weeks as a full switch; offering
       both at install doubles that and every later feature, so switch, don't split.
+
+## Delivery and operations
+
+How pcbgit gets from a commit onto a server, and how safely. Found in a review of
+CI, the Dockerfile, compose and `deploy/` on 2026-09-28.
+
+<details>
+<summary><strong>Already in place</strong></summary>
+
+- Renderer isolated (no network, no `/data`, read-only, capability-free, memory
+  and process limits); the app runs unprivileged under `tini`
+- Releases install the exact image CI built and tested, looked up by commit SHA
+- Actions pinned to commits, read-only default token, registry build cache
+- Updates never go backwards, pull fast-forward only, and move the checkout back
+  when a pull or build fails
+- App and host script talk only through files in the control folder
+
+</details>
+
+### High: safe automatic updates
+
+> [!IMPORTANT]
+> Servers update themselves from releases, so an update must not be able to
+> break an instance for good. Three of four done on 2026-09-28 (see NOTES); the
+> first update to that version still runs without them, since the running
+> `update.sh` and container are the old ones.
+
+- [x] **Snapshot before every update.** Migrations run once at boot and cannot
+      be undone (the notifications table rebuild in v0.6.7, for one). `update.sh`
+      takes a snapshot without rendered output right before switching images.
+- [x] **Health check after an update, and rollback.** Today an update counts as
+      done when `compose up` returns, even if the app then fails to boot. Wait
+      for the image's health check; keep the old image as `pcbgit:previous`
+      instead of pruning it, and switch back (with the snapshot) when the new one
+      stays unhealthy.
+- [x] **Size limits for Docker logs.** Compose uses the default log driver without
+      limits, so logs grow until the disk is full. `logging: { options: { max-size,
+      max-file } }` per service.
+- [ ] **Automated dependency updates.** npm packages, the pinned action commits
+      (the last run warned that checkout and setup-node use a deprecated Node) and
+      the base images age silently. Dependabot or Renovate (which can also bump
+      pinned commits and image digests) opening pull requests on a schedule.
+
+### Medium: catch problems before a release
+
+- [ ] **Build on every push.** CI runs tests and type checks but not `npm run
+      build`, and the image is built only for a release, so a broken build or
+      Dockerfile shows up when publishing. Add the build to the test job, and
+      build the image without pushing when the Dockerfile or dependencies change.
+- [ ] **Try the image before publishing it.** Start the built image in CI, wait
+      for its health check, request a page or two: catches boot failures (a
+      migration, a file missing from the image) unit tests cannot see.
+- [ ] **Refuse malformed release tags.** A first step in the image job that fails
+      on anything but `vX.Y.Z` or `vX.Y.Z-suffix`; `v.0.6.5` was silently ignored
+      by servers.
+- [ ] **Pin what the image is built from.** `node:24-bookworm-slim`,
+      `ubuntu:24.04` and `caddy:2` float, and KiCad comes from the PPA's newest at
+      build time, so two builds of one commit can differ. Pin base images by
+      digest (kept current by the dependency updates); decide when a new KiCad is
+      taken, since it can change renders.
+- [ ] **Scan and attest the image.** A vulnerability scan (e.g. Trivy) in the
+      image job, and build provenance/SBOM (`provenance`, `sbom` in
+      `build-push-action`), since servers install the image unattended.
+- [ ] **Smaller build context.** `.dockerignore` leaves in `docs/`, `*.md`,
+      `.github`, `.agents`, `.claude` and `tests/`; `COPY . .` then reruns the app
+      build whenever NOTES or TODO change.
+- [ ] **Branches and pull requests.** Even working alone, a short branch and a PR
+      means CI has passed before code reaches master, which "Update from GitHub"
+      builds. Branch protection can require the CI check.
+
+### Low
+
+- [ ] **Pre-release channel.** `update.sh` skips pre-releases; a setting to follow
+      them would let a staging instance take `v0.8.0-rc1` first. Today the local
+      Docker instance does that by hand.
+- [ ] **Prune the build cache.** Servers that use "Update from GitHub" build
+      locally, and Docker's build cache grows without bound: an occasional
+      `docker builder prune` with a size cap in `update.sh`.
+- [ ] **One version number.** `package.json` says 1.0.0 while releases are at
+      v0.7.0; set it from the tag, or keep it in step when tagging.
+- [ ] **Lint and format checks.** No ESLint or Prettier yet; `svelte-check` covers
+      types only. A formatter check in CI keeps diffs clean.
+- [ ] **Draft release notes from the commits** since the last tag (GitHub can
+      generate them), instead of writing each set by hand.
 
 ---
 

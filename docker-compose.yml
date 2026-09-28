@@ -1,6 +1,14 @@
 # Fixed project name: keeps the volume name stable whatever the folder is called.
 name: pcbgit
 
+# Docker keeps container logs without limit by default, until the disk is full.
+# At most 5 × 10 MB per service; applies when a container is next recreated.
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
 services:
   pcbgit:
     build:
@@ -40,6 +48,7 @@ services:
     # The app runs as an unprivileged user on port 3000 and needs no capabilities.
     cap_drop: [ALL]
     security_opt: ["no-new-privileges:true"]
+    logging: *logging
 
   # kicad-cli, iBOM and the thumbnail rasterisers parse uploaded boards. They run
   # here, with the current job's files as their only data: no database, no
@@ -73,6 +82,7 @@ services:
       test: ["CMD", "test", "-S", "/work/runner.sock"]
       interval: 30s
       timeout: 5s
+    logging: *logging
 
 volumes:
   pcbgit-data:

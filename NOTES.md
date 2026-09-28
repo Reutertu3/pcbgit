@@ -575,3 +575,32 @@ The footer's left side showed the site name, then a fixed `pcbgit.com` link.
 It is now the site name linking to the site itself, the licence, and Source
 pointing at the repository root; the exact running commit is already linked on
 the right.
+
+---
+
+## 2026-09-28
+
+### Updates guarded before and after the switch
+Servers install releases by themselves, but an update had no way back: migrations
+run once at boot and cannot be undone, the update counted as done as soon as
+`compose up` returned even if the app never started, and the previous image was
+pruned right away. Now `update.sh`:
+- **before switching** has the still-running old version take a snapshot without
+  rendered output (`scripts/snapshot.ts`, `…-pre-update.tar.gz`, newest three
+  kept, listed under Admin → Backups). `PCBGIT_UPDATE_SNAPSHOT=false` skips it.
+- **keeps the previous image** as `pcbgit:previous` instead of pruning it.
+- **after switching** waits up to five minutes for the new version's health check.
+  If it fails, the previous image and checkout come back and the update ends as
+  failed, so automatic updates skip that release. The data is left as it is:
+  migrations so far only add, and older versions run on a newer database.
+
+The panel shows the two new steps (back up, check it started). Tested on the
+local instance: the snapshot from the running container (148 MB with all
+repositories), and a deliberately broken image, found unhealthy after 82 s and
+replaced by the previous one, which came back healthy.
+
+Container logs were unlimited, which on a small server ends with a full disk.
+Every service now keeps at most 5 × 10 MB.
+
+The first update to this version still runs the old way: `update.sh` and the
+container doing it are the old ones.

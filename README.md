@@ -241,8 +241,19 @@ There are two ways to update:
 Neither ever goes backwards: after a build of `master`, automatic updates wait
 for the next release that comes after it. The site is down for a few seconds
 while pcbgit restarts. The panel shows each step (fetch, wait for image,
-download or build, restart) and how the running version got there. **Check now**
-runs the GitHub check immediately.
+download or build, back up, restart, check it started) and how the running
+version got there. **Check now** runs the GitHub check immediately.
+
+Every update is guarded on both sides of the switch:
+
+- **Before:** the running version takes a snapshot without rendered output
+  (`pcbgit-snapshot-…-pre-update.tar.gz`, the newest three are kept under
+  **Admin → Backups**). A new version's database changes run once when it first
+  starts and cannot be undone; this is the way back if one ever damages data.
+- **After:** the new version must pass its health check within five minutes.
+  If it does not, the previous image and checkout come back by themselves, the
+  panel says so, and automatic updates skip that release. The data is left as
+  it is; restore the pre-update snapshot if it has to go back too.
 
 <details>
 <summary>How updating works, and what can go wrong</summary>
@@ -257,6 +268,12 @@ runs the GitHub check immediately.
   server builds itself). If it fails, it is not retried; the next release is.
 - A download or build that fails leaves the old version running, and the checkout
   goes back to it, so the next check offers the update again.
+- The version before the running one stays as the image `pcbgit:previous`. To go
+  back by hand: `git -C /opt/pcbgit reset --keep <its commit>`, then
+  `docker tag pcbgit:previous pcbgit:latest && docker compose up -d`.
+- `PCBGIT_UPDATE_SNAPSHOT=false` in `.env` skips the snapshot before updates, e.g.
+  on a server whose data is backed up by other means.
+- Container logs are capped at 5 × 10 MB per service.
 - Each update re-syncs the systemd units and restarts Caddy when its config changed.
 - `systemctl status pcbgit-update.service` shows the last run on the server.
 - Release images come from `ghcr.io/<owner>/<repo>` of the GitHub remote, and must
@@ -350,6 +367,7 @@ Set these in `.env`:
 | `PCBGIT_RENDER_CPUS` | `2` | CPUs the renderer container may use. `0`: no limit |
 | `PCBGIT_MIN_FREE_DISK` | `1G` | Free disk space that always stays free: below it uploads, pushes and snapshots are refused and renders wait |
 | `PCBGIT_UPDATE_IMAGE` | `ghcr.io/<owner>/<repo>` of a GitHub remote | Where release installs pull the image from (tagged `sha-<commit>`). `build` builds releases on the server too. |
+| `PCBGIT_UPDATE_SNAPSHOT` | `true` | `false` skips the snapshot `deploy/update.sh` takes before switching to a new version. |
 
 <details>
 <summary>Set in the image or compose files; rarely changed</summary>

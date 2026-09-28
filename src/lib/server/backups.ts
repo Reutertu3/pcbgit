@@ -37,7 +37,13 @@ export interface PreRestoreInfo {
  * ponytail: repos are copied live; a push landing mid-snapshot can be half
  * captured. Pause pushes (or accept a later snapshot) if that matters.
  */
-export async function createSnapshot(opts: { includeArtifacts: boolean; actorId: string }) {
+export async function createSnapshot(opts: {
+	includeArtifacts: boolean;
+	/** null: taken from the command line (deploy/update.sh), not by a signed-in admin. */
+	actorId: string | null;
+	/** Replaces "-lite" in the name, so snapshots of one kind can be told apart (e.g. "pre-update"). */
+	label?: string;
+}) {
 	await checkSnapshotSpace(0);
 	const work = await fsp.mkdtemp(path.join(TMP_DIR, 'snapshot-'));
 	try {
@@ -61,7 +67,8 @@ export async function createSnapshot(opts: { includeArtifacts: boolean; actorId:
 		await fsp.writeFile(path.join(work, 'manifest.json'), JSON.stringify(manifest, null, 2));
 
 		const stamp = new Date(manifest.created_at).toISOString().slice(0, 19).replace(/[-:]/g, '').replace('T', '-');
-		const name = uniqueName(`pcbgit-snapshot-${stamp}${opts.includeArtifacts ? '' : '-lite'}.tar.gz`);
+		const suffix = opts.label ? `-${opts.label}` : opts.includeArtifacts ? '' : '-lite';
+		const name = uniqueName(`pcbgit-snapshot-${stamp}${suffix}.tar.gz`);
 		const target = path.join(BACKUP_DIR, name);
 		const partial = `${target}.partial`;
 
@@ -134,7 +141,7 @@ export function snapshotPath(name: string) {
 	return full;
 }
 
-export function deleteBackupEntry(name: string, actorId: string) {
+export function deleteBackupEntry(name: string, actorId: string | null) {
 	if (isSnapshotName(name)) {
 		fs.rmSync(path.join(BACKUP_DIR, name), { force: true });
 		fs.rmSync(path.join(BACKUP_DIR, `${name}.json`), { force: true });

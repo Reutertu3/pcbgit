@@ -42,10 +42,11 @@
 	};
 
 	// update.sh's steps in order; downloading and building share a place. Installing
-	// a release may wait for its image; the button's build of master never does.
-	type Step = 'fetch' | 'wait' | 'install' | 'restart';
-	const RELEASE_STEPS: Step[] = ['fetch', 'wait', 'install', 'restart'];
-	const BUILD_STEPS: Step[] = ['fetch', 'install', 'restart'];
+	// a release may wait for its image; the button's build of master never does. Both
+	// back up before switching and check the new version starts (or go back).
+	type Step = 'fetch' | 'wait' | 'install' | 'backup' | 'restart' | 'verify';
+	const RELEASE_STEPS: Step[] = ['fetch', 'wait', 'install', 'backup', 'restart', 'verify'];
+	const BUILD_STEPS: Step[] = ['fetch', 'install', 'backup', 'restart', 'verify'];
 	function stepIndex(steps: Step[], step: UpdateStep | undefined) {
 		if (step === 'pull' || step === 'build') return steps.indexOf('install');
 		if (step === 'done') return steps.length;

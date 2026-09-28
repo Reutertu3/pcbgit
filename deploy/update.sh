@@ -13,7 +13,10 @@
 # updates only ever install releases.
 #
 # Only fast-forward pulls are done: local edits on the server are never merged
-# or overwritten; the update fails instead and says why.
+# or overwritten; the update fails instead and says why. Right before switching,
+# the running version takes a snapshot (migrations cannot be undone); after it,
+# the new version must pass its health check, or the previous image and checkout
+# come back.
 set -Eeuo pipefail
 
 MODE=update
@@ -33,6 +36,8 @@ REQUEST="$CONTROL_DIR/update-request"
 AUTO="$CONTROL_DIR/auto-update"
 # How long to wait for GitHub Actions to publish the image of a new release.
 IMAGE_WAIT=$((20 * 60))
+# How long a new version may take to pass its health check (migrations run at boot).
+HEALTH_WAIT=$((5 * 60))
 
 git_() { git -c safe.directory="$REPO_DIR" -C "$REPO_DIR" "$@"; }
 compose() {
@@ -43,6 +48,8 @@ compose() {
 }
 # Replace atomically so the app never reads a half-written file.
 publish() { chmod 644 "$1.tmp" && mv "$1.tmp" "$1"; }
+# A setting from .env, without quotes; nothing when unset.
+env_setting() { sed -n "s/^$1=//p" "$REPO_DIR/.env" 2>/dev/null | tail -1 | tr -d "\"'"; }
 
 # Caddy reads the Caddyfile through a bind mount, which keeps showing the old file
 # after git replaces it, and compose only recreates services whose definition
@@ -72,7 +79,7 @@ github_repo() {
 # "build" always builds here. Nothing means build here.
 image_repo() {
 	local setting repo
-	setting=$(sed -n 's/^PCBGIT_UPDATE_IMAGE=//p' "$REPO_DIR/.env" 2>/dev/null | tail -1 | tr -d "\"'")
+	setting=$(env_setting PCBGIT_UPDATE_IMAGE)
 	if [[ -n "$setting" ]]; then
 		[[ "$setting" == build ]] || echo "$setting"
 		return 0
@@ -80,6 +87,70 @@ image_repo() {
 	repo=$(github_repo)
 	[[ -n "$repo" ]] && echo "ghcr.io/${repo,,}"
 	return 0
+}
+
+# Waits for pcbgit's health check (the image's HEALTHCHECK); fails when it turns
+# unhealthy or stays short of healthy for HEALTH_WAIT, e.g. while restarting in a loop.
+wait_healthy() {
+	local id status deadline=$((SECONDS + HEALTH_WAIT))
+	while ((SECONDS < deadline)); do
+		id=$(compose ps -q pcbgit 2>/dev/null || true)
+		status=missing
+		[[ -n "$id" ]] && status=$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' "$id" 2>/dev/null || echo missing)
+		case "$status" in
+			healthy | none) return 0 ;;
+			unhealthy) return 1 ;;
+		esac
+		sleep 5
+	done
+	return 1
+}
+
+# A snapshot of the data as the running (old) version sees it, right before the
+# switch: the new version's migrations run at its first boot and cannot be undone.
+# PCBGIT_UPDATE_SNAPSHOT=false in .env turns it off. A running version from before
+# scripts/snapshot.ts cannot take one, and the update goes on without.
+backup_before_switch() {
+	[[ "$(env_setting PCBGIT_UPDATE_SNAPSHOT)" != false ]] || return 0
+	[[ -n "$(compose ps -q pcbgit 2>/dev/null)" ]] || return 0
+	step=backup
+	phase="taking a snapshot"
+	write_status running backup "Taking a snapshot of the data before switching"
+	if ! compose exec -T pcbgit test -f scripts/snapshot.ts </dev/null >/dev/null 2>&1; then
+		echo "== the running version cannot take snapshots yet: switching without one" >>"$LOG"
+		return 0
+	fi
+	echo "== snapshot before switching" >>"$LOG"
+	compose exec -T pcbgit node --import ./tests/resolve-hook.mjs scripts/snapshot.ts pre-update </dev/null >>"$LOG" 2>&1
+}
+
+# The new version did not become healthy: back to the previous image and checkout.
+# The data stays as it is: migrations so far only add, and older versions run on a
+# newer database; the snapshot from before the switch is there if it must go back too.
+# Always ends the update as failed, so automatic updates skip this release.
+rollback() {
+	echo "== $to did not become healthy within $((HEALTH_WAIT / 60)) minutes" >>"$LOG"
+	if [[ -z "$(docker image ls -q pcbgit:previous)" ]]; then
+		write_status failed verify "The new version did not start, and there is no previous image to go back to - see the log"
+		exit 1
+	fi
+	write_status running verify "The new version did not start: going back to $from"
+	{
+		echo "== rolling back to $from"
+		git_ reset --keep "$from_commit"
+		docker tag pcbgit:previous pcbgit:latest
+		export PCBGIT_GIT_TAG="$(git_ describe --tags --exact-match HEAD 2>/dev/null || true)"
+		compose up -d --remove-orphans
+		sync_caddy
+	} >>"$LOG" 2>&1
+	to=$from
+	write_availability
+	if wait_healthy; then
+		write_status failed verify "The new version did not start: back on $from - see the log"
+	else
+		write_status failed verify "The new version did not start, and neither did $from after going back - see the log"
+	fi
+	exit 1
 }
 
 # State of the CI run for a commit on GitHub: queued, in_progress, success,
@@ -240,8 +311,12 @@ write_status() { # state, step, message
 # local edits.
 from_commit=$(git_ rev-parse HEAD)
 on_error() {
-	if [[ "$step" == pull || "$step" == build ]] && [[ "$(git_ rev-parse HEAD)" != "$from_commit" ]]; then
-		git_ reset --keep "$from_commit" >>"$LOG" 2>&1 && to=$from
+	if [[ "$step" == pull || "$step" == build || "$step" == backup ]]; then
+		if [[ "$(git_ rev-parse HEAD)" != "$from_commit" ]]; then
+			git_ reset --keep "$from_commit" >>"$LOG" 2>&1 && to=$from
+		fi
+		# The running containers still use the old image; a later restart must too.
+		[[ -n "${old_image:-}" ]] && docker tag "$old_image" pcbgit:latest >>"$LOG" 2>&1
 	fi
 	write_status failed "$step" "Failed while $phase - see the log"
 }
@@ -335,6 +410,9 @@ fi
 
 # A release tag on exactly this commit is shown in the footer next to the commit.
 export PCBGIT_GIT_TAG="$(git_ describe --tags --exact-match HEAD 2>/dev/null || true)"
+# The running version's image: kept as pcbgit:previous once the new one is in place,
+# as the way back if the new version does not start.
+old_image=$(docker image inspect -f '{{.Id}}' pcbgit:latest 2>/dev/null || true)
 if [[ -n "$pull_ref" ]]; then
 	how=pulled
 	step=pull
@@ -358,12 +436,23 @@ else
 		compose build
 	} >>"$LOG" 2>&1
 fi
+if [[ -n "$old_image" && "$old_image" != "$(docker image inspect -f '{{.Id}}' pcbgit:latest)" ]]; then
+	docker tag "$old_image" pcbgit:previous
+fi
+backup_before_switch
 step=restart
 phase="restarting"
 write_status running restart "Restarting pcbgit"
 {
 	compose up -d --remove-orphans
 	sync_caddy
+} >>"$LOG" 2>&1
+step=verify
+phase="waiting for pcbgit to start"
+write_status running verify "Checking that the new version starts"
+wait_healthy || rollback
+{
+	# pcbgit:previous is tagged, so the version before this one survives the prune.
 	docker image prune -f
 	echo "== $(date -Is) done ($how)"
 } >>"$LOG" 2>&1
