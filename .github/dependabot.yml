@@ -1,7 +1,7 @@
 # Pull requests for outdated dependencies, grouped so a week brings a handful, not
 # dozens. CI runs the tests on each; the image job only runs for a release or by
 # hand (Actions → CI → Run workflow), so try action and base-image updates there
-# before releasing them.
+# before releasing them. Security updates are not affected by the ignores below.
 version: 2
 updates:
   - package-ecosystem: npm
@@ -9,10 +9,26 @@ updates:
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
+    ignore:
+      # The types follow the Node the image runs (24), not the newest Node.
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
     groups:
       # Minor and patch updates of everything in one pull request.
       npm-minor:
         update-types: [minor, patch]
+      # The build toolchain's major versions only work together: one pull request,
+      # upgraded as its own task (TODO.md), not merged piece by piece.
+      toolchain-major:
+        update-types: [major]
+        patterns:
+          - vite
+          - "@sveltejs/*"
+          - svelte
+          - svelte-check
+          - typescript
+          - tailwindcss
+          - "@tailwindcss/*"
 
   # The actions are pinned to commits; Dependabot moves the pin and its comment.
   - package-ecosystem: github-actions
@@ -23,11 +39,18 @@ updates:
       actions:
         patterns: ["*"]
 
-  # Base images, pinned by digest in the Dockerfile.
+  # Base images, pinned by digest in the Dockerfile. New digests of the same
+  # version come weekly; a new Node or Ubuntu version is a decision of its own
+  # (Node's LTS, KiCad's PPA supporting the Ubuntu release, renders changing).
   - package-ecosystem: docker
     directory: /
     schedule:
       interval: weekly
+    ignore:
+      - dependency-name: node
+        update-types: ["version-update:semver-major"]
+      - dependency-name: ubuntu
+        update-types: ["version-update:semver-major"]
 
   # Caddy, pinned by digest in the production compose file.
   - package-ecosystem: docker-compose

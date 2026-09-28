@@ -638,3 +638,19 @@ showed when releasing. Now:
 
 The new image steps run only for a release or by hand, so they are first tried
 with a manual run of the workflow.
+
+### Releases from a pushed tag; Dependabot tuned
+Releases were made by hand on GitHub, which is how `v.0.6.5` happened, and the
+image only started building once the release was already public. Now a release
+is a pushed tag `vX.Y.Z`: CI tests it, builds, starts and checks the image,
+publishes it, and only then creates the GitHub release, so none appears without
+its image. Its notes are the annotated tag's message, or the commit subjects
+since the previous tag. GitHub's own generated notes would have been empty:
+they list merged pull requests, and work goes straight to master. Tag messages
+need `--cleanup=verbatim`, or git strips Markdown headings as comments (found
+while testing the notes step on the real history).
+
+Dependabot's first run opened eight pull requests. It now ignores major
+versions of Node, Ubuntu and `@types/node` (the image runs Node 24; new majors
+are decisions, in TODO) and groups the build toolchain's majors (vite, the
+Svelte plugins, TypeScript), which only work together, into one pull request.

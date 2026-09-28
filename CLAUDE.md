@@ -18,12 +18,17 @@ npm run reset-owner   # locked-out owner: new password printed, 2FA off
 
 Run `npm test` and `npm run check` before calling a change done. GitHub Actions
 (`.github/workflows/ci.yml`) runs both on every push, with Node 24 as in the image,
-also runs `npm run build`, and builds the Docker image only for a published
-release (or a manual run): pushed as `:candidate`, started and checked (health
+also runs `npm run build`, and builds the Docker image only for a pushed tag
+`vX.Y.Z` (or a manual run): pushed as `:candidate`, started and checked (health
 check, a few pages), then tagged `ghcr.io/reutertu3/pcbgit:sha-<commit>` and
-`:<tag>`, so a broken image never becomes installable. Release tags must be
-`vX.Y.Z` or the job fails. Base images are pinned by digest; Dependabot
-(`.github/dependabot.yml`) proposes updates as pull requests. Servers update two ways:
+`:<tag>`, so a broken image never becomes installable; other tag names fail the
+job. **A release is made by pushing the tag**: the last job creates the GitHub
+release once the image is out, with the annotated tag's message as its notes
+(`git tag -a vX.Y.Z --cleanup=verbatim -F notes.md`, since the default cleanup
+strips Markdown headings as comments), else the commit subjects since the
+previous tag. Never create a release by hand on GitHub. Base images are pinned
+by digest; Dependabot (`.github/dependabot.yml`) proposes updates as pull
+requests, and ignores major Node and Ubuntu versions. Servers update two ways:
 the newest release is installed by automatic updates or the panel's "Install v…"
 button (`update.sh --release`, or a request naming it: pull that image, tag it
 `pcbgit:latest`, which compose runs), and "Update from GitHub" builds the newest

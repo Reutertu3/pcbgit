@@ -226,9 +226,10 @@ the commits on `master` since the running version, as a changelog.
 
 There are two ways to update:
 
-- **Releases** (a tag `vX.Y.Z`, published on GitHub; pre-releases are skipped):
-  GitHub Actions builds the Docker image of every published release, and the
-  server only downloads it: about a minute, nothing built on the server. Install
+- **Releases** (a pushed tag `vX.Y.Z`; pre-releases such as `v0.8.0-rc1` are
+  skipped): GitHub Actions builds, starts and checks the Docker image of every
+  release tag, then publishes it and creates the GitHub release; the server only
+  downloads it: about a minute, nothing built on the server. Install
   one with its **Install v…** button under **Admin → Instance**, or turn on
   **Automatic updates** there to have each new release installed after the
   hourly check. A release published a few minutes ago may still be building;

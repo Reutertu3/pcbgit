@@ -1,23 +1,28 @@
-# Tests, type checks and the app build on every push and pull request. The Docker
-# image is built only for a published release: that is what servers install
-# automatically (deploy/update.sh --release), pulling it instead of building on
-# the server. Run it by hand (Actions → CI → Run workflow) to build a commit's
-# image before releasing it, e.g. to try an update Dependabot proposes.
+# Tests, type checks and the app build on every push and pull request.
+#
+# A release is a pushed tag vX.Y.Z (git tag v0.7.1 && git push origin v0.7.1):
+# its image is built, started and checked, published, and only then the GitHub
+# release is created, so no release ever appears without its image. Servers
+# install that image (deploy/update.sh --release) instead of building. The notes
+# are the message of an annotated tag (git tag -a), else the commits since the
+# previous tag. Do not create releases by hand on GitHub: the tag is what counts.
+#
+# Run it by hand (Actions → CI → Run workflow) to build a branch's image without
+# releasing it, e.g. to try an update Dependabot proposes.
 name: CI
 
 on:
   push:
     branches: [master]
+    tags: ["v*"]
   pull_request:
-  release:
-    types: [published]
   workflow_dispatch:
 
 permissions:
   contents: read
 
-# A newer push replaces a pull request's run; runs on master and releases are
-# never cancelled.
+# A newer push replaces a pull request's run; runs on master and tags are never
+# cancelled.
 concurrency:
   group: ci-${{ github.ref }}-${{ github.event_name == 'pull_request' && 'pr' || github.sha }}
   cancel-in-progress: true
@@ -49,7 +54,7 @@ jobs:
 
   image:
     needs: test
-    if: github.event_name == 'release' || github.event_name == 'workflow_dispatch'
+    if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     permissions:
@@ -65,12 +70,12 @@ jobs:
       # Servers only install tags named vX.Y.Z (update.sh): v.0.6.5 was published
       # and silently ignored. Pre-releases (vX.Y.Z-rc1) are built too.
       - name: Release tag
-        if: github.event_name == 'release'
+        if: startsWith(github.ref, 'refs/tags/')
         env:
-          TAG: ${{ github.event.release.tag_name }}
+          TAG: ${{ github.ref_name }}
         run: |
           if [[ ! "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
-            echo "::error::Release tag \"$TAG\" is not vX.Y.Z or vX.Y.Z-suffix, so servers would never install it. Delete the release, tag vX.Y.Z and publish that."
+            echo "::error::Tag \"$TAG\" is not vX.Y.Z or vX.Y.Z-suffix, so servers would never install it. Delete it (git push origin :refs/tags/$TAG) and push vX.Y.Z."
             exit 1
           fi
 
@@ -137,13 +142,59 @@ jobs:
       # exactly the commit it checked out. Releases also get their version, and the
       # newest full release "latest". Copies the candidate's manifest in the registry.
       - name: Publish
-        env:
-          TAG: ${{ github.event.release.tag_name }}
-          PRERELEASE: ${{ github.event.release.prerelease }}
         run: |
           tags=(-t "$IMAGE:sha-$GITHUB_SHA")
-          if [[ "$GITHUB_EVENT_NAME" == release ]]; then
-            tags+=(-t "$IMAGE:$TAG")
-            [[ "$PRERELEASE" == true ]] || tags+=(-t "$IMAGE:latest")
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            tags+=(-t "$IMAGE:$GITHUB_REF_NAME")
+            # A pre-release (v0.8.0-rc1) never becomes "latest".
+            [[ "$GITHUB_REF_NAME" == *-* ]] || tags+=(-t "$IMAGE:latest")
           fi
           docker buildx imagetools create "${tags[@]}" "$IMAGE:candidate"
+
+  # The GitHub release, once the tag's image is published. Created with this run's
+  # token, so it starts no further workflow run.
+  release:
+    needs: image
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      # All history and tags: the notes need the previous tag and this tag's message.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      # An annotated tag's message is the notes as written; otherwise the commit
+      # subjects since the previous release tag, without the NOTES bookkeeping.
+      - name: Release notes
+        run: |
+          tag="$GITHUB_REF_NAME"
+          : >notes.md
+          if [[ "$(git cat-file -t "$tag")" == tag ]]; then
+            git tag -l --format='%(contents)' "$tag" >notes.md
+          fi
+          if [[ ! -s notes.md ]]; then
+            previous=$(git describe --tags --abbrev=0 --match 'v[0-9]*' "$tag^" 2>/dev/null || true)
+            {
+              echo "## Changes"
+              echo
+              git log --no-merges --format='- %s' "${previous:+$previous..}$tag" | grep -v '^- NOTES: release' || true
+            } >notes.md
+          fi
+          cat notes.md
+
+      - name: Create the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="$GITHUB_REF_NAME"
+          if gh release view "$tag" >/dev/null 2>&1; then
+            echo "::notice::A release for $tag exists already; left as it is."
+            exit 0
+          fi
+          flags=()
+          [[ "$tag" == *-* ]] && flags+=(--prerelease)
+          gh release create "$tag" --verify-tag --title "pcbgit $tag" --notes-file notes.md "${flags[@]}"

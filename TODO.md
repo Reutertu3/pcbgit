@@ -11,7 +11,7 @@
 | | Group | Open | What it is |
 |---|---|---|---|
 | 🔴 | [Before opening registration](#before-opening-registration) | 4 | Abuse limits a public instance needs |
-| 🟠 | [Next up](#next-up) | 4 | Fixes and chores worth doing soon |
+| 🟠 | [Next up](#next-up) | 5 | Fixes and chores worth doing soon |
 | 🗺️ | [Feature roadmap](#feature-roadmap) | 25 | New features, by priority |
 | 🔍 | [To review](#to-review) | 3 | Code nobody has audited yet |
 | 🟡 | [Low priority](#low-priority) | 20 | Hardening, edge cases, chores that can wait |
@@ -42,6 +42,10 @@
       profile (JLCPCB, AISLER, Generic).
 - [ ] **Scan the image for known vulnerabilities** (e.g. Trivy) in the CI image job.
       Provenance and an SBOM are published with every image already.
+- [ ] **Upgrade the build toolchain's major versions together:** vite 6 → 8,
+      `@sveltejs/vite-plugin-svelte` 5 → 7, TypeScript 5 → 7 (and whatever SvelteKit,
+      Svelte and svelte-check need alongside). Each fails CI alone; Dependabot now
+      proposes them as one pull request (`toolchain-major`).
 - [ ] **Branches and pull requests, with CI required before `master`.** "Update
       from GitHub" builds `master`, so CI should have passed before code lands
       there. Branch protection is a repository setting (Settings → Branches);
@@ -207,8 +211,10 @@ import` for the board). Edge cases left:
       v0.7.x; set it from the tag, or keep it in step when tagging.
 - [ ] **Lint and format checks.** No ESLint or Prettier yet; `svelte-check` covers
       types only.
-- [ ] **Draft release notes from the commits** since the last tag (GitHub can
-      generate them), instead of writing each set by hand.
+- [ ] **Node 26 and Ubuntu 26.04 for the image**, as deliberate switches:
+      Node once 26 is LTS (the app relies on `node:sqlite` and type stripping),
+      Ubuntu once KiCad's PPA supports it (renders may change). Dependabot ignores
+      both majors.
 
 ### Database
 
