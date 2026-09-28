@@ -604,3 +604,17 @@ Every service now keeps at most 5 × 10 MB.
 
 The first update to this version still runs the old way: `update.sh` and the
 container doing it are the old ones.
+
+### Update section: checks that answer, and a progress bar
+"Check now" often seemed to do nothing, and its "Checking GitHub…" note vanished
+without a word about the result. The page knew a check was running only while
+its request file existed, and the server's check usually ends within a second
+or two, before the next reload could see the file. Now the page holds on to the
+click: it counts as running until the server records a check that ended after
+it (compared in server time, which the action returns), the button spins, and
+the note turns into a result that stays until closed: when it checked, the
+newest release and its image, and the new commits on master, or why the check
+failed (including no answer within two minutes). "Check now" has its own form
+now, apart from the update button. Updates get a progress bar: a segment per
+step, the running one moving, and the elapsed time. Tested in Firefox against a
+stand-in for the host script.

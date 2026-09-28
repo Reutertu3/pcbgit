@@ -781,7 +781,6 @@
 		"other": "Die Server-Kopie hat {count} eigene Commits, daher bricht ein Update ab, statt zusammenzuführen. Behebe das auf dem Server (zum Beispiel [[cmd]])."
 	},
 	"instance.requested": "Update angefordert, warte auf den Server…",
-	"instance.started": "gestartet {time}",
 	"instance.updating": "Wird aktualisiert…",
 	"instance.update": "Von GitHub aktualisieren",
 	"instance.checking": "Wird geprüft…",
@@ -1120,5 +1119,9 @@
 	"users.twoFactorOffHint": "Authenticator und Wiederherstellungscodes verloren? Das Ausschalten der Zwei-Faktor-Anmeldung lässt das Passwort unverändert.",
 	"users.twoFactorOffButton": "2FA ausschalten",
 	"users.twoFactorOff": "Zwei-Faktor-Anmeldung für {name} ausgeschaltet.",
-	"users.error.adminOwnerOnly": "Nur der Besitzer kann Administratoren herabstufen oder ihr Passwort oder ihre Zwei-Faktor-Anmeldung zurücksetzen."
+	"users.error.adminOwnerOnly": "Nur der Besitzer kann Administratoren herabstufen oder ihr Passwort oder ihre Zwei-Faktor-Anmeldung zurücksetzen.",
+	"instance.checkTimeout": "Die Prüfung hat nach zwei Minuten nicht geantwortet. Auf dem Server: systemctl status pcbgit-check.service.",
+	"instance.checkResult": "GitHub geprüft um {time}",
+	"instance.runningFor": "läuft seit {time}",
+	"instance.progress": "Fortschritt des Updates"
 }

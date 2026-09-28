@@ -92,7 +92,9 @@ export const actions: Actions = {
 		if (!availability) return fail(400, { scope: 'updates', error: translate(locals.locale, 'instance.error.notConfigured') });
 		if (!availability.checkRequested) requestCheck();
 		audit(locals.user!.id, 'admin.update_check');
-		return { success: true, scope: 'updates' };
+		// The server's time, not the browser's: the page waits for a check that ends
+		// after this, and the two clocks may differ.
+		return { success: true, scope: 'updates', checkRequestedAt: Date.now() };
 	},
 
 	autoUpdate: async ({ request, locals }) => {

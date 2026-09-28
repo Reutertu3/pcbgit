@@ -14,15 +14,56 @@
 	let { data, form } = $props();
 
 	const busy = $derived(Boolean(data.update?.requested || data.update?.status?.state === 'running'));
-	const checking = $derived(Boolean(data.availability?.checkRequested));
 
-	// While an update runs, poll. The server restarts mid-way, so failed
-	// reloads are expected and simply retried on the next tick.
+	/*
+	 * "Check now": the server's check usually ends within a second or two, often
+	 * before the next reload could see its request file, so going by that file left
+	 * the click looking ignored and the "Checking…" note vanishing. The page holds on
+	 * to its own click instead: running until the server records a check that ended
+	 * after it (server time, from the action), then a result that stays until closed.
+	 */
+	const CHECK_TIMEOUT = 2 * 60_000;
+	let checkSubmitting = $state(false);
+	let checkSince = $state<number | null>(null);
+	let checkClickedAt = $state(0);
+	let now = $state(Date.now());
+	const checkWaiting = $derived(
+		checkSince !== null && (data.availability?.checked ?? 0) < checkSince - 1000 && now - checkClickedAt < CHECK_TIMEOUT
+	);
+	const checkTimedOut = $derived(
+		checkSince !== null && (data.availability?.checked ?? 0) < checkSince - 1000 && now - checkClickedAt >= CHECK_TIMEOUT
+	);
+	const checking = $derived(checkSubmitting || checkWaiting || Boolean(data.availability?.checkRequested));
+	const checkDone = $derived(checkSince !== null && !checking);
+
+	function submitCheck() {
+		checkSubmitting = true;
+		checkClickedAt = Date.now();
+		now = checkClickedAt;
+		return async ({ result, update }: { result: { type: string; data?: Record<string, unknown> }; update: () => Promise<void> }) => {
+			if (result.type === 'success' && typeof result.data?.checkRequestedAt === 'number') checkSince = result.data.checkRequestedAt;
+			await update();
+			checkSubmitting = false;
+		};
+	}
+
+	// While an update or a check runs, poll. The server restarts mid-way through an
+	// update, so failed reloads are expected and simply retried on the next tick.
 	$effect(() => {
 		if (!busy && !checking) return;
 		const timer = setInterval(() => invalidateAll().catch(() => {}), 3000);
 		return () => clearInterval(timer);
 	});
+	// A clock for the elapsed time and the check's timeout.
+	$effect(() => {
+		if (!busy && !checking) return;
+		const timer = setInterval(() => (now = Date.now()), 1000);
+		return () => clearInterval(timer);
+	});
+	const clock = (ms: number) => {
+		const seconds = Math.max(0, Math.floor(ms / 1000));
+		return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
+	};
 
 	// The switch moves on click; the page data takes over once the server answers.
 	let autoPending = $state<boolean | null>(null);
@@ -66,6 +107,26 @@
 		return data.version.startsWith(status.to) || status.to.startsWith(data.version) ? status.how : null;
 	});
 </script>
+
+<style>
+	/* A light band travelling along the running step's segment. */
+	.update-progress-run {
+		position: absolute;
+		inset: 0 auto 0 0;
+		width: 40%;
+		background: var(--info);
+		border-radius: 999px;
+		animation: update-progress 1.4s ease-in-out infinite;
+	}
+	@keyframes update-progress {
+		from {
+			transform: translateX(-100%);
+		}
+		to {
+			transform: translateX(250%);
+		}
+	}
+</style>
 
 <svelte:head><title>{t('admin.nav.instance')} · {t('admin.title')} · {data.site.name}</title></svelte:head>
 
@@ -250,7 +311,34 @@
 			<!-- Where the update is: every step before the current one is done. -->
 			{@const steps = !data.update.requested && status?.release ? RELEASE_STEPS : BUILD_STEPS}
 			{@const current = data.update.requested ? -1 : stepIndex(steps, status?.step)}
+			{@const running = data.update.requested || status?.state === 'running'}
+			{@const active = data.update.requested ? 0 : current}
 			<div class="mb-3 rounded-md border px-3 py-2 text-xs">
+				<!-- One segment per step: done, running (moving), failed, still to come. -->
+				<div
+					class="mb-2 flex gap-1"
+					role="progressbar"
+					aria-label={t('instance.progress')}
+					aria-valuemin="0"
+					aria-valuemax={steps.length}
+					aria-valuenow={Math.max(0, Math.min(current, steps.length))}
+				>
+					{#each steps as step, index (step)}
+						{@const failedHere = status?.state === 'failed' && !data.update.requested && index === current}
+						<span
+							class="relative h-1.5 flex-1 overflow-hidden rounded-full"
+							style:background={failedHere
+								? 'var(--err)'
+								: index < active
+									? 'var(--ok)'
+									: index === active && running
+										? 'color-mix(in srgb, var(--info) 30%, var(--surface-3))'
+										: 'var(--surface-3)'}
+						>
+							{#if index === active && running}<span class="update-progress-run"></span>{/if}
+						</span>
+					{/each}
+				</div>
 				<ol class="flex flex-wrap items-center gap-x-3 gap-y-1">
 					{#each steps as step, index (step)}
 						{@const failed = status?.state === 'failed' && !data.update.requested && index === current}
@@ -272,7 +360,7 @@
 						{t('instance.requested')}
 					{:else if status}
 						{status.message}{#if status.trigger === 'auto'}{' · '}{t('instance.automatic')}{/if}
-						· {status.state === 'running' ? t('instance.started', { time: relativeTime(status.started * 1000) }) : formatDateTime((status.finished ?? status.started) * 1000)}
+						· {#if status.state === 'running'}{t('instance.runningFor', { time: clock(now - status.started * 1000) })}{:else}{formatDateTime((status.finished ?? status.started) * 1000)}{/if}
 					{/if}
 				</p>
 			</div>
@@ -286,24 +374,78 @@
 			</div>
 		{/if}
 
-		<form method="POST" action="?/update" use:enhance class="flex flex-wrap items-center gap-3">
-			<button class="btn btn-sm" type="submit" disabled={busy}>
-				<Icon name="download" size={13} />
-				{busy ? t('instance.updating') : t('instance.update')}
-			</button>
-			<button class="btn btn-sm" type="submit" formaction="?/check" disabled={checking || busy}>
-				<Icon name="refresh" size={13} />
-				{checking ? t('instance.checking') : t('instance.checkNow')}
-			</button>
-			<Switch name="force" size="sm" class="text-xs text-[var(--text-secondary)]">{t('instance.force')}</Switch>
-		</form>
+		<div class="flex flex-wrap items-center gap-3">
+			<form method="POST" action="?/update" use:enhance class="flex flex-wrap items-center gap-3">
+				<button class="btn btn-sm" type="submit" disabled={busy}>
+					<Icon name="download" size={13} />
+					{busy ? t('instance.updating') : t('instance.update')}
+				</button>
+				<Switch name="force" size="sm" class="text-xs text-[var(--text-secondary)]">{t('instance.force')}</Switch>
+			</form>
+			<form method="POST" action="?/check" use:enhance={submitCheck}>
+				<button class="btn btn-sm" type="submit" disabled={checking || busy} aria-busy={checking}>
+					<Icon name="refresh" size={13} class={checking ? 'animate-spin' : ''} />
+					{checking ? t('instance.checking') : t('instance.checkNow')}
+				</button>
+			</form>
+		</div>
 		<p class="mt-2 text-xs leading-relaxed text-[var(--text-muted)]">{t('instance.buildHint')}</p>
 
 		<!-- Everything this section reports goes here, under its buttons. -->
 		{#if form?.scope === 'updates' && 'error' in form && form.error}
 			<div class="mt-3"><FormError message={form.error} /></div>
-		{:else if checking}
-			<div class="mt-3"><FormError message={t('instance.checkingGithub')} kind="info" /></div>
+		{:else if checking || checkDone || checkTimedOut}
+			{@const failed = checkTimedOut || (checkDone && available && !available.ok)}
+			<div
+				class="mt-3 rounded-lg border px-3 py-2.5 text-xs"
+				style:border-color="color-mix(in srgb, {failed ? 'var(--err)' : checking ? 'var(--info)' : 'var(--ok)'} 40%, transparent)"
+				role="status"
+				aria-live="polite"
+			>
+				<div class="flex items-start gap-2">
+					<Icon
+						name={checking ? 'refresh' : failed ? 'alert' : 'check'}
+						size={14}
+						class="mt-px shrink-0 {checking ? 'animate-spin' : ''}"
+						style="color: {failed ? 'var(--err)' : checking ? 'var(--info)' : 'var(--ok)'}"
+					/>
+					<div class="min-w-0 flex-1 space-y-1">
+						{#if checking}
+							<p class="font-medium">{t('instance.checkingGithub')} <span class="mono text-[var(--text-muted)]">{clock(now - checkClickedAt)}</span></p>
+						{:else if checkTimedOut}
+							<p class="font-medium" style:color="var(--err)">{t('instance.checkTimeout')}</p>
+						{:else if available && !available.ok}
+							<p class="font-medium" style:color="var(--err)">
+								{#each tParts('instance.checkFailed', { time: relativeTime(available.checked) }) as part}{#if typeof part === 'string'}{part}{:else}<span class="mono">/var/lib/pcbgit-control/check.log</span>{/if}{/each}
+							</p>
+						{:else if available}
+							<p class="font-medium">{t('instance.checkResult', { time: formatDateTime(available.checked) })}</p>
+							<p class="text-[var(--text-secondary)]">
+								{#if available.release && available.releaseNew}
+									{t('instance.releaseNew', { release: available.release })}{#if available.image}{' — '}{t(`instance.image.${available.image}`)}{/if}
+								{:else if available.release}
+									{t('instance.releaseCurrent', { release: available.release })}
+								{:else}
+									{t('instance.noRelease')}
+								{/if}
+							</p>
+							<p class="text-[var(--text-secondary)]">
+								{#if available.behind > 0}
+									{t('instance.available', { count: available.behind })}
+									<span class="mono text-[var(--text-muted)]">{t('instance.range', { from: available.current, to: available.latest, branch: available.branch })}</span>
+								{:else}
+									{t('instance.upToDate')} · {#each tParts('instance.upToDateDetail', { branch: available.branch }) as part}{#if typeof part === 'string'}{part}{:else}<span class="mono">{available.current}</span>{/if}{/each}
+								{/if}
+							</p>
+						{/if}
+					</div>
+					{#if !checking}
+						<button class="btn btn-ghost btn-sm !px-1.5" type="button" onclick={() => (checkSince = null)} title={t('common.close')} aria-label={t('common.close')}>
+							<Icon name="x" size={12} />
+						</button>
+					{/if}
+				</div>
+			</div>
 		{/if}
 
 		{#if data.update.log}

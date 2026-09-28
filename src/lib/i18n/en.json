@@ -781,7 +781,6 @@
 		"other": "The server copy has {count} commits of its own, so an update will stop instead of merging. Resolve it on the server (for example [[cmd]])."
 	},
 	"instance.requested": "Update requested, waiting for the server…",
-	"instance.started": "started {time}",
 	"instance.updating": "Updating…",
 	"instance.update": "Update from GitHub",
 	"instance.checking": "Checking…",
@@ -1120,5 +1119,9 @@
 	"users.twoFactorOffHint": "Lost authenticator and recovery codes? Turning two-factor sign-in off leaves the password alone.",
 	"users.twoFactorOffButton": "Turn off 2FA",
 	"users.twoFactorOff": "Two-factor sign-in turned off for {name}.",
-	"users.error.adminOwnerOnly": "Only the owner can demote an admin or reset an admin's password or two-factor sign-in."
+	"users.error.adminOwnerOnly": "Only the owner can demote an admin or reset an admin's password or two-factor sign-in.",
+	"instance.checkTimeout": "The check did not answer within two minutes. On the server, see systemctl status pcbgit-check.service.",
+	"instance.checkResult": "Checked GitHub at {time}",
+	"instance.runningFor": "running for {time}",
+	"instance.progress": "Update progress"
 }
