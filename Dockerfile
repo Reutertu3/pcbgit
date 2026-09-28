@@ -12,7 +12,7 @@ RUN npm run build && npm prune --omit=dev
 # ---- runtime: Ubuntu + KiCad 10 from the official KiCad PPA -----------------
 # KiCad itself comes from the PPA's 10.0 series at build time (bug-fix releases
 # only); the admin panel shows the version an image carries.
-FROM ubuntu:24.04@sha256:008173c23f95b170204355c12626cb5a965d779a7e1283b09e9cffbb1bf33ca3
+FROM ubuntu:26.04@sha256:da6fc2be547864451aa253836dd926da33623312df4a9a243e35dc877c378a78
 
 # The 3D model library is several GB. Without it the 3D view shows the bare
 # board with no components: --build-arg INSTALL_3D_MODELS=false
