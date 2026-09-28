@@ -155,3 +155,50 @@ function isLink(file: string) {
 		return false;
 	}
 }
+
+/**
+ * An upload of `size` bytes git rejects at once ("x" is no pkt-line length; zeros
+ * would be valid flush packets), in 1 MB pieces; `fail` breaks it off half-way.
+ */
+function garbage(size: number, fail = false) {
+	let sent = 0;
+	return new ReadableStream<Uint8Array>({
+		pull(controller) {
+			if (fail && sent >= size / 2) return controller.error(new Error('request body size exceeded BODY_SIZE_LIMIT'));
+			if (sent >= size) return controller.close();
+			controller.enqueue(new Uint8Array(1024 * 1024).fill(0x78));
+			sent += 1024 * 1024;
+		}
+	});
+}
+
+// Either used to end the whole process: an unhandled stream error, anyone's to cause
+// with a fetch from a public board.
+test('a request git gives up on, or an upload that breaks off, gets an answer, not a crash', { timeout: 60_000 }, async () => {
+	const repoDir = bareRepo();
+	for (const body of [garbage(40 * 1024 * 1024), garbage(8 * 1024 * 1024, true)]) {
+		const response = await runGitBackend({
+			repoDir,
+			pathInfo: '/git-upload-pack',
+			method: 'POST',
+			queryString: '',
+			headers: new Headers({ 'content-type': 'application/x-git-upload-pack-request' }),
+			body,
+			remoteUser: ''
+		});
+		await response.text().catch(() => '');
+		assert.ok(response.status >= 200, 'answered');
+	}
+	// Still alive, and the next request is served as usual.
+	await new Promise((resolve) => setTimeout(resolve, 200));
+	const refs = await runGitBackend({
+		repoDir,
+		pathInfo: '/info/refs',
+		method: 'GET',
+		queryString: 'service=git-upload-pack',
+		headers: new Headers(),
+		body: null,
+		remoteUser: ''
+	});
+	assert.equal(refs.status, 200);
+});

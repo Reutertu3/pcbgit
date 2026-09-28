@@ -74,8 +74,20 @@ export async function runGitBackend(request: BackendRequest): Promise<Response> 
 
 	const child = spawn(backend, [], { env, stdio: ['pipe', 'pipe', 'pipe'] });
 
+	// A stream error nobody listens for ends the whole process, and both ends of the
+	// upload can fail: git exits early on a malformed or unwanted request while the
+	// client is still sending (EPIPE on its input), and an upload over
+	// BODY_SIZE_LIMIT breaks off mid-stream. Either is anyone's to cause, without
+	// signing in (a fetch from a public board). git's output or exit answers instead.
+	child.stdin.on('error', () => {});
+	child.stderr.on('error', () => {});
 	if (request.body) {
-		Readable.fromWeb(request.body as never).pipe(child.stdin);
+		const input = Readable.fromWeb(request.body as never);
+		input.on('error', () => {
+			child.stdin.destroy();
+			child.kill();
+		});
+		input.pipe(child.stdin);
 	} else {
 		child.stdin.end();
 	}

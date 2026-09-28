@@ -37,6 +37,7 @@ Each tag links to its release notes on GitHub.
 | [**v0.7.0**](https://github.com/Reutertu3/pcbgit/releases/tag/v0.7.0) | 2026-09-27 | Optional two-factor sign-in, admins protected from each other, owner reset from the shell; footer and hero touch-ups |
 | [**v0.7.1**](https://github.com/Reutertu3/pcbgit/releases/tag/v0.7.1) | 2026-09-28 | Safer updates (snapshot before, health check and rollback after, capped logs), update section with lasting check results and a progress bar; CI checks each image before publishing it, releases come from a pushed tag, Dependabot |
 | [**v0.7.2**](https://github.com/Reutertu3/pcbgit/releases/tag/v0.7.2) | 2026-09-28 | Update check interval in the panel (hourly to monthly), footer source link follows the server's git remote (forks), README condensed with releases, CI and forking |
+| [**v0.7.3**](https://github.com/Reutertu3/pcbgit/releases/tag/v0.7.3) | 2026-09-29 | Security fix: one anonymous oversized or malformed git request could crash the server |
 
 ---
 
@@ -681,3 +682,19 @@ interval, and the dropdown in Firefox writing the file.
 
 The README was tightened throughout (about 4,000 → 3,600 words), keeping every
 command and setting.
+
+---
+
+## 2026-09-29
+
+### One anonymous request could crash the server
+Looking into push size limits showed that pcbgit handed a git request's upload
+straight to git without an error handler on that stream. Two things end it early:
+git exits on a malformed request while the client is still sending (EPIPE), and
+an upload over `BODY_SIZE_LIMIT` (210 MB) breaks off. Either raised an unhandled
+stream error, which ends the Node process. A fetch from a public board needs no
+account, so anyone could restart the server at will, again and again.
+Reproduced on the local instance (restart count 0 → 1), fixed by handling both
+ends in `runGitBackend()`, then the same requests left it running. A test sends
+a request git rejects and an upload that breaks off; it fails with EPIPE on the
+old code.
