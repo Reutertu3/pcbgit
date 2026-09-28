@@ -760,7 +760,7 @@
 	"instance.runningTag": "{tag} ({version})",
 	"instance.buildHint": "Update from GitHub builds the latest development version on this server, for trying changes before they are released. It takes several minutes.",
 	"instance.updatesOff": "In-app updates are off. On a server set up with [[script]] this section pulls the latest version from GitHub and restarts pcbgit.",
-	"instance.updatesHint": "Checks for new versions every hour.",
+	"instance.updatesHint": "Checks for new versions {interval}.",
 	"instance.checkingGithub": "Checking GitHub…",
 	"instance.notChecked": "Not checked yet.",
 	"instance.checkFailed": "The check {time} could not reach GitHub. See [[log]] on the server.",
@@ -789,7 +789,7 @@
 	"instance.lastLog": "Last update log",
 	"instance.sourceBuild": "This server builds releases itself instead of downloading them ([[setting]]).",
 	"instance.auto": "Automatic updates",
-	"instance.autoHint": "Installs each new release by itself, within an hour of it being published. A release that fails is skipped.",
+	"instance.autoHint": "Installs each new release by itself at the next check. A release that fails is skipped.",
 	"instance.autoPaused": "The automatic update to {version} failed. Waiting for the next version.",
 	"instance.image.ready": "Its image is ready: automatic updates install it at the next check.",
 	"instance.image.building": "GitHub is still building its image; automatic updates wait for it.",
@@ -1123,5 +1123,11 @@
 	"instance.checkTimeout": "The check did not answer within two minutes. On the server, see systemctl status pcbgit-check.service.",
 	"instance.checkResult": "Checked GitHub at {time}",
 	"instance.runningFor": "running for {time}",
-	"instance.progress": "Update progress"
+	"instance.progress": "Update progress",
+	"instance.checkInterval": "Check automatically",
+	"instance.interval.hourly": "every hour",
+	"instance.interval.daily": "every day",
+	"instance.interval.weekly": "every week",
+	"instance.interval.monthly": "every month",
+	"instance.error.interval": "Choose one of the listed intervals."
 }

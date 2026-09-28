@@ -760,7 +760,7 @@
 	"instance.runningTag": "{tag} ({version})",
 	"instance.buildHint": "Von GitHub aktualisieren baut die neueste Entwicklungsversion auf diesem Server, um Änderungen vor dem Release auszuprobieren. Das dauert einige Minuten.",
 	"instance.updatesOff": "In-App-Updates sind deaktiviert. Auf einem mit [[script]] eingerichteten Server holt dieser Bereich die neueste Version von GitHub und startet pcbgit neu.",
-	"instance.updatesHint": "Prüft stündlich, ob es neue Versionen gibt.",
+	"instance.updatesHint": "Prüft {interval}, ob es neue Versionen gibt.",
 	"instance.checkingGithub": "Prüfe GitHub…",
 	"instance.notChecked": "Noch nicht geprüft.",
 	"instance.checkFailed": "Die Prüfung {time} konnte GitHub nicht erreichen. Siehe [[log]] auf dem Server.",
@@ -789,7 +789,7 @@
 	"instance.lastLog": "Letztes Update-Protokoll",
 	"instance.sourceBuild": "Dieser Server baut Releases selbst, statt sie herunterzuladen ([[setting]]).",
 	"instance.auto": "Automatische Updates",
-	"instance.autoHint": "Installiert jedes neue Release von selbst, innerhalb einer Stunde nach der Veröffentlichung. Ein fehlgeschlagenes Release wird übersprungen.",
+	"instance.autoHint": "Installiert jedes neue Release von selbst bei der nächsten Prüfung. Ein fehlgeschlagenes Release wird übersprungen.",
 	"instance.autoPaused": "Das automatische Update auf {version} ist fehlgeschlagen. Es wird auf die nächste Version gewartet.",
 	"instance.image.ready": "Sein Image ist bereit: Automatische Updates installieren es bei der nächsten Prüfung.",
 	"instance.image.building": "GitHub baut sein Image noch; automatische Updates warten darauf.",
@@ -1123,5 +1123,11 @@
 	"instance.checkTimeout": "Die Prüfung hat nach zwei Minuten nicht geantwortet. Auf dem Server: systemctl status pcbgit-check.service.",
 	"instance.checkResult": "GitHub geprüft um {time}",
 	"instance.runningFor": "läuft seit {time}",
-	"instance.progress": "Fortschritt des Updates"
+	"instance.progress": "Fortschritt des Updates",
+	"instance.checkInterval": "Automatisch prüfen",
+	"instance.interval.hourly": "stündlich",
+	"instance.interval.daily": "täglich",
+	"instance.interval.weekly": "wöchentlich",
+	"instance.interval.monthly": "monatlich",
+	"instance.error.interval": "Wähle eines der angebotenen Intervalle."
 }

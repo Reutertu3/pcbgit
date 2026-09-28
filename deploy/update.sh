@@ -73,6 +73,19 @@ github_repo() {
 	return 0
 }
 
+# The server's remote as a web address, without credentials: https as is, ssh
+# (git@host:owner/repo, ssh://git@host/owner/repo) turned into https; nothing for a
+# local path.
+remote_web_url() {
+	local remote
+	remote=$(git_ remote get-url origin 2>/dev/null) || return 0
+	remote=$(sed -E 's#^([a-z+]+://)[^/@]*@#\1#' <<<"$remote")
+	if [[ "$remote" =~ ^git@([^:]+):(.+)$ ]]; then remote="https://${BASH_REMATCH[1]}/${BASH_REMATCH[2]}"; fi
+	remote=${remote/#ssh:\/\//https://}
+	[[ "$remote" =~ ^https?:// ]] || return 0
+	echo "${remote%.git}"
+}
+
 # Where a release's image comes from: GitHub Actions builds one for every published
 # release (.github/workflows/ci.yml), so this small server does not have to.
 # PCBGIT_UPDATE_IMAGE in .env: unset follows a GitHub remote (ghcr.io/<owner>/<repo>),
@@ -230,6 +243,25 @@ write_availability() {
 	publish "$CONTROL_DIR/update-available.json"
 }
 
+# Whether a check runs now. The timer wakes --check every hour; the interval the
+# panel sets (check-interval: hourly, daily, weekly, monthly) decides whether it
+# checks or leaves it for later. "Check now" always checks, and a failed check is
+# retried at the next wake-up. Five minutes of slack cover the timer's random delay.
+check_due() {
+	local interval last seconds
+	[[ -f "$CONTROL_DIR/check-request" ]] && return 0
+	grep -q '"ok":false' "$CONTROL_DIR/update-available.json" 2>/dev/null && return 0
+	interval=$(cat "$CONTROL_DIR/check-interval" 2>/dev/null || true)
+	case "$interval" in
+		daily) seconds=$((24 * 3600)) ;;
+		weekly) seconds=$((7 * 24 * 3600)) ;;
+		monthly) seconds=$((30 * 24 * 3600)) ;;
+		*) return 0 ;;
+	esac
+	last=$(sed -n 's/.*"checked":\([0-9]*\).*/\1/p' "$CONTROL_DIR/update-available.json" 2>/dev/null || true)
+	[[ -z "$last" ]] || (($(date +%s) - last >= seconds - 300))
+}
+
 # With automatic updates on, a check that finds a new release requests it. Only when
 # it can go ahead now: the release follows what runs, its image is ready (or this
 # server builds), and the last automatic attempt at it did not fail (it waits for a
@@ -250,6 +282,14 @@ auto_update() {
 }
 
 mkdir -p "$CONTROL_DIR"
+
+# The footer's "Source" link (AGPL-3.0, section 13) must lead to the code this server
+# runs: its own remote, so a fork's server links to the fork. PCBGIT_SOURCE_URL in
+# .env overrides it; without either, compose links to the original repository.
+if [[ -z "$(env_setting PCBGIT_SOURCE_URL)" ]]; then
+	source_url=$(remote_web_url)
+	[[ -n "$source_url" ]] && export PCBGIT_SOURCE_URL="$source_url"
+fi
 exec 9>"$CONTROL_DIR/.lock"
 if ! flock -n 9; then
 	# An update in progress refreshes the availability itself when it finishes.
@@ -258,6 +298,7 @@ if ! flock -n 9; then
 fi
 
 if [[ "$MODE" == check ]]; then
+	check_due || exit 0
 	rm -f "$CONTROL_DIR/check-request"
 	if git_ fetch --prune --prune-tags --tags origin >"$CONTROL_DIR/check.log.tmp" 2>&1; then
 		publish "$CONTROL_DIR/check.log"

@@ -6,15 +6,19 @@ import { resetKicadVersionCache } from '$lib/server/render/kicad';
 import { instanceLimits } from '$lib/server/limits';
 import { siteTexts } from '$lib/server/site';
 import {
+	CHECK_INTERVALS,
 	autoUpdateEnabled,
+	checkInterval,
 	requestCheck,
 	requestUpdate,
 	runningTag,
 	runningVersion,
 	setAutoUpdate,
+	setCheckInterval,
 	updateAvailability,
 	updateState
 } from '$lib/server/updater';
+import type { CheckInterval } from '$lib/types';
 
 export const load: PageServerLoad = async () => ({
 	settings: {
@@ -28,7 +32,8 @@ export const load: PageServerLoad = async () => ({
 	tag: runningTag(),
 	update: updateState(),
 	availability: updateAvailability(),
-	autoUpdate: autoUpdateEnabled()
+	autoUpdate: autoUpdateEnabled(),
+	checkInterval: checkInterval()
 });
 
 export const actions: Actions = {
@@ -95,6 +100,15 @@ export const actions: Actions = {
 		// The server's time, not the browser's: the page waits for a check that ends
 		// after this, and the two clocks may differ.
 		return { success: true, scope: 'updates', checkRequestedAt: Date.now() };
+	},
+
+	checkInterval: async ({ request, locals }) => {
+		if (!updateState()) return fail(400, { scope: 'updates', error: translate(locals.locale, 'instance.error.notConfigured') });
+		const interval = String((await request.formData()).get('interval') ?? '') as CheckInterval;
+		if (!CHECK_INTERVALS.includes(interval)) return fail(400, { scope: 'updates', error: translate(locals.locale, 'instance.error.interval') });
+		setCheckInterval(interval);
+		audit(locals.user!.id, 'admin.check_interval', interval);
+		return { success: true, scope: 'updates' };
 	},
 
 	autoUpdate: async ({ request, locals }) => {

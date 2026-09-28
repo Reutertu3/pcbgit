@@ -175,6 +175,9 @@ export interface UpdateStatus {
 
 export type ImageState = 'ready' | 'building' | 'failed' | 'missing' | 'unreadable' | 'local' | 'off';
 
+/** How often update.sh --check looks for new versions (set in the panel). */
+export type CheckInterval = 'hourly' | 'daily' | 'weekly' | 'monthly';
+
 export interface CommentView {
 	id: string;
 	body: string;

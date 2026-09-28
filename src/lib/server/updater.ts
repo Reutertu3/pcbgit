@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import type { Availability, ChangelogEntry, ImageState, UpdateStatus } from '$lib/types';
+import type { Availability, ChangelogEntry, CheckInterval, ImageState, UpdateStatus } from '$lib/types';
 
 export type { Availability, ChangelogEntry, UpdateStatus };
 
@@ -141,6 +141,28 @@ export function setAutoUpdate(on: boolean, by: string) {
 	const file = path.join(CONTROL_DIR, 'auto-update');
 	if (on) fs.writeFileSync(file, JSON.stringify({ by, enabled_at: new Date().toISOString() }, null, 1));
 	else fs.rmSync(file, { force: true });
+}
+
+export const CHECK_INTERVALS: CheckInterval[] = ['hourly', 'daily', 'weekly', 'monthly'];
+
+/**
+ * How often the scheduled check runs. The host timer still wakes update.sh --check
+ * every hour; it reads this file and skips until the last check is old enough.
+ * Hourly without the file.
+ */
+export function checkInterval(): CheckInterval {
+	try {
+		const value = fs.readFileSync(path.join(CONTROL_DIR, 'check-interval'), 'utf8').trim();
+		if (CHECK_INTERVALS.includes(value as CheckInterval)) return value as CheckInterval;
+	} catch {
+		// Never set.
+	}
+	return 'hourly';
+}
+
+export function setCheckInterval(interval: CheckInterval) {
+	if (!updaterEnabled()) throw new Error('Updates are not configured on this server.');
+	fs.writeFileSync(path.join(CONTROL_DIR, 'check-interval'), `${interval}\n`);
 }
 
 export function requestCheck() {

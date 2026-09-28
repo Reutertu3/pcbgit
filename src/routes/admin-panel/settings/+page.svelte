@@ -219,7 +219,7 @@
 	{:else}
 		{@const available = data.availability}
 		<p class="mb-4 text-xs leading-relaxed text-[var(--text-secondary)]">
-			{t('instance.updatesHint')}
+			{t('instance.updatesHint', { interval: t(`instance.interval.${data.checkInterval}`) })}
 			<!-- Downloading release images is the normal case; only the exception is worth a word. -->
 			{#if available?.checked && !available.source}
 				{#each tParts('instance.sourceBuild') as part}{#if typeof part === 'string'}{part}{:else}<span class="mono">PCBGIT_UPDATE_IMAGE=build</span>{/if}{/each}
@@ -387,6 +387,22 @@
 					<Icon name="refresh" size={13} class={checking ? 'animate-spin' : ''} />
 					{checking ? t('instance.checking') : t('instance.checkNow')}
 				</button>
+			</form>
+			<!-- How often the host's hourly timer really checks; saved on change. -->
+			<form method="POST" action="?/checkInterval" use:enhance={keepValues} class="flex items-center gap-2">
+				<label class="text-xs text-[var(--text-secondary)]" for="check-interval">{t('instance.checkInterval')}</label>
+				<select
+					id="check-interval"
+					name="interval"
+					class="select !w-auto !py-1 text-xs"
+					value={data.checkInterval}
+					onchange={(event) => event.currentTarget.form?.requestSubmit()}
+				>
+					{#each ['hourly', 'daily', 'weekly', 'monthly'] as const as interval}
+						<option value={interval}>{t(`instance.interval.${interval}`)}</option>
+					{/each}
+				</select>
+				<noscript><button class="btn btn-sm" type="submit">{t('instance.save')}</button></noscript>
 			</form>
 		</div>
 		<p class="mt-2 text-xs leading-relaxed text-[var(--text-muted)]">{t('instance.buildHint')}</p>

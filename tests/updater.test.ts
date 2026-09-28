@@ -143,3 +143,13 @@ test('a release request names the release; the build button\'s request does not'
 	assert.doesNotMatch(fs.readFileSync(path.join(control, 'update-request'), 'utf8'), /"release"/);
 	fs.rmSync(path.join(control, 'update-request'));
 });
+
+test('the check interval is a file update.sh reads as one word; hourly without it', () => {
+	assert.equal(updater.checkInterval(), 'hourly');
+	updater.setCheckInterval('weekly');
+	// update.sh reads it with $(cat …) and matches the bare word.
+	assert.equal(fs.readFileSync(path.join(control, 'check-interval'), 'utf8').trim(), 'weekly');
+	assert.equal(updater.checkInterval(), 'weekly');
+	fs.writeFileSync(path.join(control, 'check-interval'), 'fortnightly\n');
+	assert.equal(updater.checkInterval(), 'hourly', 'anything else counts as hourly, as in update.sh');
+});
