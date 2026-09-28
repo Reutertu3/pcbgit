@@ -36,7 +36,9 @@ button (`update.sh --release`, or a request naming it: pull that image, tag it
 release is installed only if its commit follows the running one.
 The release tag is a runtime variable (`PCBGIT_TAG`), not built in, since a tag
 can come after the image. The app and `update.sh` talk only through files in
-`PCBGIT_CONTROL_DIR`: requests and the `auto-update` switch from the app, status
+`PCBGIT_CONTROL_DIR`: requests, the `auto-update` switch and `check-interval`
+(hourly/daily/weekly/monthly; the hourly timer's `--check` skips until it is due)
+from the app, status
 (`state`, `step`, `how`, `trigger`, `release`), availability (`release`,
 `release_new`, `image`, `source`) and the log
 from the script. A field added on one side needs the other (`updater.ts`,

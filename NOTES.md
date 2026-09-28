@@ -655,3 +655,28 @@ Dependabot's first run opened eight pull requests. It now ignores major
 versions of Node, Ubuntu and `@types/node` (the image runs Node 24; new majors
 are decisions, in TODO) and groups the build toolchain's majors (vite, the
 Svelte plugins, TypeScript), which only work together, into one pull request.
+
+### README covers releases, CI and forking
+The README explained updating from a server's side only; how a commit becomes a
+release, and what a fork has to do, was nowhere. It now has "Releases and CI"
+(the pipeline as a diagram, what each trigger runs, the release commands,
+pre-releases, a failed run, Dependabot) and "Forking" (enable Actions, make the
+image public, optionally Dependabot). The update routes became a table.
+
+A fork's servers linked to this repository in the footer unless someone set
+`PCBGIT_SOURCE_URL`, which the AGPL makes their duty for modified code. `update.sh`
+now sets it from the server's git remote (credentials removed, ssh turned into
+https); `.env` still overrides it.
+
+### Update check interval in the panel; README condensed
+The update check ran hourly, fixed in a systemd timer. It is now chosen in
+Admin → Instance (hourly, daily, weekly, monthly), without touching systemd: the
+timer still wakes `update.sh --check` every hour, and the script skips until the
+last check is older than the chosen interval (a `check-interval` file in the
+control folder, like the automatic-update switch). "Check now" always checks,
+and a failed check is retried at the next wake-up. Automatic updates follow the
+interval, since they install at a check. Tested: the skip decisions for each
+interval, and the dropdown in Firefox writing the file.
+
+The README was tightened throughout (about 4,000 → 3,600 words), keeping every
+command and setting.

@@ -35,7 +35,8 @@ services:
       # Only read on the first start of an empty instance; see README.
       PCBGIT_IMPORT_SNAPSHOT: ${PCBGIT_IMPORT_SNAPSHOT:-}
       # AGPL-3.0: the footer links users to the source of the running code.
-      # Forks running modified code must point this at their own repository.
+      # deploy/update.sh sets it from the server's git remote, so a fork's server
+      # links to the fork; set it in .env when starting without update.sh.
       PCBGIT_SOURCE_URL: ${PCBGIT_SOURCE_URL:-https://github.com/Reutertu3/pcbgit}
       # Render tools run in the renderer service below, reached through this socket.
       PCBGIT_RENDER_DIR: /work

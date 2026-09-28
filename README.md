@@ -28,7 +28,9 @@
   <a href="#using-pcbgit">Usage</a> ·
   <a href="#configuration">Configuration</a> ·
   <a href="#troubleshooting">Troubleshooting</a> ·
-  <a href="#development">Development</a>
+  <a href="#development">Development</a> ·
+  <a href="#releases-and-ci">Releases</a> ·
+  <a href="#forking">Forking</a>
 </p>
 
 ---
@@ -48,7 +50,7 @@
 | **PCB 3D** | Assembled board with components, view cube, soldermask/silkscreen colours, HASL/ENIG finish, SMD/THT toggles, ruler, scale objects, image export |
 | **BOM** | Interactive view with placement highlighting ([iBOM]), grouped line items, CSV export, diff between any two versions |
 | **Checks** | KiCad DRC and ERC, grouped by severity, linked to their spot on the board |
-| **Fabrication** *(experimental)* | Gerbers and drill files ready for a board house: **JLCPCB**, **AISLER** or generic KiCad names |
+| **Fabrication** *(experimental)* | Gerbers and drill files for **JLCPCB**, **AISLER** or generic KiCad names |
 | **Eagle import** | Eagle 6+ projects are converted on upload or push and marked *Converted*; the converted KiCad project is a download |
 | **History** | Renders and logs per commit, source ZIP downloads |
 
@@ -56,20 +58,21 @@
 
 - Push and clone over **HTTPS with personal access tokens**, or upload a ZIP
 - **Public and private boards**, stars, threaded comments with notifications
-- **Two-factor sign-in** (optional, authenticator app with recovery codes)
+- **Two-factor sign-in** (optional: authenticator app, recovery codes)
 - **Curated tags** in categories; users request missing ones, admins approve them
-- **Admin panel**: users, boards, colour-coded tags, render queue, backups, updates,
-  limits per user (boards, storage, uploads and pushes per hour, comments per hour), approval of new accounts
-- **Snapshots** for backup and moving to a new server
-- **One-click updates** from GitHub with a changelog
-- **English and German** interface, eight colour themes
+- **Admin panel**: users, boards, tags, render queue, backups, updates, per-user
+  limits (boards, storage, uploads and pushes per hour, comments per hour),
+  approval of new accounts
+- **Snapshots** for backups and moving servers
+- **One-click and automatic updates** with a changelog
+- **English and German**, eight colour themes
 
 ### Stack
 
-SvelteKit, SQLite (`node:sqlite`), bare git repositories on disk. Rendering uses
-`kicad-cli` from KiCad 10, which the Docker image includes, in a separate sandboxed
-container without access to the database or the network. 3D models are joined
-and compressed at render time, so a 29 MB KiCad export becomes a ~6 MB download.
+SvelteKit, SQLite (`node:sqlite`), bare git repositories. Rendering uses
+`kicad-cli` from KiCad 10, included in the Docker image, in a sandboxed container
+without database or network access. 3D models are joined and compressed at render
+time: a 29 MB KiCad export becomes a ~6 MB download.
 
 [iBOM]: https://github.com/openscopeproject/InteractiveHtmlBom
 
@@ -108,44 +111,36 @@ cp .env.example .env      # set PCBGIT_ADMIN_PASSWORD
 docker compose up -d --build
 ```
 
-Open <http://localhost:3000> and sign in as `admin`. Another port: set
-`PCBGIT_PORT` in `.env`.
+Open <http://localhost:3000> and sign in as `admin` (another port: `PCBGIT_PORT`
+in `.env`). All data lives in the `pcbgit-data` volume. Create a board with
+**New board**, or push one over git (see [Using pcbgit](#using-pcbgit)).
 
 > [!TIP]
-> The first build takes a few minutes: it downloads KiCad and its 3D model
-> library. Later builds reuse those layers. To skip the several-GB model library,
-> build with `--build-arg INSTALL_3D_MODELS=false`; the 3D view then shows bare
-> boards without components.
-
-All data (database, repositories, renders) lives in the `pcbgit-data` volume.
-Create your first board with **New board**, or push one over git — see
-[Using pcbgit](#using-pcbgit).
+> The first build downloads KiCad and its 3D model library and takes a few
+> minutes; later builds reuse them. `--build-arg INSTALL_3D_MODELS=false` skips
+> the several-GB model library, and the 3D view then shows bare boards.
 
 ### On a LAN, without a domain
 
-pcbgit needs no domain, no HTTPS and no extra configuration for this: it answers
-on every address it is reached at. Start it as above and share the machine's
-address, for example `http://192.168.1.50:3000` or `http://pcbgit.lan:3000`.
-Colleagues sign in, push and clone from phones and laptops; the clone box always
-shows the address that visitor is using. A reverse proxy in front must pass the
-client's `Host` header through (Caddy's `reverse_proxy` does).
+No extra configuration: pcbgit answers on every address it is reached at, e.g.
+`http://192.168.1.50:3000` or `http://pcbgit.lan:3000`, and the clone box shows
+the address each visitor uses. A reverse proxy in front must pass the client's
+`Host` header through (Caddy's `reverse_proxy` does).
 
 ## Deploying to a server
 
-Tested on Debian 13. Caddy runs in front of pcbgit and handles HTTPS with a
-Let's Encrypt certificate. pcbgit itself is not exposed.
-
-**Requirements:** 2 GB RAM, 8 GB free disk, a domain name. Run the commands below
-as root.
+Tested on Debian 13, with Caddy in front for HTTPS (Let's Encrypt); pcbgit itself
+is not exposed. **Requirements:** 2 GB RAM, 8 GB free disk, a domain. Run the
+commands as root.
 
 > [!IMPORTANT]
-> Set `PCBGIT_DOMAIN` to the bare domain and give `PCBGIT_ADMIN_PASSWORD` a long
-> random value before the first start. A wrong domain makes every form post fail
-> with a cross-site error, because it decides the app's `ORIGIN`.
+> Before the first start, set `PCBGIT_DOMAIN` to the bare domain and
+> `PCBGIT_ADMIN_PASSWORD` to a long random value. A wrong domain makes every form
+> post fail with a cross-site error, since it sets the app's `ORIGIN`.
 
 ### 1. Install Docker
 
-Use Docker's repository. Debian's `docker.io` package is too old.
+From Docker's repository; Debian's `docker.io` is too old.
 
 ```sh
 apt update && apt install -y ca-certificates curl git ufw
@@ -158,8 +153,8 @@ apt update && apt install -y docker-ce docker-ce-cli containerd.io docker-buildx
 
 ### 2. DNS and firewall
 
-Point the domain's A record (and AAAA, if you use IPv6) at the server. It must
-resolve before the first start, or Caddy cannot get a certificate.
+Point the domain's A record (and AAAA for IPv6) at the server before the first
+start, or Caddy cannot get a certificate.
 
 ```sh
 ufw allow OpenSSH && ufw allow 80,443/tcp && ufw allow 443/udp && ufw enable
@@ -174,16 +169,14 @@ cp .env.example .env
 nano .env
 ```
 
-Set in `.env`:
-
 | Variable | Value |
 |---|---|
-| `PCBGIT_DOMAIN` | The bare domain, e.g. `pcb.example.com`. No `https://`, no slash. |
-| `PCBGIT_ADMIN_PASSWORD` | A long random password, e.g. from `openssl rand -base64 24` |
+| `PCBGIT_DOMAIN` | The bare domain, e.g. `pcb.example.com` (no `https://`, no slash) |
+| `PCBGIT_ADMIN_PASSWORD` | A long random password, e.g. `openssl rand -base64 24` |
 
 For a private repository, add a read-only
 [deploy key](https://docs.github.com/en/authentication/connecting-to-github-with-ssh/managing-deploy-keys)
-and clone with the `git@github.com:` URL.
+and clone the `git@github.com:` URL.
 
 ### 4. Install and start
 
@@ -193,96 +186,86 @@ deploy/update.sh     # first build and start
 ```
 
 Open `https://<your domain>` and sign in as `admin`. Under **Admin → Instance**,
-decide on registration: closed, or open with every new account approved by an
-admin first (the default), and set limits per user (boards, storage, uploads and
-pushes per hour). **Admin → Users** approves new accounts and sets limits for
-single users; admins also get a notification for each new account. The `.env`
-admin is the instance's owner: other admins cannot demote, disable or delete it,
-or reset its password.
+choose closed or open registration (open: each new account needs an admin's
+approval, the default) and per-user limits. **Admin → Users** approves accounts
+and sets limits per user; admins are notified of each new account. The `.env`
+admin is the owner: other admins cannot demote, disable or delete it, or reset
+its password.
 
-`install.sh` adds `COMPOSE_FILE` to `.env`, so plain `docker compose` commands
-on the server always use the production setup.
+`install.sh` adds `COMPOSE_FILE` to `.env`, so plain `docker compose` on the
+server uses the production setup.
 
 <details>
 <summary><b>Moving an existing pcbgit to a new server</b></summary>
 
 1. On the old server, create a snapshot under **Admin → Backups** and download it.
-2. Set up the new server as above and sign in with the admin account from its `.env`.
-3. Under **Admin → Backups**, upload the snapshot and restore it. pcbgit restarts
-   with the old server's users, boards and settings; from then on, sign in with
-   the old server's accounts.
+2. Set up the new server as above and sign in with its `.env` admin.
+3. Under **Admin → Backups**, upload and restore the snapshot. pcbgit restarts
+   with the old server's users, boards, settings and accounts.
 
-Snapshots of any size can be uploaded: the browser sends them in pieces. They
-can also be copied in on the server: `docker compose cp snapshot.tar.gz
-pcbgit:/data/backups/`. Either way they then appear in the list.
+Snapshots of any size can be uploaded, or copied in on the server; see
+[Backups](#backups).
 
 </details>
 
 ## Updating
 
-pcbgit checks GitHub every hour. **Admin → Instance** shows the newest release
-(whether automatic updates will install it, and whether its image is ready) and
-the commits on `master` since the running version, as a changelog.
+pcbgit checks GitHub automatically, every hour by default (set next to **Check
+now** under **Admin → Instance**: hourly, daily, weekly or monthly). The panel
+shows the newest release, whether its image is ready, and the commits on
+`master` since the running version.
 
-There are two ways to update:
+| | **Releases** | **Update from GitHub** |
+|---|---|---|
+| What | The newest tag `vX.Y.Z` (pre-releases like `v0.8.0-rc1` are skipped) | The newest commit on `master`, for trying unreleased changes |
+| How | Downloads the image CI built and checked: about a minute | Builds on the server: several minutes |
+| Start | **Install v…** or **Automatic updates** (at the next check) under **Admin → Instance**, or `deploy/update.sh --release` | **Update from GitHub** under **Admin → Instance**, or `/opt/pcbgit/deploy/update.sh` |
 
-- **Releases** (a pushed tag `vX.Y.Z`; pre-releases such as `v0.8.0-rc1` are
-  skipped): GitHub Actions builds, starts and checks the Docker image of every
-  release tag, then publishes it and creates the GitHub release; the server only
-  downloads it: about a minute, nothing built on the server. Install
-  one with its **Install v…** button under **Admin → Instance**, or turn on
-  **Automatic updates** there to have each new release installed after the
-  hourly check. A release published a few minutes ago may still be building;
-  the update waits. `deploy/update.sh --release` does the same by hand.
-- **Update from GitHub** (button under **Admin → Instance**, or
-  `/opt/pcbgit/deploy/update.sh` on the server) builds the **newest commit on
-  `master`** on the server itself, which takes several minutes. For trying
-  what is not released yet.
+Neither goes backwards: after a build of `master`, automatic updates wait for the
+next release after it. A release whose image is still building is waited for.
+The site is down for a few seconds during the restart; the panel shows each step
+with a progress bar.
 
-Neither ever goes backwards: after a build of `master`, automatic updates wait
-for the next release that comes after it. The site is down for a few seconds
-while pcbgit restarts. The panel shows each step (fetch, wait for image,
-download or build, back up, restart, check it started) and how the running
-version got there. **Check now** runs the GitHub check immediately.
-
-Every update is guarded on both sides of the switch:
+Every update is guarded on both sides:
 
 - **Before:** the running version takes a snapshot without rendered output
-  (`pcbgit-snapshot-…-pre-update.tar.gz`, the newest three are kept under
-  **Admin → Backups**). A new version's database changes run once when it first
-  starts and cannot be undone; this is the way back if one ever damages data.
-- **After:** the new version must pass its health check within five minutes.
-  If it does not, the previous image and checkout come back by themselves, the
-  panel says so, and automatic updates skip that release. The data is left as
-  it is; restore the pre-update snapshot if it has to go back too.
+  (`…-pre-update.tar.gz`, newest three kept under **Admin → Backups**). Database
+  changes run once at the new version's first start and cannot be undone; this
+  snapshot is the way back.
+- **After:** the new version must pass its health check within five minutes, or
+  the previous image and checkout come back, the panel says so, and automatic
+  updates skip that release. The data stays as it is; restore the snapshot if it
+  must go back too.
+
+The first release download is about 1 GB (KiCad and its 3D models); later
+releases share that layer and bring around 10 MB.
 
 <details>
 <summary>How updating works, and what can go wrong</summary>
 
-- Only fast-forward pulls are done. If the server copy has its own commits, the
-  update stops and the panel says so.
-- The container cannot run commands on the host. The button writes a request file
-  to `/var/lib/pcbgit-control`; a systemd unit on the host picks it up. The
-  automatic-update switch is a file there too (`auto-update`), read by the hourly
-  check.
-- An automatic update only starts when the release's image is ready (or when the
-  server builds itself). If it fails, it is not retried; the next release is.
-- A download or build that fails leaves the old version running, and the checkout
-  goes back to it, so the next check offers the update again.
-- The version before the running one stays as the image `pcbgit:previous`. To go
-  back by hand: `git -C /opt/pcbgit reset --keep <its commit>`, then
+- Only fast-forward pulls. If the server copy has its own commits, the update
+  stops and the panel says so.
+- The container cannot run commands on the host: the panel writes request files
+  to `/var/lib/pcbgit-control`, where systemd units on the host pick them up. The
+  automatic-update switch (`auto-update`) and the check interval
+  (`check-interval`) are files there too; the host's timer wakes the check hourly
+  and skips it until the chosen interval has passed.
+- Automatic updates start only when the release's image is ready (or the server
+  builds itself). A failed one is not retried; the next release is.
+- A failed download or build leaves the old version running and moves the
+  checkout back, so the next check offers the update again.
+- The previous version stays as the image `pcbgit:previous`. To go back by hand:
+  `git -C /opt/pcbgit reset --keep <its commit>`, then
   `docker tag pcbgit:previous pcbgit:latest && docker compose up -d`.
-- `PCBGIT_UPDATE_SNAPSHOT=false` in `.env` skips the snapshot before updates, e.g.
-  on a server whose data is backed up by other means.
-- Container logs are capped at 5 × 10 MB per service.
-- Each update re-syncs the systemd units and restarts Caddy when its config changed.
-- `systemctl status pcbgit-update.service` shows the last run on the server.
-- Release images come from `ghcr.io/<owner>/<repo>` of the GitHub remote, and must
-  be public (the package's settings on GitHub; a package published from a public
-  repository usually is). A private or unreachable image is not waited for; the
-  server builds the release instead, and the log says why.
+- `PCBGIT_UPDATE_SNAPSHOT=false` in `.env` skips the pre-update snapshot.
+- Release images come from `ghcr.io/<owner>/<repo>` of the server's GitHub remote
+  and must be public; otherwise the server builds the release itself, and the log
+  says why.
+- Container logs are capped at 5 × 10 MB per service. Each update re-syncs the
+  systemd units and restarts Caddy if its config changed.
+- `systemctl status pcbgit-update.service` shows the last run.
 - After an update that changes rendering, **Admin → Boards → Re-render all**
-  brings existing versions up to date.
+  updates existing versions.
 
 </details>
 
@@ -292,83 +275,75 @@ Every update is guarded on both sides of the switch:
 
 1. Create a board with **New board**.
 2. Create a token under **Settings → Access tokens**.
-3. Push your KiCad project:
+3. Push your KiCad project, with your username and the token as password:
 
    ```sh
    git remote add pcbgit https://<your domain>/git/<user>/<board>.git
    git push pcbgit main
    ```
 
-   Use your username and the token as the password.
-
-pcbgit renders the shallowest `.kicad_pro` in the repository together with its
-`.kicad_sch` and `.kicad_pcb`. Public boards can be cloned without a token.
-Every push renders in the background; **History** keeps the log of each version,
-and **Admin → Render queue** shows what is running.
+pcbgit renders the shallowest `.kicad_pro` in the repository with its
+`.kicad_sch` and `.kicad_pcb`. Public boards can be cloned without a token. Each
+push renders in the background; **History** keeps each version's log, **Admin →
+Render queue** shows what is running.
 
 ### Downloads
 
 A board's overview offers the BOM (CSV), the schematic as one PDF, the 3D model
 (GLB), the source as ZIP and, under **Production Gerbers**, a fabrication ZIP for
-the board house picked in the dropdown. Each follows that fab's conventions (file
-names, drill units) and holds only the manufacturing layers, with zones refilled
-before export. The Gerber export is experimental: check the fab's preview before
-ordering.
+the board house chosen in the dropdown: that fab's file names and drill units,
+manufacturing layers only, zones refilled. The Gerber export is experimental:
+check the fab's preview before ordering.
 
 ### Backups
 
-Under **Admin → Backups** you can create, download, upload and restore snapshots.
-A snapshot is one `.tar.gz` with the database, all repositories and, optionally,
-the rendered output. Uploads of any size work: the browser sends the file in
-pieces of up to 32 MB, which the server keeps as `<name>.part-N` and joins once
-all have arrived. The only limit is free disk space (1 GB is always left free).
-Snapshots can also be copied in directly:
+**Admin → Backups** creates, downloads, uploads and restores snapshots: one
+`.tar.gz` with the database, all repositories and optionally the rendered
+output. Uploads of any size work (sent in pieces of up to 32 MB); only free disk
+space limits them, and 1 GB always stays free. Snapshots can also be copied in:
 `docker compose cp snapshot.tar.gz pcbgit:/data/backups/`
 
 > [!WARNING]
-> A restore replaces users, boards, repositories and settings with the snapshot's,
-> then restarts pcbgit. The previous data is moved to `backups/pre-restore-<time>/`
-> rather than deleted, so it can be recovered by hand.
+> A restore replaces users, boards, repositories and settings with the
+> snapshot's, then restarts pcbgit. The previous data is moved to
+> `backups/pre-restore-<time>/`, not deleted.
 
 ### Two-factor sign-in
 
-Anyone can turn it on under **Settings → Two-factor sign-in**: scan the QR code
-with an authenticator app, confirm with a code, and keep the ten recovery codes.
-After that, signing in asks for a code after the password; the session then lasts
-as long as any other (30 days), and git keeps using access tokens. An admin can
-turn it off for someone who lost both phone and codes (**Admin → Users**, the
-password reset row); for another admin, only the owner can, as with demoting an
-admin or resetting its password. Nobody can do it for the owner; if the owner is
-locked out:
+Turn it on under **Settings → Two-factor sign-in**: scan the QR code with an
+authenticator app, confirm with a code, keep the ten recovery codes. Sign-in then
+asks for a code after the password; git keeps using access tokens. An admin can
+turn it off for someone who lost phone and codes (**Admin → Users**); for another
+admin only the owner can. Nobody can for the owner; a locked-out owner runs, on
+the server:
 
 ```sh
 docker compose exec pcbgit node --import ./tests/resolve-hook.mjs scripts/reset-owner.ts </dev/null
 ```
 
-This sets a new random password for the owner and prints it, turns two-factor
-sign-in off and ends the owner's sessions. It needs a shell on the server, which
-can reach the database anyway; nothing in the web interface can do it.
+This prints a new random password, turns two-factor sign-in off and ends the
+owner's sessions.
 
 ## Configuration
 
-Set these in `.env`:
+Set in `.env`:
 
 | Variable | Default | Purpose |
 |---|---|---|
-| `PCBGIT_DOMAIN` | — | Public domain (production). Used by Caddy and to set `ORIGIN`. |
-| `PCBGIT_PORT` | `3000` | Port pcbgit is published on (local and LAN; production uses 80/443) |
-| `PCBGIT_ORIGIN` | `http://localhost:<PCBGIT_PORT>` | Public URL, used for links in server-rendered pages and for the cookie's scheme. Optional on a LAN: any address works. |
+| `PCBGIT_DOMAIN` | — | Public domain (production); used by Caddy and for `ORIGIN` |
+| `PCBGIT_PORT` | `3000` | Published port (local and LAN; production uses 80/443) |
+| `PCBGIT_ORIGIN` | `http://localhost:<PCBGIT_PORT>` | Public URL for links in server-rendered pages and the cookie's scheme. Optional on a LAN. |
 | `PCBGIT_ADMIN_USER` | `admin` | Admin account created when no active admin exists |
-| `PCBGIT_ADMIN_PASSWORD` | — | Password for that account. Required. |
-| `PCBGIT_ADMIN_EMAIL` | `admin@localhost` | Email for that account |
-| `PCBGIT_IMPORT_SNAPSHOT` | — | Snapshot to import on the first start of an empty instance |
+| `PCBGIT_ADMIN_PASSWORD` | — | Its password. Required. |
+| `PCBGIT_ADMIN_EMAIL` | `admin@localhost` | Its email |
+| `PCBGIT_IMPORT_SNAPSHOT` | — | Snapshot imported on the first start of an empty instance |
 | `COMPOSE_FILE` | — | Set by `install.sh` so `docker compose` uses the production setup |
-| `PCBGIT_SOURCE_URL` | `https://github.com/Reutertu3/pcbgit` | Repository linked as "Source" in the footer. Forks must set their own. |
-| `PCBGIT_RENDER_MEMORY` | `4g` | Memory the renderer container may use; keep it below the server's total. `0`: no limit |
-| `PCBGIT_RENDER_CPUS` | `2` | CPUs the renderer container may use. `0`: no limit |
-| `PCBGIT_MIN_FREE_DISK` | `1G` | Free disk space that always stays free: below it uploads, pushes and snapshots are refused and renders wait |
-| `PCBGIT_UPDATE_IMAGE` | `ghcr.io/<owner>/<repo>` of a GitHub remote | Where release installs pull the image from (tagged `sha-<commit>`). `build` builds releases on the server too. |
-| `PCBGIT_UPDATE_SNAPSHOT` | `true` | `false` skips the snapshot `deploy/update.sh` takes before switching to a new version. |
+| `PCBGIT_SOURCE_URL` | the server's git remote | "Source" link in the footer (AGPL-3.0). `update.sh` takes it from the remote; set it only for a server started without `update.sh`, which otherwise links to this repository. |
+| `PCBGIT_RENDER_MEMORY` | `4g` | Renderer memory limit; below the server's total. `0`: none |
+| `PCBGIT_RENDER_CPUS` | `2` | Renderer CPU limit. `0`: none |
+| `PCBGIT_MIN_FREE_DISK` | `1G` | Always kept free: below it uploads, pushes and snapshots are refused and renders wait |
+| `PCBGIT_UPDATE_IMAGE` | `ghcr.io/<owner>/<repo>` of a GitHub remote | Where releases are pulled from (tagged `sha-<commit>`); `build` builds them on the server |
+| `PCBGIT_UPDATE_SNAPSHOT` | `true` | `false` skips the snapshot before updates |
 
 <details>
 <summary>Set in the image or compose files; rarely changed</summary>
@@ -376,14 +351,14 @@ Set these in `.env`:
 | Variable | Default | Purpose |
 |---|---|---|
 | `PCBGIT_DATA_DIR` | `/data` | Database, repositories and renders |
-| `PCBGIT_CONTROL_DIR` | `/control` (production) | Folder shared with the host for updates. Unset disables in-app updates. |
+| `PCBGIT_CONTROL_DIR` | `/control` (production) | Folder shared with the host for updates; unset disables in-app updates |
 | `PCBGIT_KICAD_CLI` | `kicad-cli` | Path to the KiCad CLI |
-| `PCBGIT_IBOM` | set in the image | iBOM's `generate_interactive_bom.py`. Unset skips the interactive BOM. |
-| `BODY_SIZE_LIMIT` | `210M` | Maximum size of one request: board uploads and pushes (snapshots are sent in pieces below it) |
+| `PCBGIT_IBOM` | set in the image | iBOM's `generate_interactive_bom.py`; unset skips the interactive BOM |
+| `BODY_SIZE_LIMIT` | `210M` | Largest request: uploads and pushes (snapshots are sent in smaller pieces) |
 | `PCBGIT_RESTART_ON_RESTORE` | `true` | Restart after staging a restore |
 | `PCBGIT_RENDER_DIR` | `/work` | Render checkouts and output, shared with the `renderer` container |
-| `PCBGIT_RENDER_SOCKET` | `/work/runner.sock` | Where the app reaches the renderer. Unset runs the render tools in the app itself. |
-| `ADDRESS_HEADER`, `XFF_DEPTH` | set in production | Client address behind the proxy, for the sign-in rate limit. Required behind any reverse proxy. |
+| `PCBGIT_RENDER_SOCKET` | `/work/runner.sock` | Where the app reaches the renderer; unset runs the tools in the app |
+| `ADDRESS_HEADER`, `XFF_DEPTH` | set in production | Client address behind the proxy, for the sign-in limit. Required behind any reverse proxy. |
 
 </details>
 
@@ -391,18 +366,17 @@ Set these in `.env`:
 
 | Symptom | Cause and fix |
 |---|---|
-| Pages load, but forms are rejected as submitted from a different address | Something between browser and pcbgit rewrites the `Host` header, or the page was opened at one address and posts to another. Check the reverse proxy passes `Host` through. |
-| 502 from Caddy | pcbgit is starting or has stopped. Check `docker compose logs pcbgit`. |
-| No certificate / HTTPS fails | DNS does not point at the server yet, or ports 80/443 are blocked. Check `docker compose logs caddy`. |
-| A version shows "Render failed" | Open the board's **History** tab and view the render log. |
-| Render log says "renderer unavailable" | The `renderer` container is not running. Check `docker compose ps` and `docker compose logs renderer`. |
-| Update fails | The log is shown under **Admin → Instance**. A diverged server copy is the usual cause: `git reset --hard origin/<branch>` in `/opt/pcbgit`. |
+| Pages load, forms are rejected as from a different address | A proxy rewrites the `Host` header, or the page was opened at one address and posts to another. Pass `Host` through. |
+| 502 from Caddy | pcbgit is starting or stopped: `docker compose logs pcbgit` |
+| No certificate / HTTPS fails | DNS does not point at the server yet, or ports 80/443 are blocked: `docker compose logs caddy` |
+| A version shows "Render failed" | The render log is under the board's **History** tab |
+| Render log says "renderer unavailable" | The `renderer` container is not running: `docker compose ps`, `docker compose logs renderer` |
+| Update fails | The log is under **Admin → Instance**. Usually a diverged server copy: `git reset --hard origin/<branch>` in `/opt/pcbgit` |
 
 ## Development
 
-Requires Node 24+ and git. Rendering needs `kicad-cli`; without it, pcbgit still
-tracks versions and builds the BOM, but produces no schematic, board, 3D or DRC
-output.
+Requires Node 24+ and git. Without `kicad-cli`, pcbgit still tracks versions and
+builds the BOM, but renders no schematic, board, 3D or DRC output.
 
 ```sh
 npm install
@@ -413,20 +387,18 @@ npm run seed     # demo boards
 npm run reset-owner   # new password for the owner, 2FA off
 ```
 
-After editing `src/lib/server/db/schema.sql`, run `npm run schema`. Columns added
+After editing `src/lib/server/db/schema.sql`, run `npm run schema`; columns added
 to existing tables also need an entry in `ADDED_COLUMNS` in
-`src/lib/server/db/index.ts`.
+`src/lib/server/db/index.ts`. The production image locally:
+`docker compose up -d --build`, then <http://localhost:3000>.
 
 ### Translations
 
-The interface is available in English and German; the globe button in the header
-switches, and the choice is saved in a cookie. First-time visitors get their
-browser's language.
-
-Strings live in `src/lib/i18n/en.json` and `de.json`. To add a language, copy
-`en.json`, translate it, and register it in `LOCALES` in `src/lib/i18n/index.ts`.
-`npm test` fails if a file is missing keys or placeholders. KiCad's own DRC/ERC
-messages and render logs stay in English.
+English and German; the globe button switches (saved in a cookie), first visits
+get the browser's language. Strings live in `src/lib/i18n/en.json` and `de.json`.
+To add a language, copy `en.json`, translate it and register it in `LOCALES` in
+`src/lib/i18n/index.ts`; `npm test` fails on missing keys or placeholders.
+KiCad's own DRC/ERC messages and render logs stay in English.
 
 <details>
 <summary><b>Project layout</b></summary>
@@ -451,26 +423,126 @@ src/routes/
   git/                 git endpoint
   admin-panel/         admin panel
   login/, settings/    sign-in (with the 2FA step), account, tokens, 2FA setup
-scripts/render-runner.ts   the renderer container's entry point
-scripts/reset-owner.ts     new password for a locked-out owner (see Two-factor sign-in)
+scripts/
+  render-runner.ts   the renderer container's entry point
+  reset-owner.ts     new password for a locked-out owner
+  snapshot.ts        snapshot from the command line (update.sh, before updates)
 deploy/
   docker-compose.prod.yml, Caddyfile   production setup
   install.sh, update.sh                server setup and updates
+.github/
+  workflows/ci.yml   tests, image, releases
+  dependabot.yml     weekly dependency updates
 ```
 
-The render queue runs in the app, one job at a time. The tools it calls (kicad-cli,
-iBOM, the thumbnail rasterisers) run in the `renderer` container, reached through
-a socket on the shared render volume. Jobs interrupted by a restart are marked
+The render queue runs in the app, one job at a time. Its tools (kicad-cli, iBOM,
+the thumbnail rasterisers) run in the `renderer` container, reached through a
+socket on the shared render volume. Jobs interrupted by a restart are marked
 failed at boot and can be retried from **Admin → Render queue**.
 
 </details>
 
+## Releases and CI
+
+Everything runs in GitHub Actions ([`ci.yml`](.github/workflows/ci.yml)). A
+release is a pushed tag; CI does the rest, and servers follow.
+
+```mermaid
+flowchart LR
+  push["Push to master<br>or pull request"] --> test1["test<br>npm test · check · build"]
+  tag["Push tag vX.Y.Z"] --> test2["test"] --> image["image<br>build · start and check · publish"] --> release["GitHub release<br>with notes"]
+  release -. next check .-> servers["Servers<br>download · snapshot · switch · health check"]
+```
+
+| Trigger | test | image | release |
+|---|---|---|---|
+| Push to `master`, pull request | ✅ | — | — |
+| Push of a tag `vX.Y.Z` | ✅ | ✅ | ✅ |
+| Manual run (**Actions → CI → Run workflow**) | ✅ | ✅ | — |
+
+- **test:** tests, type check, app build.
+- **image:** fails at once for a tag that is not `vX.Y.Z` or `vX.Y.Z-suffix`.
+  Builds the image, pushes it as `:candidate`, starts it on the runner until its
+  health check passes and a few pages answer, and only then tags it
+  `:sha-<commit>` (what servers look for), `:vX.Y.Z` and `:latest` in
+  `ghcr.io/<owner>/<repo>`, with provenance and an SBOM. A broken image never
+  becomes installable.
+- **release:** creates the GitHub release after the image, so none appears
+  without it.
+
+### Making a release
+
+1. Add the release's row to the Releases table in [NOTES.md](NOTES.md); commit
+   and push.
+2. Write the notes to a file (no title: the release is named "pcbgit vX.Y.Z"),
+   then tag and push:
+
+   ```sh
+   git tag -a v0.7.2 --cleanup=verbatim -F notes.md
+   git push origin v0.7.2
+   ```
+
+   With a plain tag (`git tag v0.7.2`) the notes are the commit subjects since the
+   previous tag. `--cleanup=verbatim` keeps Markdown headings, which git would
+   strip as comments.
+3. Watch the run under **Actions** (about 10 minutes). The release appears under
+   **Releases** at the end; servers install it at their next check.
+
+> [!IMPORTANT]
+> Do not create releases in GitHub's web interface: the tag is what counts. An
+> existing release is left alone.
+
+- **Pre-release:** a tag with a suffix (`v0.8.0-rc1`) runs the same way but
+  becomes a pre-release: servers skip it, and it never becomes `:latest`.
+- **Failed run:** nothing is published. Fix the cause, then delete the tag and tag
+  again: `git tag -d v0.7.2 && git push origin :refs/tags/v0.7.2`.
+- **A branch's image without a release:** **Actions → CI → Run workflow** on that
+  branch. Servers ignore it; they look for the image of a release's commit.
+
+### Dependency updates
+
+[Dependabot](.github/dependabot.yml) opens weekly pull requests for npm packages,
+the GitHub Actions (pinned to commits) and the base images (pinned by digest),
+with minor and patch updates grouped. CI tests each.
+
+- **npm** updates that pass CI can be merged.
+- **Actions and base images** only take effect in the image job, which pull
+  requests skip: start **Run workflow** on the pull request's branch first.
+- **Major versions** of Node, Ubuntu and `@types/node` are not proposed; they are
+  switched deliberately ([TODO.md](TODO.md)). The build toolchain's majors (vite,
+  the Svelte plugins, TypeScript) come as one pull request: they only work
+  together.
+
+A new `ubuntu` digest rebuilds the image's KiCad layer: the newest KiCad 10.0.x,
+and a ~1 GB download on the next update.
+
+## Forking
+
+Nothing needs renaming: CI and `update.sh` work out the repository from where
+they run. A fork releases its own images under `ghcr.io/<you>/<repo>`, and
+servers cloned from it follow the fork.
+
+Once, in the fork on GitHub:
+
+1. **Enable Actions** on the **Actions** tab (disabled in new forks).
+2. **Make the image public** after the first release: the package's settings on
+   your profile, **Change visibility**. With a private image, servers build every
+   release themselves.
+3. **Enable Dependabot**, if wanted, under **Settings → Code security**.
+
+Then release as [above](#making-a-release) and deploy from your fork's URL. The
+footer's "Source" link follows the server's git remote, so it points at your
+fork, as the AGPL requires for modified code; a server started without
+`deploy/update.sh` needs `PCBGIT_SOURCE_URL`. Pull requests from forks to this
+repository run the tests only.
+
 ## License
 
-pcbgit is © 2026 Michael Reuter and licensed under the
+pcbgit is © 2026 Michael Reuter, licensed under the
 [GNU Affero General Public License v3.0 or later](LICENSE).
 
-You can use, modify and host pcbgit, including commercially. If you run a
-modified version for others over a network, you must offer them its source code.
-The footer's credit to the original project must be kept. See [NOTICE.md](NOTICE.md)
-for the exact terms and for the licenses of third-party software pcbgit uses.
+You can use, modify and host pcbgit, including commercially. Running a modified
+version for others over a network obliges you to offer them its source code, and
+the footer's credit to the original project must be kept. See
+[NOTICE.md](NOTICE.md) for the exact terms and the licenses of third-party
+software pcbgit uses.
