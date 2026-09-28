@@ -1,5 +1,8 @@
+# Base images are pinned by digest, so two builds of one commit start from the same
+# bytes; Dependabot proposes new digests (.github/dependabot.yml).
+
 # ---- build: compile the SvelteKit app ---------------------------------------
-FROM node:24-bookworm-slim AS build
+FROM node:24-bookworm-slim@sha256:0e0ff40c39bc087845bfb27465a0df4ea419520094bc35842ff83dd8cbe6f9b6 AS build
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
@@ -7,7 +10,9 @@ COPY . .
 RUN npm run build && npm prune --omit=dev
 
 # ---- runtime: Ubuntu + KiCad 10 from the official KiCad PPA -----------------
-FROM ubuntu:24.04
+# KiCad itself comes from the PPA's 10.0 series at build time (bug-fix releases
+# only); the admin panel shows the version an image carries.
+FROM ubuntu:24.04@sha256:008173c23f95b170204355c12626cb5a965d779a7e1283b09e9cffbb1bf33ca3
 
 # The 3D model library is several GB. Without it the 3D view shows the bare
 # board with no components: --build-arg INSTALL_3D_MODELS=false

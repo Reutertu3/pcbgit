@@ -618,3 +618,23 @@ failed (including no answer within two minutes). "Check now" has its own form
 now, apart from the update button. Updates get a progress bar: a segment per
 step, the running one moving, and the elapsed time. Tested in Firefox against a
 stand-in for the host script.
+
+### CI catches broken releases before servers see them
+Until now a release's image was built and published in one go, so an image that
+did not start was installable at once, and a broken app build or Dockerfile only
+showed when releasing. Now:
+- **every push** also runs `npm run build`.
+- **a release's image** is pushed as `:candidate`, started on the runner until its
+  health check passes and a few pages answer, and only then tagged
+  `sha-<commit>`, the version and `latest`, which is what servers look for.
+- **release tags** other than `vX.Y.Z` (or `vX.Y.Z-suffix`) fail the job, rather
+  than being silently skipped by servers as `v.0.6.5` was.
+- **provenance and an SBOM** are published with the image.
+- **base images** (node, ubuntu, caddy) are pinned by digest, and **Dependabot**
+  proposes npm, action and base-image updates weekly as grouped pull requests.
+- **the build context** leaves out docs, Markdown and tests, so editing NOTES or
+  TODO no longer reruns the app build.
+- **checkout and setup-node** moved from v4 to v7, off the deprecated Node 20.
+
+The new image steps run only for a release or by hand, so they are first tried
+with a manual run of the workflow.

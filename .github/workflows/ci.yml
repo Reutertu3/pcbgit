@@ -1,8 +1,8 @@
-# Tests and type checks on every push and pull request. The Docker image is built
-# only for a published release: that is what servers install automatically
-# (deploy/update.sh --release), pulling it instead of building on the server.
-# Run it by hand (Actions → CI → Run workflow) to build a commit's image before
-# releasing it.
+# Tests, type checks and the app build on every push and pull request. The Docker
+# image is built only for a published release: that is what servers install
+# automatically (deploy/update.sh --release), pulling it instead of building on
+# the server. Run it by hand (Actions → CI → Run workflow) to build a commit's
+# image before releasing it, e.g. to try an update Dependabot proposes.
 name: CI
 
 on:
@@ -28,10 +28,10 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       # The Node version the Docker image ships (node:sqlite, --experimental-strip-types).
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 24
           cache: npm
@@ -44,6 +44,8 @@ jobs:
       - run: npm ci
       - run: npm test
       - run: npm run check
+      # A build that breaks otherwise only shows when a release's image is built.
+      - run: npm run build
 
   image:
     needs: test
@@ -58,7 +60,19 @@ jobs:
       group: image
       cancel-in-progress: false
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # Servers only install tags named vX.Y.Z (update.sh): v.0.6.5 was published
+      # and silently ignored. Pre-releases (vX.Y.Z-rc1) are built too.
+      - name: Release tag
+        if: github.event_name == 'release'
+        env:
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          if [[ ! "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+            echo "::error::Release tag \"$TAG\" is not vX.Y.Z or vX.Y.Z-suffix, so servers would never install it. Delete the release, tag vX.Y.Z and publish that."
+            exit 1
+          fi
 
       # KiCad and its 3D models make a ~6 GB image; the runner's preinstalled
       # SDKs leave too little room to build and export it.
@@ -79,18 +93,57 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # Tagged with the full commit SHA, which is what a server looks up: it pulls
-      # exactly the commit it checked out. Releases also get their version, and the
-      # newest full release "latest". The registry cache keeps the KiCad layers
-      # identical between builds, so a server downloads only the layers that changed.
+      # Pushed as a candidate first. Servers look up sha-<commit>, which is only set
+      # below, once this image has started and answered: a broken one never becomes
+      # installable. The registry cache keeps the KiCad layers identical between
+      # builds, so a server downloads only the layers that changed. Provenance and an
+      # SBOM go with it, since servers install it unattended.
       - uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
         with:
           context: .
           push: true
           build-args: PCBGIT_VERSION=${{ env.SHORT_SHA }}
-          tags: |
-            ${{ env.IMAGE }}:sha-${{ github.sha }}
-            ${{ github.event_name == 'release' && format('{0}:{1}', env.IMAGE, github.event.release.tag_name) || '' }}
-            ${{ github.event_name == 'release' && !github.event.release.prerelease && format('{0}:latest', env.IMAGE) || '' }}
+          tags: ${{ env.IMAGE }}:candidate
+          provenance: mode=max
+          sbom: true
           cache-from: type=registry,ref=${{ env.IMAGE }}:buildcache
           cache-to: type=registry,ref=${{ env.IMAGE }}:buildcache,mode=max
+
+      # The builder's cache is in the registry now; its local copy only takes disk
+      # the test below needs for pulling the image.
+      - name: Free the builder's disk
+        run: docker buildx prune --all --force
+
+      # What unit tests cannot see: the image itself booting (migrations, files the
+      # Dockerfile must copy) and answering. Its own health check decides.
+      - name: Start the image and check it
+        run: |
+          docker pull "$IMAGE:candidate"
+          docker run -d --name smoke -p 3000:3000 -e PCBGIT_ADMIN_PASSWORD=ci-smoke-test "$IMAGE:candidate"
+          status=starting
+          for _ in $(seq 60); do
+            status=$(docker inspect -f '{{.State.Health.Status}}' smoke)
+            [[ "$status" == healthy || "$status" == unhealthy ]] && break
+            # Crashed on boot: no point waiting for the health check.
+            [[ "$(docker inspect -f '{{.State.Running}}' smoke)" == true ]] || break
+            sleep 5
+          done
+          docker logs smoke
+          echo "health: $status"
+          [[ "$status" == healthy ]]
+          for page in / /login /tags /about; do curl -fsS -o /dev/null "http://localhost:3000$page"; done
+
+      # Tagged with the full commit SHA, which is what a server looks up: it pulls
+      # exactly the commit it checked out. Releases also get their version, and the
+      # newest full release "latest". Copies the candidate's manifest in the registry.
+      - name: Publish
+        env:
+          TAG: ${{ github.event.release.tag_name }}
+          PRERELEASE: ${{ github.event.release.prerelease }}
+        run: |
+          tags=(-t "$IMAGE:sha-$GITHUB_SHA")
+          if [[ "$GITHUB_EVENT_NAME" == release ]]; then
+            tags+=(-t "$IMAGE:$TAG")
+            [[ "$PRERELEASE" == true ]] || tags+=(-t "$IMAGE:latest")
+          fi
+          docker buildx imagetools create "${tags[@]}" "$IMAGE:candidate"

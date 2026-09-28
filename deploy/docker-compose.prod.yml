@@ -17,7 +17,8 @@ services:
       - /var/lib/pcbgit-control:/control
 
   caddy:
-    image: caddy:2
+    # Pinned by digest; Dependabot proposes new ones (.github/dependabot.yml).
+    image: caddy:2@sha256:0c994536bddb66445885237f1a5dcc1916bccea922661c76b4e9fc24061f9b52
     restart: unless-stopped
     ports:
       - "80:80"

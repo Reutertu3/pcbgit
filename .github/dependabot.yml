@@ -1,0 +1,36 @@
+# Pull requests for outdated dependencies, grouped so a week brings a handful, not
+# dozens. CI runs the tests on each; the image job only runs for a release or by
+# hand (Actions → CI → Run workflow), so try action and base-image updates there
+# before releasing them.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      # Minor and patch updates of everything in one pull request.
+      npm-minor:
+        update-types: [minor, patch]
+
+  # The actions are pinned to commits; Dependabot moves the pin and its comment.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns: ["*"]
+
+  # Base images, pinned by digest in the Dockerfile.
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: weekly
+
+  # Caddy, pinned by digest in the production compose file.
+  - package-ecosystem: docker-compose
+    directory: /deploy
+    schedule:
+      interval: weekly

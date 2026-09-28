@@ -5,3 +5,13 @@ data
 graphify-out
 .git
 .env
+# Not part of the build: left out so editing them does not rerun the app build.
+.github
+.agents
+.claude
+docs
+*.md
+skills-lock.json
+# Tests do not ship, except the hook the image's scripts load TypeScript with.
+tests/*
+!tests/resolve-hook.mjs
