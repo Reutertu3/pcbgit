@@ -36,6 +36,7 @@ Each tag links to its release notes on GitHub.
 | [**v0.6.9**](https://github.com/Reutertu3/pcbgit/releases/tag/v0.6.9) | 2026-09-27 | Same as v0.6.8, whose image was never built: a flaky test (ties in the tag request order) failed its release run |
 | [**v0.7.0**](https://github.com/Reutertu3/pcbgit/releases/tag/v0.7.0) | 2026-09-27 | Optional two-factor sign-in, admins protected from each other, owner reset from the shell; footer and hero touch-ups |
 | [**v0.7.1**](https://github.com/Reutertu3/pcbgit/releases/tag/v0.7.1) | 2026-09-28 | Safer updates (snapshot before, health check and rollback after, capped logs), update section with lasting check results and a progress bar; CI checks each image before publishing it, releases come from a pushed tag, Dependabot |
+| [**v0.7.2**](https://github.com/Reutertu3/pcbgit/releases/tag/v0.7.2) | 2026-09-28 | Update check interval in the panel (hourly to monthly), footer source link follows the server's git remote (forks), README condensed with releases, CI and forking |
 
 ---
 
