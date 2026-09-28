@@ -441,6 +441,14 @@
 			 */
 			const FRAME_MS = 1000 / 60;
 			let lastFrame = -Infinity;
+			/*
+			 * OrbitControls reports a change only when the camera moved more than a fixed
+			 * 1e-3 units, or turned. KiCad models are in metres, so that is a millimetre:
+			 * a pan (which moves without turning) raised no 'change' until it added up,
+			 * and drew in jumps, and its damped glide stopped short. So the loop keeps
+			 * drawing while a button is held, and measures motion against the model.
+			 */
+			const lastPosition = new THREE.Vector3();
 			function frame(now: number) {
 				pending = 0;
 				// An export owns the canvas while it runs; it re-requests a frame when done.
@@ -453,9 +461,13 @@
 				}
 				// Carry over only what exceeds one frame; after a pause, start afresh.
 				lastFrame = elapsed < FRAME_MS || elapsed > 2 * FRAME_MS ? now : now - (elapsed % FRAME_MS);
+				lastPosition.copy(camera.position);
 				const animating = stepAnimation(now);
-				// With damping, update() keeps emitting 'change' until the motion settles.
-				const moving = controls.update() || animating || interacting;
+				// With damping, update() keeps emitting 'change' until the motion settles,
+				// as far as its fixed threshold sees; below it, the drift still counts.
+				const changed = controls.update();
+				const drifting = camera.position.distanceTo(lastPosition) > fitRadius * 1e-6;
+				const moving = changed || drifting || animating || interacting;
 				const ratio = moving ? motionRatio : stillRatio;
 				const sharpened = !moving && renderer.getPixelRatio() !== ratio;
 				if (renderer.getPixelRatio() !== ratio) renderer.setPixelRatio(ratio);
@@ -464,7 +476,7 @@
 				frameTimes.push(now);
 				syncCube();
 				syncRulerLabels();
-				if (animating || sharpened) requestRender();
+				if (animating || sharpened || interacting || drifting) requestRender();
 				else if (!pending && trailing > 0) {
 					trailing--;
 					pending = requestAnimationFrame(frame);
