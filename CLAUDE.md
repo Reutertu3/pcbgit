@@ -110,6 +110,9 @@ converter takes untrusted XML: keep its reader entity-free and capped
   hourly limit (`checkCommentRate()` before posting, `countComment()` after). `checkStorage()` also
   keeps `PCBGIT_MIN_FREE_DISK` free, for admins too; snapshots check it themselves
   and renders wait for it (worker `runNextJob`).
+- **Password hashing** in request handlers is `hashPasswordAsync()` (and
+  `createUser({ passwordHash })`); the sync `hashPassword()` blocks every request
+  for tens of milliseconds and is for startup and scripts only.
 - **Two-factor sign-in** (twofactor.ts) sits between the password and the session:
   `/login` hands 2FA accounts a challenge (in memory, like `loginguard.ts`) and
   `/login/2fa` makes the session. Anything else that signs someone in with a
@@ -205,7 +208,8 @@ converter takes untrusted XML: keep its reader entity-free and capped
 - `docker compose exec` reads stdin: in scripts, give it `</dev/null`, or it
   swallows the rest of the script.
 - **Sign-in limits** (`loginguard.ts`) count failures per client address and per
-  account, in memory. Behind a proxy the address comes from `ADDRESS_HEADER` /
+  account, in memory; registration counts new accounts per address there too (3
+  an hour), besides a honeypot field and a cap of 50 accounts waiting for approval. Behind a proxy the address comes from `ADDRESS_HEADER` /
   `XFF_DEPTH` (set in `deploy/docker-compose.prod.yml`); without them every visitor
   looks like the proxy and one attacker locks everyone out.
 - **Push checks** (`PUSH_CHECKS`, `receive.fsckObjects` via `GIT_CONFIG_*`) only

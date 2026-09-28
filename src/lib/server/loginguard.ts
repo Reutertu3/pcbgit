@@ -1,7 +1,8 @@
 /**
- * Sign-in protection: where a login may send the browser afterwards, and a
- * limit on failed attempts. Kept in memory: a restart forgets the counters,
- * which is fine for slowing down guessing, and needs no table.
+ * Sign-in protection: where a login may send the browser afterwards, a limit on
+ * failed attempts, and one on new accounts per address. Kept in memory: a restart
+ * forgets the counters, which is fine for slowing down guessing and bots, and
+ * needs no table.
  */
 
 const SAME_SITE = 'http://pcbgit.invalid';
@@ -28,10 +29,10 @@ const LIMITS = { ip: 10, account: 20 } as const;
 
 const failures = new Map<string, number[]>();
 
-function recent(key: string, now: number) {
-	const times = (failures.get(key) ?? []).filter((time) => now - time < WINDOW_MS);
-	if (times.length) failures.set(key, times);
-	else failures.delete(key);
+function recent(key: string, now: number, log = failures, window = WINDOW_MS) {
+	const times = (log.get(key) ?? []).filter((time) => now - time < window);
+	if (times.length) log.set(key, times);
+	else log.delete(key);
 	return times;
 }
 
@@ -54,4 +55,22 @@ export function recordLoginFailure(ip: string, account: string, now = Date.now()
 /** A successful sign-in clears the account's count, not the address's. */
 export function clearLoginFailures(account: string) {
 	failures.delete(`account:${account}`);
+}
+
+const REGISTRATION_WINDOW_MS = 60 * 60 * 1000;
+/** Accounts one address may create per hour: a household or a class, not a bot. */
+export const REGISTRATIONS_PER_ADDRESS = 3;
+
+const registrations = new Map<string, number[]>();
+
+/** Milliseconds until this address may create another account; 0 when allowed. */
+export function registrationRetryAfter(ip: string, now = Date.now()) {
+	const times = recent(ip, now, registrations, REGISTRATION_WINDOW_MS);
+	if (times.length < REGISTRATIONS_PER_ADDRESS) return 0;
+	return times[times.length - REGISTRATIONS_PER_ADDRESS] + REGISTRATION_WINDOW_MS - now;
+}
+
+export function recordRegistration(ip: string, now = Date.now()) {
+	registrations.set(ip, [...recent(ip, now, registrations, REGISTRATION_WINDOW_MS), now]);
+	if (registrations.size > 10_000) for (const key of [...registrations.keys()]) recent(key, now, registrations, REGISTRATION_WINDOW_MS);
 }

@@ -1129,5 +1129,11 @@
 	"instance.interval.daily": "täglich",
 	"instance.interval.weekly": "wöchentlich",
 	"instance.interval.monthly": "monatlich",
-	"instance.error.interval": "Wähle eines der angebotenen Intervalle."
+	"instance.error.interval": "Wähle eines der angebotenen Intervalle.",
+	"auth.error.registrationRate": {
+		"one": "Zu viele neue Konten von dieser Adresse. Versuche es in {count} Minute erneut.",
+		"other": "Zu viele neue Konten von dieser Adresse. Versuche es in {count} Minuten erneut."
+	},
+	"auth.error.registrationPaused": "Die Registrierung ist pausiert: Viele Konten warten auf die Freigabe durch einen Administrator. Versuche es später erneut.",
+	"auth.honeypot": "Dieses Feld leer lassen"
 }

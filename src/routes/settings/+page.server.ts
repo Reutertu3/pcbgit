@@ -2,7 +2,7 @@ import { fail, redirect } from '@sveltejs/kit';
 import { translate } from '$lib/i18n';
 import type { Actions, PageServerLoad } from './$types';
 import { audit, get, now, run } from '$lib/server/db';
-import { destroyUserSessions, hashPassword, verifyPassword } from '$lib/server/auth';
+import { destroyUserSessions, hashPasswordAsync, verifyPassword } from '$lib/server/auth';
 import { AvatarError, avatarVersion, removeAvatar, saveAvatar } from '$lib/server/avatars';
 
 export const load: PageServerLoad = async ({ locals, url }) => {
@@ -77,7 +77,7 @@ export const actions: Actions = {
 		}
 		if (next.length < 8) return fail(400, { error: translate(locals.locale, 'account.error.newPasswordShort') });
 
-		run('UPDATE users SET password_hash = ?, updated_at = ? WHERE id = ?', hashPassword(next), now(), locals.user.id);
+		run('UPDATE users SET password_hash = ?, updated_at = ? WHERE id = ?', await hashPasswordAsync(next), now(), locals.user.id);
 		// Other devices should not keep a session opened with the old password.
 		destroyUserSessions(locals.user.id);
 		audit(locals.user.id, 'auth.password_change', locals.user.username);

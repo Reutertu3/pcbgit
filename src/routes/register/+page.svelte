@@ -58,6 +58,14 @@
 				<p class="hint">{t('auth.passwordHint')}</p>
 			</div>
 
+			<!-- Honeypot: off-screen rather than display:none, which some bots skip; hidden
+			     from screen readers and the tab order, never autofilled. People leave it
+			     empty; a bot that fills it gets the "waiting" page and no account. -->
+			<div class="absolute -left-[10000px] top-auto h-px w-px overflow-hidden" aria-hidden="true">
+				<label for="leave_empty">{t('auth.honeypot')}</label>
+				<input id="leave_empty" name="leave_empty" type="text" tabindex="-1" autocomplete="off" />
+			</div>
+
 			<button class="btn btn-primary w-full" type="submit" disabled={submitting}>
 				{submitting ? t('auth.creatingAccount') : t('nav.register')}
 			</button>

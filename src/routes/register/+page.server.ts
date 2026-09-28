@@ -1,10 +1,24 @@
 import { fail, redirect } from '@sveltejs/kit';
 import { translate } from '$lib/i18n';
 import type { Actions, PageServerLoad } from './$types';
-import { createSession, createUser, getUserByUsername, validateUsername } from '$lib/server/auth';
+import { createSession, createUser, getUserByUsername, hashPasswordAsync, validateUsername } from '$lib/server/auth';
+import { recordRegistration, registrationRetryAfter } from '$lib/server/loginguard';
 import { audit, count, get, getBoolSetting, run } from '$lib/server/db';
 import { notifyForSignup } from '$lib/server/notifications';
 import { SESSION_COOKIE } from '../../hooks.server';
+
+/**
+ * Accounts that may wait for approval at once. Beyond it registration pauses until
+ * an admin catches up: bots spread over many addresses still cannot bury the
+ * Users page or the admins' notifications.
+ */
+const MAX_PENDING = 50;
+
+/**
+ * A field people never see or reach (the form hides it and leaves it out of the
+ * tab order); simple bots fill in every field they find. Named in +page.svelte too.
+ */
+const HONEYPOT = 'leave_empty';
 
 export const load: PageServerLoad = async ({ locals }) => {
 	if (locals.user) redirect(303, '/');
@@ -15,7 +29,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 };
 
 export const actions: Actions = {
-	default: async ({ request, cookies, url, locals }) => {
+	default: async ({ request, cookies, url, locals, getClientAddress }) => {
 		const form = await request.formData();
 		const username = String(form.get('username') ?? '').trim();
 		const email = String(form.get('email') ?? '').trim();
@@ -24,6 +38,15 @@ export const actions: Actions = {
 
 		if (!getBoolSetting('registration_open', true)) {
 			return fail(403, { error: translate(locals.locale, 'auth.registrationClosedHint'), ...values });
+		}
+		// A bot gets the answer a person waiting for approval gets, and no account,
+		// so it learns nothing.
+		if (String(form.get(HONEYPOT) ?? '')) return { pending: true, username };
+
+		const address = getClientAddress();
+		const wait = registrationRetryAfter(address);
+		if (wait) {
+			return fail(429, { error: translate(locals.locale, 'auth.error.registrationRate', { count: Math.ceil(wait / 60_000) }), ...values });
 		}
 
 		const usernameError = validateUsername(username);
@@ -44,7 +67,12 @@ export const actions: Actions = {
 		// The very first account to register owns the instance, and nobody could approve it.
 		const isFirst = count('SELECT COUNT(*) FROM users') === 0;
 		const pending = !isFirst && getBoolSetting('registration_approval', true);
-		const user = createUser({ username, email, password, role: isFirst ? 'admin' : 'user', pending });
+		if (pending && count('SELECT COUNT(*) FROM users WHERE approved = 0') >= MAX_PENDING) {
+			return fail(503, { error: translate(locals.locale, 'auth.error.registrationPaused'), ...values });
+		}
+		const passwordHash = await hashPasswordAsync(password);
+		const user = createUser({ username, email, passwordHash, role: isFirst ? 'admin' : 'user', pending });
+		recordRegistration(address);
 		audit(user.id, 'auth.register', username, pending ? 'awaiting approval' : '');
 		if (isFirst) run('UPDATE users SET is_owner = 1 WHERE id = ?', user.id);
 		else notifyForSignup(user.id);

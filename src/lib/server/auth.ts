@@ -32,10 +32,25 @@ export interface User {
 const SESSION_TTL = 1000 * 60 * 60 * 24 * 30;
 const SCRYPT = { N: 16384, r: 8, p: 1, keylen: 64 };
 
+const formatHash = (salt: Buffer, key: Buffer) =>
+	`scrypt$${SCRYPT.N}$${SCRYPT.r}$${SCRYPT.p}$${salt.toString('base64')}$${key.toString('base64')}`;
+
+/** Sync, for startup and scripts only; request handlers use hashPasswordAsync(). */
 export function hashPassword(password: string) {
 	const salt = crypto.randomBytes(16);
-	const key = crypto.scryptSync(password, salt, SCRYPT.keylen, SCRYPT);
-	return `scrypt$${SCRYPT.N}$${SCRYPT.r}$${SCRYPT.p}$${salt.toString('base64')}$${key.toString('base64')}`;
+	return formatHash(salt, crypto.scryptSync(password, salt, SCRYPT.keylen, SCRYPT));
+}
+
+/**
+ * Async: scrypt takes tens of milliseconds, and the sync version stalls every
+ * request meanwhile, so a flood of registrations would slow the whole site.
+ */
+export async function hashPasswordAsync(password: string) {
+	const salt = crypto.randomBytes(16);
+	const key = await new Promise<Buffer>((resolve, reject) =>
+		crypto.scrypt(password, salt, SCRYPT.keylen, SCRYPT, (error, derived) => (error ? reject(error) : resolve(derived)))
+	);
+	return formatHash(salt, key);
 }
 
 /** Async: scrypt takes tens of milliseconds, and the sync version stalls every request meanwhile. */
@@ -84,7 +99,10 @@ export const RESERVED_USERNAMES = new Set([
 export function createUser(opts: {
 	username: string;
 	email: string;
-	password: string;
+	/** Hashed here, synchronously: startup and scripts. */
+	password?: string;
+	/** Already hashed with hashPasswordAsync(): request handlers. */
+	passwordHash?: string;
 	role?: Role;
 	displayName?: string;
 	/** Registered while admin approval is on: cannot sign in until approved. */
@@ -99,7 +117,7 @@ export function createUser(opts: {
 		id,
 		opts.username,
 		opts.email,
-		hashPassword(opts.password),
+		opts.passwordHash ?? hashPassword(opts.password ?? ''),
 		opts.displayName ?? opts.username,
 		opts.role ?? 'user',
 		active,

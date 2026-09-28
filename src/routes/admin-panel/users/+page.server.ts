@@ -8,7 +8,7 @@ import {
 	destroyUserSessions,
 	getUserById,
 	getUserByUsername,
-	hashPassword,
+	hashPasswordAsync,
 	validateUsername
 } from '$lib/server/auth';
 import { instanceLimits, limitsFor, storageUsed } from '$lib/server/limits';
@@ -114,7 +114,7 @@ export const actions: Actions = {
 			return fail(409, { error: translate(locals.locale, 'auth.error.emailTaken') });
 		}
 
-		createUser({ username, email, password, role });
+		createUser({ username, email, passwordHash: await hashPasswordAsync(password), role });
 		audit(locals.user!.id, 'admin.user_create', username, role);
 		return { success: true, message: translate(locals.locale, 'users.created', { name: username }) };
 	},
@@ -189,7 +189,7 @@ export const actions: Actions = {
 		const refused = ownerRefusal(id, locals.user!.id, { ownerMay: true }) || adminRefusal(id, locals.user!);
 		if (refused) return fail(403, { error: translate(locals.locale, refused) });
 
-		run('UPDATE users SET password_hash = ?, updated_at = ? WHERE id = ?', hashPassword(password), now(), id);
+		run('UPDATE users SET password_hash = ?, updated_at = ? WHERE id = ?', await hashPasswordAsync(password), now(), id);
 		destroyUserSessions(id);
 		audit(locals.user!.id, 'admin.user_password_reset', user.username);
 		return { success: true, message: translate(locals.locale, 'users.passwordReset', { name: user.username }) };

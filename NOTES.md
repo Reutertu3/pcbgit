@@ -698,3 +698,25 @@ Reproduced on the local instance (restart count 0 → 1), fixed by handling both
 ends in `runGitBackend()`, then the same requests left it running. A test sends
 a request git rejects and an upload that breaks off; it fails with EPIPE on the
 old code.
+
+### Registration protected against bots, without a CAPTCHA
+Before presenting pcbgit more widely: registration had no limit, so a bot could
+create any number of accounts. With approval on they cannot do anything, but
+each one notified every admin and cluttered the Users page, and each hashed its
+password synchronously, stalling the whole server for tens of milliseconds. Now:
+- **3 new accounts per address an hour**, counted like the sign-in limit (in
+  memory, the proxy-aware client address). Only created accounts count, so a
+  taken name costs nothing.
+- **A honeypot field**, off-screen, hidden from screen readers and the tab order,
+  never autofilled. A bot that fills it gets the "waiting for approval" page and
+  no account.
+- **At most 50 accounts waiting for approval**; beyond that registration pauses
+  with a message until an admin catches up, which bounds bots spread over many
+  addresses.
+- **Password hashing is asynchronous** in every request handler (registration,
+  password change, admin create and reset); the sync version stays for startup
+  and scripts.
+
+No CAPTCHA: a self-hosted proof-of-work one stays possible if bots get through.
+Email verification is postponed: outgoing email is too much to set up for a lab
+or homelab instance, and approval plus these limits cover a public one.

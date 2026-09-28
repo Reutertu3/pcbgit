@@ -10,12 +10,12 @@
 
 | | Group | Open | What it is |
 |---|---|---|---|
-| 🔴 | [Before opening registration](#before-opening-registration) | 4 | Abuse limits a public instance needs |
+| 🔴 | [Before opening registration](#before-opening-registration) | 2 | Abuse limits a public instance needs |
 | 🟠 | [Next up](#next-up) | 5 | Fixes and chores worth doing soon |
 | 🗺️ | [Feature roadmap](#feature-roadmap) | 25 | New features, by priority |
 | 🔍 | [To review](#to-review) | 3 | Code nobody has audited yet |
 | 🟡 | [Low priority](#low-priority) | 20 | Hardening, edge cases, chores that can wait |
-| ⚪ | [Optional](#optional) | 3 | Only if wanted |
+| ⚪ | [Optional](#optional) | 4 | Only if wanted |
 | 👀 | [Observe](#observe) | 1 | Fixed, but worth watching |
 
 ---
@@ -24,15 +24,13 @@
 
 > [!IMPORTANT]
 > These matter as soon as strangers can sign up. Admin approval of new accounts
-> exists and is on by default, which covers them until then.
+> is on by default, and registration is limited per address, with a honeypot and
+> a cap on waiting accounts (2026-09-29); email verification is postponed
+> (Optional).
 
 - [ ] **Limit the size of a `git push`.** `git-http-backend` accepts any pack size.
 - [ ] **Limit renders queued per user.** One account can fill the single render
       worker.
-- [ ] **Email verification for new accounts.** Needs outgoing email (see the
-      roadmap's email item).
-- [ ] **Rate limit or CAPTCHA on registration**, and make `hashPassword` async like
-      `verifyPassword`.
 
 ## Next up
 
@@ -108,8 +106,9 @@ instance; **Optional** needs outside services or is a niche.
   Many KiCad projects already live elsewhere; fetch on a schedule (and on a
   webhook) so they render here without moving.
 - **Email (SMTP) and webhooks (ntfy, Matrix, Discord, generic JSON)** · _Notifications_ \
-  Notifications only exist in the app. Email also unlocks email verification
-  (above); webhooks for new versions, failed renders and tag requests.
+  Notifications only exist in the app. Email would also allow password reset and
+  the postponed email verification; webhooks for new versions, failed renders and
+  tag requests.
 - **Single sign-on with OIDC (Authentik, Keycloak, Authelia)** · _Accounts_ \
   The usual way homelabs and small companies share accounts; local accounts stay
   for admins.
@@ -229,6 +228,11 @@ import` for the board). Edge cases left:
 
 ## Optional
 
+- [ ] **Email verification for new accounts** (postponed 2026-09-29). Needs
+      outgoing email: SMTP settings, and SPF/DKIM/DMARC or a relay for delivery,
+      too much for a lab or homelab instance. Admin approval and the registration
+      limits cover a public instance meanwhile. If it comes, password reset by
+      email and email notifications (roadmap) come with it cheaply.
 - [ ] **JLCPCB assembly files.** CPL from `pcb export pos --format csv --units mm
       --side both --exclude-dnp` (columns renamed to Designator, Mid X, Mid Y,
       Layer, Rotation), and a BOM in JLCPCB's format (Comment, Designator,

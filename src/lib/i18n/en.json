@@ -1129,5 +1129,11 @@
 	"instance.interval.daily": "every day",
 	"instance.interval.weekly": "every week",
 	"instance.interval.monthly": "every month",
-	"instance.error.interval": "Choose one of the listed intervals."
+	"instance.error.interval": "Choose one of the listed intervals.",
+	"auth.error.registrationRate": {
+		"one": "Too many new accounts from this address. Try again in {count} minute.",
+		"other": "Too many new accounts from this address. Try again in {count} minutes."
+	},
+	"auth.error.registrationPaused": "Registration is paused: many accounts are waiting for an administrator's approval. Try again later.",
+	"auth.honeypot": "Leave this field empty"
 }
