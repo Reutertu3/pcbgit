@@ -12,7 +12,7 @@
 |---|---|---|---|
 | 🔴 | [Before opening registration](#before-opening-registration) | 1 | Abuse limits a public instance needs |
 | 🟠 | [Next up](#next-up) | 5 | Fixes and chores worth doing soon |
-| 🗺️ | [Feature roadmap](#feature-roadmap) | 25 | New features, by priority |
+| 🗺️ | [Feature roadmap](#feature-roadmap) | 26 | New features, by priority |
 | 🔍 | [To review](#to-review) | 3 | Code nobody has audited yet |
 | 🟡 | [Low priority](#low-priority) | 20 | Hardening, edge cases, chores that can wait |
 | ⚪ | [Optional](#optional) | 4 | Only if wanted |
@@ -110,6 +110,15 @@ instance; **Optional** needs outside services or is a niche.
 - **Single sign-on with OIDC (Authentik, Keycloak, Authelia)** · _Accounts_ \
   The usual way homelabs and small companies share accounts; local accounts stay
   for admins.
+- **Maintenance mode** · _Operations_ \
+  For work on an instance (a restore, a migration, a board clean-up) without
+  visitors or pushes in between. A switch in the admin panel; while it is on,
+  every page answers 503 with a static page the admin writes (shown as written,
+  in every language), except sign-in (with the two-factor step) and a reduced
+  admin panel to turn it off again. Git answers 503 with the same message, so
+  pushes fail cleanly. Keep `/about` answering: the image's health check
+  requests it, and `update.sh` would roll back an update that turned
+  maintenance on. Decide whether renders pause meanwhile.
 - **Board spec sheet on the overview** · _Fabrication_ \
   Layers, thickness, finish, copper weight, minimum track, clearance and drill,
   read from the board setup and design rules: what a board house asks for a quote.
