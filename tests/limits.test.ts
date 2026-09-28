@@ -8,7 +8,7 @@ import test, { after } from 'node:test';
 const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'pcbgit-limits-'));
 process.env.PCBGIT_DATA_DIR = dataDir;
 
-const { count, newId, now, run, setSetting } = await import('../src/lib/server/db/index.ts');
+const { count, get, newId, now, run, setSetting } = await import('../src/lib/server/db/index.ts');
 const auth = await import('../src/lib/server/auth.ts');
 const projects = await import('../src/lib/server/projects.ts');
 const limits = await import('../src/lib/server/limits.ts');
@@ -35,16 +35,16 @@ const fresh = () => auth.getUserById(user.id)!;
 const MB = 1024 ** 2;
 
 test('limits come from the instance defaults, a user can override them, and admins have none', () => {
-	assert.deepEqual(limits.limitsFor(fresh()), { boards: null, storageBytes: null, writesPerHour: 30, commentsPerHour: 60 }, 'defaults: no board or storage limit');
+	assert.deepEqual(limits.limitsFor(fresh()), { boards: null, storageBytes: null, writesPerHour: 30, commentsPerHour: 60, queuedRenders: 10 }, 'defaults: no board or storage limit');
 
 	setSetting('limit_boards', '5');
 	setSetting('limit_storage_mb', '100');
-	assert.deepEqual(limits.limitsFor(fresh()), { boards: 5, storageBytes: 100 * MB, writesPerHour: 30, commentsPerHour: 60 });
+	assert.deepEqual(limits.limitsFor(fresh()), { boards: 5, storageBytes: 100 * MB, writesPerHour: 30, commentsPerHour: 60, queuedRenders: 10 });
 
 	run('UPDATE users SET limit_boards = 2, limit_storage_mb = 0 WHERE id = ?', user.id);
-	assert.deepEqual(limits.limitsFor(fresh()), { boards: 2, storageBytes: null, writesPerHour: 30, commentsPerHour: 60 }, '0 overrides to no limit');
+	assert.deepEqual(limits.limitsFor(fresh()), { boards: 2, storageBytes: null, writesPerHour: 30, commentsPerHour: 60, queuedRenders: 10 }, '0 overrides to no limit');
 
-	assert.deepEqual(limits.limitsFor(admin), { boards: null, storageBytes: null, writesPerHour: null, commentsPerHour: null });
+	assert.deepEqual(limits.limitsFor(admin), { boards: null, storageBytes: null, writesPerHour: null, commentsPerHour: null, queuedRenders: null });
 });
 
 test('the board limit counts the boards a user owns', async () => {
@@ -119,6 +119,41 @@ test('comments are limited per hour; refused ones do not count, admins are never
 	limits.checkCommentRate(admin, start);
 	setSetting('limit_comments_per_hour', '0');
 	limits.checkCommentRate(fresh(), start + 3000);
+});
+
+test('a push brings more versions than the render queue has room for: the newest render, the rest wait', async () => {
+	await renderQueueIdle();
+	const project = projects.getProject('maker', 'first')!;
+	run('UPDATE users SET limit_queued_renders = 2 WHERE id = ?', user.id);
+	for (let i = 1; i <= 5; i++) {
+		await commitFiles(repoPath('maker', 'first'), [{ path: 'board.kicad_pcb', data: Buffer.from(`(kicad_pcb ${i})`) }], {
+			message: `version ${i}`,
+			authorName: 'Maker',
+			authorEmail: 'm@example.com',
+			branch: 'main'
+		});
+	}
+	await projects.syncCommits(project, 'maker');
+	const status = (message: string) =>
+		get<{ render_status: string }>('SELECT render_status FROM commits WHERE project_id = ? AND message = ?', project.id, message)!.render_status;
+	for (const old of ['version 1', 'version 2', 'version 3']) assert.equal(status(old), 'skipped', old);
+	for (const fresh of ['version 4', 'version 5']) assert.notEqual(status(fresh), 'skipped', fresh);
+	await renderQueueIdle();
+});
+
+test('rendering by hand respects the owner\'s queue, except for an admin', () => {
+	const project = projects.getProject('maker', 'first')!;
+	const commitId = projects.listProjectCommits(project.id)[0].id;
+	// Two renders "running" for the owner's boards fill a queue of two.
+	for (let i = 0; i < 2; i++) {
+		run("INSERT INTO render_jobs (id, project_id, commit_id, status, queued_at) VALUES (?,?,?,'running',?)", newId(), project.id, commitId, now());
+	}
+	assert.equal(limits.renderQueueRoom(user.id), 0);
+	assert.throws(() => limits.checkRenderQueue(user.id, fresh()), /render queue for this board's owner is full \(2 waiting or running\)/);
+	limits.checkRenderQueue(user.id, admin);
+	run('UPDATE users SET limit_queued_renders = 0 WHERE id = ?', user.id);
+	assert.equal(limits.renderQueueRoom(user.id), Infinity, '0: no limit');
+	run("DELETE FROM render_jobs WHERE status = 'running'");
 });
 
 test('a refused push is an ERR line in git\'s ref advertisement', async () => {

@@ -133,6 +133,13 @@
 								<p class="text-sm" style:color="var(--err)">{t('overview.failed')}</p>
 								<a href="{base}/history" class="btn btn-sm">{t('overview.seeLog')}</a>
 							</div>
+						{:else if data.commit.render_status === 'skipped'}
+							<!-- The owner's render queue was full when this version arrived. -->
+							<div class="flex flex-col items-center gap-2 py-10 text-center">
+								<StatusDot status="skipped" label />
+								<p class="max-w-sm text-xs text-[var(--text-muted)]">{t('overview.skipped')}</p>
+								<a href="{base}/history" class="btn btn-sm">{t('overview.renderInHistory')}</a>
+							</div>
 						{:else if data.commit.render_status !== 'success'}
 							<div class="flex flex-col items-center gap-2 py-10 text-center">
 								<StatusDot status={data.commit.render_status} label />

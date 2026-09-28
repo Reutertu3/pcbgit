@@ -36,7 +36,7 @@
 	"status.running": "Wird gerendert",
 	"status.queued": "In Warteschlange",
 	"status.failed": "Rendern fehlgeschlagen",
-	"status.skipped": "Übersprungen",
+	"status.skipped": "Nicht gerendert",
 	"status.none": "Nicht gerendert",
 	"changelog.more": {
 		"one": "und {count} weiterer",
@@ -1024,7 +1024,7 @@
 	"instance.approval": "Neue Konten freigeben",
 	"instance.approvalHint": "Neue Registrierungen warten, bis ein Administrator sie unter Benutzer freigibt; bis dahin können sie sich nicht anmelden.",
 	"instance.limits": "Limits pro Benutzer",
-	"instance.limitsHint": "Standardwerte für alle Benutzer; Administratoren haben keine. 0 bedeutet kein Limit. Boards und Speicher lassen sich unter Benutzer pro Person festlegen. Speicher zählt die Boards eines Benutzers: Repositories und gerenderte Ausgaben.",
+	"instance.limitsHint": "Standardwerte für alle Benutzer; Administratoren haben keine. 0 bedeutet kein Limit. Boards, Speicher und Renderaufträge lassen sich unter Benutzer pro Person festlegen. Speicher und Renderaufträge zählen die Boards eines Benutzers: Repositories und gerenderte Ausgaben sowie wartende oder laufende Renderaufträge. Bringt ein Push mehr neue Versionen, als die Warteschlange Platz hat, werden die neuesten gerendert; die übrigen bleiben „nicht gerendert“, bis sie im Verlauf des Boards gerendert werden.",
 	"instance.limitBoards": "Boards pro Benutzer",
 	"instance.limitStorage": "Speicher pro Benutzer (MB)",
 	"instance.limitWrites": "Uploads und Pushes pro Stunde",
@@ -1135,5 +1135,10 @@
 		"other": "Zu viele neue Konten von dieser Adresse. Versuche es in {count} Minuten erneut."
 	},
 	"auth.error.registrationPaused": "Die Registrierung ist pausiert: Viele Konten warten auf die Freigabe durch einen Administrator. Versuche es später erneut.",
-	"auth.honeypot": "Dieses Feld leer lassen"
+	"auth.honeypot": "Dieses Feld leer lassen",
+	"instance.limitRenders": "Renderaufträge pro Nutzer",
+	"users.limitRenders": "Renderaufträge",
+	"limits.error.renderQueue": "Die Renderwarteschlange des Board-Besitzers ist voll ({limit} wartend oder laufend). Versuche es erneut, wenn einige fertig sind.",
+	"overview.skipped": "Diese Version wurde nicht gerendert: Die Renderwarteschlange des Besitzers war beim Eintreffen voll. Sie lässt sich im Verlauf rendern.",
+	"overview.renderInHistory": "Verlauf öffnen"
 }

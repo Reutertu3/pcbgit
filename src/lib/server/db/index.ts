@@ -122,6 +122,7 @@ const ADDED_COLUMNS: [table: string, column: string, definition: string][] = [
 	['users', 'approved', 'INTEGER NOT NULL DEFAULT 1'],
 	['users', 'limit_boards', 'INTEGER'],
 	['users', 'limit_storage_mb', 'INTEGER'],
+	['users', 'limit_queued_renders', 'INTEGER'],
 	['projects', 'repo_bytes', 'INTEGER NOT NULL DEFAULT -1'],
 	['users', 'is_owner', 'INTEGER NOT NULL DEFAULT 0'],
 	['users', 'last_login_at', 'INTEGER'],

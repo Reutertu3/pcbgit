@@ -106,7 +106,11 @@ converter takes untrusted XML: keep its reader entity-free and capped
   `checkNewBoard()`. Storage is the board owner's (repositories plus artifacts,
   `projects.repo_bytes` kept current by `syncCommits()`); the hourly count is
   whoever uploads or pushes. Admins have no limits. A refused push answers the
-  ref request with `refusePush()` so git prints the reason. Comments have their own
+  ref request with `refusePush()` so git prints the reason. The render queue is
+  limited per owner too (`renderQueueRoom()`): `syncCommits()` queues the newest
+  versions it has room for and marks the rest `render_status = 'skipped'` ("not
+  rendered"); History's render button checks `checkRenderQueue()`, admin actions
+  do not. Comments have their own
   hourly limit (`checkCommentRate()` before posting, `countComment()` after). `checkStorage()` also
   keeps `PCBGIT_MIN_FREE_DISK` free, for admins too; snapshots check it themselves
   and renders wait for it (worker `runNextJob`).

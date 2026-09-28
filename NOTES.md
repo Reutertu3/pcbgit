@@ -720,3 +720,26 @@ password synchronously, stalling the whole server for tens of milliseconds. Now:
 No CAPTCHA: a self-hosted proof-of-work one stays possible if bots get through.
 Email verification is postponed: outgoing email is too much to set up for a lab
 or homelab instance, and approval plus these limits cover a public one.
+
+### Panning the 3D view is as smooth as rotating it
+Rotating the board ran at 60 fps, panning (right drag) at about 40, in jumps. The
+3D view renders only when OrbitControls reports a change, and it reports one
+only when the camera moved more than a fixed 1e-3 units, or turned. KiCad models
+are in metres, so that is a millimetre: a pan, which moves without turning,
+raised no change until a millimetre had added up, and its damped glide stopped
+short. The render loop now keeps drawing while a button is held and measures the
+remaining motion against the model's size. Measured in Firefox with the same
+slow drag: pan from ~41 to 60 fps, like rotation; the view is idle again 1.5 s
+after letting go.
+
+### Renders limited per owner, set by admins
+There is one render worker, and one push of 200 commits queued 200 renders, so
+everyone else waited for hours. Now each owner's boards may have a number of
+renders waiting or running at once: an instance default under Instance → Limits
+(10), overridable per user under Users, 0 for none, admins exempt, like the other
+limits (`users.limit_queued_renders`). A push or upload with more new versions
+than there is room for queues the newest and keeps the rest as "not rendered"
+(`render_status = 'skipped'`, which existed but was never set); the board's
+overview says so, and History's render button renders them, within the same
+limit. Admin actions (re-render all, retry failed, the queue page) are not
+limited.

@@ -22,6 +22,8 @@ CREATE TABLE IF NOT EXISTS users (
   -- Per-user limits; NULL means the instance default (settings limit_*).
   limit_boards     INTEGER,
   limit_storage_mb INTEGER,
+  -- Renders that may wait or run at once for the boards this user owns.
+  limit_queued_renders INTEGER,
   -- Kept on the account, not derived from sessions: signing out, a password
   -- change and expiry all delete sessions.
   last_login_at INTEGER,

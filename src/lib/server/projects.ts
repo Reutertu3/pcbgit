@@ -4,6 +4,7 @@ import { repoPath } from './paths';
 import { notifyForVersions } from './notifications';
 import { enqueueRender } from './render/worker';
 import type { User } from './auth';
+import { renderQueueRoom } from './limits';
 import type { CommitSummary, ProjectSummary, TagRef } from '$lib/types';
 
 export interface Project {
@@ -376,8 +377,19 @@ export async function syncCommits(
 		run('UPDATE projects SET head_commit_id = ?, updated_at = ? WHERE id = ?', head.id, now(), project.id);
 	}
 
-	// Render newest first so the page a user lands on fills in first.
-	for (const commit of [...added].reverse()) enqueueRender(project.id, commit.id);
+	// Render newest first so the page a user lands on fills in first, and only as many
+	// as the owner's render queue has room for: the rest are kept as "not rendered",
+	// to render from History later.
+	const owner = get<{ owner_id: string }>('SELECT owner_id FROM projects WHERE id = ?', project.id);
+	let room = owner ? renderQueueRoom(owner.owner_id) : Infinity;
+	for (const commit of [...added].reverse()) {
+		if (room > 0) {
+			enqueueRender(project.id, commit.id);
+			room--;
+		} else {
+			run("UPDATE commits SET render_status = 'skipped' WHERE id = ?", commit.id);
+		}
+	}
 	if (actorId && added.length) {
 		notifyForVersions({ projectId: project.id, actorId, commitId: added[added.length - 1].id, count: added.length });
 	}

@@ -10,7 +10,7 @@
 
 | | Group | Open | What it is |
 |---|---|---|---|
-| 🔴 | [Before opening registration](#before-opening-registration) | 2 | Abuse limits a public instance needs |
+| 🔴 | [Before opening registration](#before-opening-registration) | 1 | Abuse limits a public instance needs |
 | 🟠 | [Next up](#next-up) | 5 | Fixes and chores worth doing soon |
 | 🗺️ | [Feature roadmap](#feature-roadmap) | 25 | New features, by priority |
 | 🔍 | [To review](#to-review) | 3 | Code nobody has audited yet |
@@ -24,13 +24,11 @@
 
 > [!IMPORTANT]
 > These matter as soon as strangers can sign up. Admin approval of new accounts
-> is on by default, and registration is limited per address, with a honeypot and
-> a cap on waiting accounts (2026-09-29); email verification is postponed
-> (Optional).
+> is on by default, registration is limited per address, with a honeypot and a
+> cap on waiting accounts, and renders are limited per owner (2026-09-29); email
+> verification is postponed (Optional).
 
 - [ ] **Limit the size of a `git push`.** `git-http-backend` accepts any pack size.
-- [ ] **Limit renders queued per user.** One account can fill the single render
-      worker.
 
 ## Next up
 

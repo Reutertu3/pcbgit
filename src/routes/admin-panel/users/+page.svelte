@@ -199,6 +199,10 @@
 									<label class="label" for="storage-{user.id}">{t('users.limitStorage')}</label>
 									<input class="input !py-1.5" id="storage-{user.id}" name="storage_mb" type="number" min="0" value={user.limit_storage_mb ?? ''} placeholder={String(data.defaults.storageMb || '∞')} />
 								</div>
+								<div class="w-36">
+									<label class="label" for="renders-{user.id}">{t('users.limitRenders')}</label>
+									<input class="input !py-1.5" id="renders-{user.id}" name="queued_renders" type="number" min="0" value={user.limit_queued_renders ?? ''} placeholder={String(data.defaults.queuedRenders || '∞')} />
+								</div>
 								<button class="btn btn-sm" type="submit">{t('users.saveLimits')}</button>
 								<button class="btn btn-ghost btn-sm" type="button" onclick={() => (editingLimits = null)}>{t('common.cancel')}</button>
 							</form>

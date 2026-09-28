@@ -1,12 +1,15 @@
 /**
  * Per-user limits: how many boards a user may own, how much storage their boards
  * may take (repositories plus rendered output), how many uploads and pushes they
- * may make per hour, and how many comments they may post per hour (each one
- * notifies the board's people, so a flood of them floods inboxes too). Instance defaults are settings (`limit_*`), a user row
+ * may make per hour, how many comments they may post per hour (each one notifies
+ * the board's people, so a flood of them floods inboxes too), and how many renders
+ * may wait or run at once for their boards: there is one render worker, and a push
+ * of 200 commits would otherwise keep everyone else waiting for hours. Instance defaults are settings (`limit_*`), a user row
  * can override the first two, and admins have none.
  *
- * Storage belongs to the board's owner, so a collaborator's push counts against
- * the owner's limit; the hourly limit counts whoever uploads or pushes.
+ * Storage and the render queue belong to the board's owner, so a collaborator's
+ * push counts against the owner's limits; the hourly limit counts whoever uploads
+ * or pushes.
  *
  * Above all of them, the server keeps a minimum of free disk space
  * (PCBGIT_MIN_FREE_DISK): a full disk would break the database and repositories
@@ -23,6 +26,7 @@ export class LimitError extends UserError {}
 
 export const DEFAULT_WRITES_PER_HOUR = 30;
 export const DEFAULT_COMMENTS_PER_HOUR = 60;
+export const DEFAULT_QUEUED_RENDERS = 10;
 const MB = 1024 ** 2;
 const HOUR = 60 * 60 * 1000;
 
@@ -31,6 +35,7 @@ interface LimitedUser {
 	role: string;
 	limit_boards: number | null;
 	limit_storage_mb: number | null;
+	limit_queued_renders: number | null;
 }
 
 export interface UserLimits {
@@ -39,6 +44,7 @@ export interface UserLimits {
 	storageBytes: number | null;
 	writesPerHour: number | null;
 	commentsPerHour: number | null;
+	queuedRenders: number | null;
 }
 
 /** The instance defaults; 0 means no limit. */
@@ -48,20 +54,23 @@ export function instanceLimits() {
 		boards: read('limit_boards', 0),
 		storageMb: read('limit_storage_mb', 0),
 		writesPerHour: read('limit_writes_per_hour', DEFAULT_WRITES_PER_HOUR),
-		commentsPerHour: read('limit_comments_per_hour', DEFAULT_COMMENTS_PER_HOUR)
+		commentsPerHour: read('limit_comments_per_hour', DEFAULT_COMMENTS_PER_HOUR),
+		queuedRenders: read('limit_queued_renders', DEFAULT_QUEUED_RENDERS)
 	};
 }
 
 export function limitsFor(user: LimitedUser): UserLimits {
-	if (user.role === 'admin') return { boards: null, storageBytes: null, writesPerHour: null, commentsPerHour: null };
+	if (user.role === 'admin') return { boards: null, storageBytes: null, writesPerHour: null, commentsPerHour: null, queuedRenders: null };
 	const defaults = instanceLimits();
 	const boards = user.limit_boards ?? defaults.boards;
 	const storageMb = user.limit_storage_mb ?? defaults.storageMb;
+	const queuedRenders = user.limit_queued_renders ?? defaults.queuedRenders;
 	return {
 		boards: boards > 0 ? boards : null,
 		storageBytes: storageMb > 0 ? storageMb * MB : null,
 		writesPerHour: defaults.writesPerHour > 0 ? defaults.writesPerHour : null,
-		commentsPerHour: defaults.commentsPerHour > 0 ? defaults.commentsPerHour : null
+		commentsPerHour: defaults.commentsPerHour > 0 ? defaults.commentsPerHour : null,
+		queuedRenders: queuedRenders > 0 ? queuedRenders : null
 	};
 }
 
@@ -117,7 +126,7 @@ export async function checkDiskSpace(bytes = 0) {
 }
 
 function limitedUser(userId: string) {
-	return get<LimitedUser>('SELECT id, role, limit_boards, limit_storage_mb FROM users WHERE id = ?', userId);
+	return get<LimitedUser>('SELECT id, role, limit_boards, limit_storage_mb, limit_queued_renders FROM users WHERE id = ?', userId);
 }
 
 /**
@@ -184,4 +193,30 @@ export function checkCommentRate(user: LimitedUser, now = Date.now()) {
 /** Counts a posted comment; a refused one (empty, too long) does not count. */
 export function countComment(user: LimitedUser, now = Date.now()) {
 	if (limitsFor(user).commentsPerHour) recentIn(comments, user.id, now).push(now);
+}
+
+/** Renders waiting or running for the boards a user owns. */
+export function queuedRendersOf(ownerId: string) {
+	return count(
+		`SELECT COUNT(*) FROM render_jobs j JOIN projects p ON p.id = j.project_id
+		 WHERE p.owner_id = ? AND j.status IN ('queued','running')`,
+		ownerId
+	);
+}
+
+/** How many more renders the owner's boards may queue now; Infinity without a limit. */
+export function renderQueueRoom(ownerId: string) {
+	const owner = limitedUser(ownerId);
+	const limit = owner && limitsFor(owner).queuedRenders;
+	return limit ? Math.max(0, limit - queuedRendersOf(ownerId)) : Infinity;
+}
+
+/**
+ * Before someone queues a render by hand (History). An admin doing so is never
+ * limited; the owner's limit applies to everyone else, collaborators included.
+ */
+export function checkRenderQueue(ownerId: string, actor: { role: string }) {
+	if (actor.role === 'admin' || renderQueueRoom(ownerId) > 0) return;
+	const owner = limitedUser(ownerId);
+	throw new LimitError('limits.error.renderQueue', { limit: (owner && limitsFor(owner).queuedRenders) ?? 0 });
 }

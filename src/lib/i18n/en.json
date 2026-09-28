@@ -36,7 +36,7 @@
 	"status.running": "Rendering",
 	"status.queued": "Queued",
 	"status.failed": "Render failed",
-	"status.skipped": "Skipped",
+	"status.skipped": "Not rendered",
 	"status.none": "No render",
 	"changelog.more": {
 		"one": "and {count} more",
@@ -1024,7 +1024,7 @@
 	"instance.approval": "Approve new accounts",
 	"instance.approvalHint": "New registrations wait until an administrator approves them under Users; until then they cannot sign in.",
 	"instance.limits": "Limits per user",
-	"instance.limitsHint": "Defaults for every user; administrators have none. 0 means no limit. Boards and storage can be set per user under Users. Storage counts a user's boards: repositories and rendered output.",
+	"instance.limitsHint": "Defaults for every user; administrators have none. 0 means no limit. Boards, storage and queued renders can be set per user under Users. Storage and queued renders count the boards a user owns: repositories and rendered output, and renders waiting or running. A push with more new versions than the queue has room for renders the newest; the rest stay \"not rendered\" until rendered from the board's history.",
 	"instance.limitBoards": "Boards per user",
 	"instance.limitStorage": "Storage per user (MB)",
 	"instance.limitWrites": "Uploads and pushes per hour",
@@ -1135,5 +1135,10 @@
 		"other": "Too many new accounts from this address. Try again in {count} minutes."
 	},
 	"auth.error.registrationPaused": "Registration is paused: many accounts are waiting for an administrator's approval. Try again later.",
-	"auth.honeypot": "Leave this field empty"
+	"auth.honeypot": "Leave this field empty",
+	"instance.limitRenders": "Queued renders per user",
+	"users.limitRenders": "Queued renders",
+	"limits.error.renderQueue": "The render queue for this board's owner is full ({limit} waiting or running). Try again once some have finished.",
+	"overview.skipped": "This version was not rendered: the owner's render queue was full when it arrived. It can be rendered from the history.",
+	"overview.renderInHistory": "Open history"
 }

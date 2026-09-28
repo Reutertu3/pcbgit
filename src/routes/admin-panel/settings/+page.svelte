@@ -166,7 +166,7 @@
 	<h3 class="mb-1 text-sm font-semibold">{t('instance.limits')}</h3>
 	<p class="mb-3 text-xs leading-relaxed text-[var(--text-secondary)]">{t('instance.limitsHint')}</p>
 	<form method="POST" action="?/saveLimits" use:enhance={keepValues}>
-		<div class="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+		<div class="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
 			<div>
 				<label class="label" for="limit_boards">{t('instance.limitBoards')}</label>
 				<input class="input" id="limit_boards" name="limit_boards" type="number" min="0" value={data.limits.boards} />
@@ -182,6 +182,10 @@
 			<div>
 				<label class="label" for="limit_comments_per_hour">{t('instance.limitComments')}</label>
 				<input class="input" id="limit_comments_per_hour" name="limit_comments_per_hour" type="number" min="0" value={data.limits.commentsPerHour} />
+			</div>
+			<div>
+				<label class="label" for="limit_queued_renders">{t('instance.limitRenders')}</label>
+				<input class="input" id="limit_queued_renders" name="limit_queued_renders" type="number" min="0" value={data.limits.queuedRenders} />
 			</div>
 		</div>
 		<div class="flex flex-wrap items-center gap-3">

@@ -26,6 +26,7 @@ interface AdminUserRow {
 	is_owner: number;
 	limit_boards: number | null;
 	limit_storage_mb: number | null;
+	limit_queued_renders: number | null;
 	created_at: number;
 	project_count: number;
 	token_count: number;
@@ -40,7 +41,7 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 
 	const users = all<AdminUserRow>(
 			`SELECT u.id, u.username, u.email, u.display_name, (SELECT updated_at FROM avatars WHERE user_id = u.id) AS avatar, u.role, u.is_active,
-			   u.approved, u.is_owner, u.limit_boards, u.limit_storage_mb, u.created_at,
+			   u.approved, u.is_owner, u.limit_boards, u.limit_storage_mb, u.limit_queued_renders, u.created_at,
 			   (SELECT COUNT(*) FROM projects p WHERE p.owner_id = u.id) AS project_count,
 			   (SELECT COUNT(*) FROM access_tokens t WHERE t.user_id = u.id) AS token_count,
 			   u.last_login_at, u.last_seen_at, u.totp_secret IS NOT NULL AS two_factor
@@ -155,8 +156,21 @@ export const actions: Actions = {
 		};
 		const boards = read('boards');
 		const storage = read('storage_mb');
-		run('UPDATE users SET limit_boards = ?, limit_storage_mb = ?, updated_at = ? WHERE id = ?', boards, storage, now(), id);
-		audit(locals.user!.id, 'admin.user_limits', user.username, `boards ${boards ?? 'default'}, storage ${storage ?? 'default'} MB`);
+		const renders = read('queued_renders');
+		run(
+			'UPDATE users SET limit_boards = ?, limit_storage_mb = ?, limit_queued_renders = ?, updated_at = ? WHERE id = ?',
+			boards,
+			storage,
+			renders,
+			now(),
+			id
+		);
+		audit(
+			locals.user!.id,
+			'admin.user_limits',
+			user.username,
+			`boards ${boards ?? 'default'}, storage ${storage ?? 'default'} MB, queued renders ${renders ?? 'default'}`
+		);
 		return { success: true, message: translate(locals.locale, 'users.limitsSaved', { name: user.username }) };
 	},
 

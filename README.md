@@ -61,7 +61,8 @@
 - **Two-factor sign-in** (optional: authenticator app, recovery codes)
 - **Curated tags** in categories; users request missing ones, admins approve them
 - **Admin panel**: users, boards, tags, render queue, backups, updates, per-user
-  limits (boards, storage, uploads and pushes per hour, comments per hour),
+  limits (boards, storage, queued renders, uploads and pushes per hour, comments
+  per hour),
   approval of new accounts
 - **Snapshots** for backups and moving servers
 - **One-click and automatic updates** with a changelog

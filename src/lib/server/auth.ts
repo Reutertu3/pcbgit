@@ -25,6 +25,7 @@ export interface User {
 	totp_last_step: number | null;
 	limit_boards: number | null;
 	limit_storage_mb: number | null;
+	limit_queued_renders: number | null;
 	created_at: number;
 	updated_at: number;
 }

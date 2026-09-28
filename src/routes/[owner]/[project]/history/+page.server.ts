@@ -4,6 +4,7 @@ import type { Actions, PageServerLoad } from './$types';
 import { all, get } from '$lib/server/db';
 import { canEdit, getProject, listProjectCommits, syncCommits } from '$lib/server/projects';
 import { enqueueRender } from '$lib/server/render/worker';
+import { LimitError, checkRenderQueue } from '$lib/server/limits';
 import { kicadVersion } from '$lib/server/render/kicad';
 
 interface JobRow {
@@ -57,6 +58,17 @@ export const actions: Actions = {
 		);
 		if (!commit) return fail(404, { error: translate(locals.locale, 'error.versionNotFound') });
 
+		// Also how a version left "not rendered" by a full queue gets rendered, so the
+		// owner's queue limit applies here too (not to admins).
+		const alreadyQueued = get("SELECT 1 AS x FROM render_jobs WHERE commit_id = ? AND status IN ('queued','running')", commit.id);
+		if (!alreadyQueued) {
+			try {
+				checkRenderQueue(project.owner_id, locals.user!);
+			} catch (thrown) {
+				if (thrown instanceof LimitError) return fail(429, { error: thrown.in(locals.locale) });
+				throw thrown;
+			}
+		}
 		enqueueRender(project.id, commit.id);
 		return { success: true, message: translate(locals.locale, 'history.rerenderQueued') };
 	},
