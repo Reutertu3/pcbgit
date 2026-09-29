@@ -61,7 +61,8 @@ const CARD_SELECT = `
 	  COALESCE(hc.converted_from, '') AS converted_from,
 	  (SELECT MAX(created_at) FROM artifacts a WHERE a.commit_id = p.head_commit_id) AS head_rendered_at,
 	  EXISTS (SELECT 1 FROM artifacts a WHERE a.commit_id = p.head_commit_id AND a.kind = 'schematic_svg') AS has_schematic,
-	  EXISTS (SELECT 1 FROM artifacts a WHERE a.commit_id = p.head_commit_id AND a.kind = 'pcb_layer_svg') AS has_pcb,
+	  -- The card shows the front preview, which is stored after the layers and can fail on its own.
+	  EXISTS (SELECT 1 FROM artifacts a WHERE a.commit_id = p.head_commit_id AND a.kind = 'pcb_preview_svg' AND a.name = 'front') AS has_pcb,
 	  EXISTS (SELECT 1 FROM bom_items b WHERE b.commit_id = p.head_commit_id) AS has_bom
 	FROM projects p
 	JOIN users u ON u.id = p.owner_id

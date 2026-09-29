@@ -185,6 +185,12 @@ Code that handles untrusted input or runs as root, and has not been audited.
 - [ ] **`/new` leaves an empty board** when committing the upload fails, since the
       board is created first.
 - [ ] **`syncCommits()` only looks at the newest 200 commits** of a branch.
+- [ ] **A re-render can keep an old card thumbnail.** If a thumbnail of the previous
+      render is still being made when the commit is rendered again, it can land in
+      the new `thumbs/` and is then served as the new one (`thumbnails.ts` trusts any
+      existing file, and its in-flight key is only `commitId/name`). Rare: the
+      previous render normally warmed them. Fix: key on `head_rendered_at` and write
+      under a temporary name, renamed only if the source is unchanged.
 - [ ] **Transfer ownership.** The owner (`users.is_owner`, see [CLAUDE.md](CLAUDE.md))
       can only be changed in the database; a "make owner" action for the owner on
       the Users page would do.
