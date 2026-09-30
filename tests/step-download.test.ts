@@ -42,10 +42,13 @@ async function download(headers: Record<string, string>) {
 	return { sent, body: Buffer.from(await response.arrayBuffer()) };
 }
 
-test('the export asks for the board and its models, without copper', () => {
+test('the export asks for the board with its models, copper and silkscreen', () => {
 	const args = pcbStepArgs('/work/board.kicad_pcb', '/work/board.step');
 	assert.deepEqual(args.slice(0, 3), ['pcb', 'export', 'step']);
-	assert.ok(args.includes('--subst-models') && !args.includes('--include-tracks'));
+	// --include-tracks covers vias as well.
+	for (const flag of ['--subst-models', '--include-tracks', '--include-pads', '--include-zones', '--include-silkscreen']) {
+		assert.ok(args.includes(flag), flag);
+	}
 });
 
 test('a client that unpacks gzip gets the stored bytes, marked as gzip', async () => {

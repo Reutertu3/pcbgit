@@ -829,13 +829,13 @@ to jump to.
 ### The 3D download is a STEP
 The download offered next to the 3D view was the viewer's GLB: a mesh, which
 mechanical CAD cannot use for an enclosure. Every render now also runs
-`kicad-cli pcb export step` (board body and component models as solids; no
-copper, silkscreen or mask, which CAD has no use for and which multiply the
-size), and that is what the overview and the 3D tab offer, and what the viewer
+`kicad-cli pcb export step` (board body and component models as solids, with
+pads, tracks and vias, zones and silkscreen; the bare board, tried first, was
+not enough), and that is what the overview and the 3D tab offer, and what the viewer
 offers when it cannot show the model. The GLB stays, for the viewer only.
 
-On Touch-Matrix-LiPo the export takes about 8 s and writes 15 MB, 2.7 MB
-gzipped. It counts against the owner's storage, so it is stored as
+On Touch-Matrix-LiPo the export takes about 18 s and writes 45 MB, 8 MB
+gzipped (the bare board: 8 s, 15 MB, 2.7 MB). It counts against the owner's storage, so it is stored as
 `board.step.gz` and served as the STEP: gzip passed through to clients that
 accept it, unpacked for the rest. Versions rendered before have no STEP until
 re-rendered, and no 3D download meanwhile.

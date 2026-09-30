@@ -472,7 +472,7 @@ async function renderBoard(
 		await storeArtifact({ commitId, kind: 'pcb_glb', name: 'board.glb', data, targetName: 'board.glb', meta: { mounts: board?.mounts ?? {}, optimized: data !== original } });
 	}
 
-	// The same board as STEP: the 3D download. Text that compresses to a fifth, and
+	// The same board as STEP: the 3D download. Tens of MB of text that compresses to a fifth, and
 	// it counts against the owner's storage, so it is kept gzipped and unpacked
 	// when served (artifacts route).
 	const step = path.join(outDir, 'board.step');

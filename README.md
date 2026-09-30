@@ -298,8 +298,9 @@ were read (up to v0.7.4) show them after a re-render (History, or **Admin →
 Boards → Re-render all**).
 
 A board's overview offers the BOM (CSV), the schematic as one PDF, the 3D model
-as STEP (board and component models as solids, for enclosure design in
-mechanical CAD; versions rendered up to v0.7.4 get one with a re-render), the
+as STEP (board and component models as solids, with pads, tracks, vias, zones
+and silkscreen, for mechanical CAD; versions rendered up to v0.7.4 get one with
+a re-render), the
 source as ZIP and, under **Production Gerbers**, a fabrication ZIP for
 the board house chosen in the dropdown: that fab's file names and drill units,
 manufacturing layers only, zones refilled. The Gerber export is experimental:
