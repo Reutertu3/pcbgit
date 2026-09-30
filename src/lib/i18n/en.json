@@ -1180,5 +1180,10 @@
 	"backups.schedule.save": "Save schedule",
 	"backups.schedule.saved": "Schedule saved.",
 	"backups.schedule.last": "Last scheduled snapshot: {time},",
-	"backups.schedule.next": "Next: {time}."
+	"backups.schedule.next": "Next: {time}.",
+	"auth.showPassword": "Show password",
+	"auth.hidePassword": "Hide password",
+	"account.repeatPassword": "Repeat the new password",
+	"auth.error.passwordMismatch": "The two passwords do not match.",
+	"auth.repeatPassword": "Repeat the password"
 }

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import PasswordInput from '$lib/components/PasswordInput.svelte';
 	import { enhance } from '$app/forms';
 	import { keepValues } from '$lib/forms';
 	import Icon from '$lib/components/Icon.svelte';
@@ -57,7 +58,7 @@
 				</div>
 				<div>
 					<label class="label" for="new-password">{t('auth.password')}</label>
-					<input class="input" id="new-password" name="password" type="password" minlength="8" required />
+					<PasswordInput id="new-password" name="password" autocomplete="new-password" minlength={8} required />
 				</div>
 				{#if !data.adminsNeedTwoFactor}
 					<div>
@@ -230,7 +231,7 @@
 								<input type="hidden" name="id" value={user.id} />
 								<div class="min-w-48 flex-1">
 									<label class="label" for="pw-{user.id}">{t('users.newPasswordFor', { user: user.username })}</label>
-									<input class="input !py-1.5" id="pw-{user.id}" name="password" type="password" minlength="8" required />
+									<PasswordInput class="input !py-1.5" id="pw-{user.id}" name="password" autocomplete="new-password" minlength={8} required />
 								</div>
 								<button class="btn btn-sm" type="submit">{t('users.setPassword')}</button>
 								<button class="btn btn-ghost btn-sm" type="button" onclick={() => (resetting = null)}>{t('common.cancel')}</button>

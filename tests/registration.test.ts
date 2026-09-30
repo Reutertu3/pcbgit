@@ -22,7 +22,7 @@ let serial = 0;
 async function register(address: string, extra: Record<string, string> = {}) {
 	serial += 1;
 	const body = new FormData();
-	for (const [key, value] of Object.entries({ username: `maker${serial}`, email: `m${serial}@example.com`, password: 'password123', ...extra })) {
+	for (const [key, value] of Object.entries({ username: `maker${serial}`, email: `m${serial}@example.com`, password: 'password123', confirm: 'password123', ...extra })) {
 		body.set(key, value);
 	}
 	const request = new Request('http://localhost/register', { method: 'POST', body });
@@ -55,6 +55,35 @@ test('refused sign-ups (a taken name) do not use up the address\'s allowance', a
 	assert.equal((await register('10.0.0.3', { username: 'boss' })).status, 409);
 	assert.equal((await register('10.0.0.3', { username: 'boss' })).status, 409);
 	for (let i = 0; i < guard.REGISTRATIONS_PER_ADDRESS; i++) assert.equal((await register('10.0.0.3')).pending, true);
+});
+
+test('a repeated password that differs is refused, before anything is created', async () => {
+	const before = users();
+	const result = await register('10.0.0.7', { confirm: 'password124' });
+	assert.equal(result.status, 400);
+	assert.match(result.data.error, /do not match/);
+	assert.equal(users(), before);
+});
+
+test('the user center changes the password only when it is repeated correctly', async () => {
+	const settings = await import('../src/routes/settings/+page.server.ts');
+	const owner = auth.getUserByUsername('boss')!;
+	const change = async (fields: Record<string, string>) => {
+		const body = new FormData();
+		for (const [key, value] of Object.entries(fields)) body.set(key, value);
+		try {
+			return await (settings.actions.password as any)({ request: new Request('http://localhost/settings', { method: 'POST', body }), locals: { user: auth.getUserById(owner.id), locale: 'en' } });
+		} catch (thrown: any) {
+			return { location: thrown?.location };
+		}
+	};
+	const refused = await change({ current: 'password123', next: 'new-secret-1', confirm: 'new-secret-2' });
+	assert.equal(refused.status, 400);
+	assert.match(refused.data.error, /do not match/);
+	assert.ok(await auth.verifyPassword('password123', auth.getUserById(owner.id)!.password_hash), 'unchanged');
+
+	assert.equal((await change({ current: 'password123', next: 'new-secret-1', confirm: 'new-secret-1' })).location, '/login?next=/settings');
+	assert.ok(await auth.verifyPassword('new-secret-1', auth.getUserById(owner.id)!.password_hash));
 });
 
 test('the allowance comes back an hour later', () => {

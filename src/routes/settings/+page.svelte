@@ -1,4 +1,5 @@
 <script lang="ts">
+	import PasswordInput from '$lib/components/PasswordInput.svelte';
 	import { enhance } from '$app/forms';
 	import { keepValues } from '$lib/forms';
 	import Icon from '$lib/components/Icon.svelte';
@@ -12,6 +13,11 @@
 	let picture = $state<File | null>(null);
 	let uploading = $state(false);
 	const inAvatar = $derived(Boolean(form && 'avatar' in form));
+
+	let newPassword = $state('');
+	let repeatPassword = $state('');
+	// Only once something is typed in both: an empty repeat field is not yet a mismatch.
+	const passwordsDiffer = $derived(repeatPassword !== '' && newPassword !== repeatPassword);
 </script>
 
 <svelte:head><title>{t('nav.userCenter')} · {data.site.name}</title></svelte:head>
@@ -105,13 +111,18 @@
 		<form method="POST" action="?/password" use:enhance>
 			<div class="mb-3">
 				<label class="label" for="current">{t('account.currentPassword')}</label>
-				<input class="input" id="current" name="current" type="password" autocomplete="current-password" required />
+				<PasswordInput id="current" name="current" autocomplete="current-password" required />
+			</div>
+			<div class="mb-3">
+				<label class="label" for="next">{t('account.newPassword')}</label>
+				<PasswordInput id="next" name="next" autocomplete="new-password" minlength={8} required bind:value={newPassword} />
 			</div>
 			<div class="mb-4">
-				<label class="label" for="next">{t('account.newPassword')}</label>
-				<input class="input" id="next" name="next" type="password" autocomplete="new-password" minlength="8" required />
+				<label class="label" for="confirm">{t('account.repeatPassword')}</label>
+				<PasswordInput id="confirm" name="confirm" autocomplete="new-password" minlength={8} required bind:value={repeatPassword} />
+				{#if passwordsDiffer}<p class="hint" style:color="var(--err)" aria-live="polite">{t('auth.error.passwordMismatch')}</p>{/if}
 			</div>
-			<button class="btn" type="submit">{t('account.changePassword')}</button>
+			<button class="btn" type="submit" disabled={passwordsDiffer}>{t('account.changePassword')}</button>
 		</form>
 	</section>
 </div>

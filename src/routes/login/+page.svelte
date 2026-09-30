@@ -1,4 +1,5 @@
 <script lang="ts">
+	import PasswordInput from '$lib/components/PasswordInput.svelte';
 	import { enhance } from '$app/forms';
 	import AuthCard from '$lib/components/AuthCard.svelte';
 	import FormError from '$lib/components/FormError.svelte';
@@ -38,7 +39,7 @@
 
 		<div class="mb-5">
 			<label class="label" for="password">{t('auth.password')}</label>
-			<input class="input" id="password" name="password" type="password" autocomplete="current-password" required />
+			<PasswordInput id="password" name="password" autocomplete="current-password" required />
 		</div>
 
 		<button class="btn btn-primary w-full" type="submit" disabled={submitting}>

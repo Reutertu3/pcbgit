@@ -1,4 +1,5 @@
 <script lang="ts">
+	import PasswordInput from '$lib/components/PasswordInput.svelte';
 	import { enhance } from '$app/forms';
 	import Icon from '$lib/components/Icon.svelte';
 	import FormError from '$lib/components/FormError.svelte';
@@ -104,7 +105,7 @@
 			<form method="POST" action="?/recovery" use:enhance class="mb-5">
 				<label class="label" for="recovery-password">{t('account.currentPassword')}</label>
 				<div class="flex flex-wrap gap-2">
-					<input class="input max-w-xs flex-1" id="recovery-password" name="password" type="password" autocomplete="current-password" required />
+					<PasswordInput wrapperClass="max-w-xs flex-1" id="recovery-password" name="password" autocomplete="current-password" required />
 					<button class="btn" type="submit">{t('twofactor.regenerate')}</button>
 				</div>
 				<p class="hint">{t('twofactor.regenerateHint')}</p>
@@ -112,7 +113,7 @@
 			<form method="POST" action="?/replace" use:enhance class="mb-5">
 				<label class="label" for="replace-password">{t('account.currentPassword')}</label>
 				<div class="flex flex-wrap gap-2">
-					<input class="input max-w-xs flex-1" id="replace-password" name="password" type="password" autocomplete="current-password" required />
+					<PasswordInput wrapperClass="max-w-xs flex-1" id="replace-password" name="password" autocomplete="current-password" required />
 					<button class="btn" type="submit">{t('twofactor.replace')}</button>
 				</div>
 				<p class="hint">{t('twofactor.replaceHint')}</p>
@@ -123,7 +124,7 @@
 				<form method="POST" action="?/disable" use:enhance>
 					<label class="label" for="disable-password">{t('account.currentPassword')}</label>
 					<div class="flex flex-wrap gap-2">
-						<input class="input max-w-xs flex-1" id="disable-password" name="password" type="password" autocomplete="current-password" required />
+						<PasswordInput wrapperClass="max-w-xs flex-1" id="disable-password" name="password" autocomplete="current-password" required />
 						<button class="btn btn-danger" type="submit">{t('twofactor.disable')}</button>
 					</div>
 				</form>

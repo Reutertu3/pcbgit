@@ -1180,5 +1180,10 @@
 	"backups.schedule.save": "Zeitplan speichern",
 	"backups.schedule.saved": "Zeitplan gespeichert.",
 	"backups.schedule.last": "Letzter geplanter Snapshot: {time},",
-	"backups.schedule.next": "Nächster: {time}."
+	"backups.schedule.next": "Nächster: {time}.",
+	"auth.showPassword": "Passwort anzeigen",
+	"auth.hidePassword": "Passwort verbergen",
+	"account.repeatPassword": "Neues Passwort wiederholen",
+	"auth.error.passwordMismatch": "Die beiden Passwörter stimmen nicht überein.",
+	"auth.repeatPassword": "Passwort wiederholen"
 }

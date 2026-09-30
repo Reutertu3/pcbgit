@@ -71,11 +71,13 @@ export const actions: Actions = {
 		const form = await request.formData();
 		const current = String(form.get('current') ?? '');
 		const next = String(form.get('next') ?? '');
+		const confirm = String(form.get('confirm') ?? '');
 
 		if (!(await verifyPassword(current, locals.user.password_hash))) {
 			return fail(401, { error: translate(locals.locale, 'account.error.currentPassword') });
 		}
 		if (next.length < 8) return fail(400, { error: translate(locals.locale, 'account.error.newPasswordShort') });
+		if (next !== confirm) return fail(400, { error: translate(locals.locale, 'auth.error.passwordMismatch') });
 
 		run('UPDATE users SET password_hash = ?, updated_at = ? WHERE id = ?', await hashPasswordAsync(next), now(), locals.user.id);
 		// Other devices should not keep a session opened with the old password.

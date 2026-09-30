@@ -57,6 +57,9 @@ export const actions: Actions = {
 		if (password.length < 8) {
 			return fail(400, { error: translate(locals.locale, 'auth.error.passwordShort'), ...values });
 		}
+		if (password !== String(form.get('confirm') ?? '')) {
+			return fail(400, { error: translate(locals.locale, 'auth.error.passwordMismatch'), ...values });
+		}
 		if (getUserByUsername(username)) {
 			return fail(409, { error: translate(locals.locale, 'auth.error.usernameTaken'), ...values });
 		}

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import PasswordInput from '$lib/components/PasswordInput.svelte';
 	import { enhance } from '$app/forms';
 	import AuthCard from '$lib/components/AuthCard.svelte';
 	import FormError from '$lib/components/FormError.svelte';
@@ -6,6 +7,9 @@
 
 	let { data, form } = $props();
 	let submitting = $state(false);
+	let password = $state('');
+	let repeatPassword = $state('');
+	const passwordsDiffer = $derived(repeatPassword !== '' && password !== repeatPassword);
 </script>
 
 <svelte:head><title>{t('nav.register')} · {data.site.name}</title></svelte:head>
@@ -52,10 +56,15 @@
 				<input class="input" id="email" name="email" type="email" value={form?.email ?? ''} autocomplete="email" required />
 			</div>
 
-			<div class="mb-5">
+			<div class="mb-3">
 				<label class="label" for="password">{t('auth.password')}</label>
-				<input class="input" id="password" name="password" type="password" autocomplete="new-password" minlength="8" required />
+				<PasswordInput id="password" name="password" autocomplete="new-password" minlength={8} required bind:value={password} />
 				<p class="hint">{t('auth.passwordHint')}</p>
+			</div>
+			<div class="mb-5">
+				<label class="label" for="confirm">{t('auth.repeatPassword')}</label>
+				<PasswordInput id="confirm" name="confirm" autocomplete="new-password" minlength={8} required bind:value={repeatPassword} />
+				{#if passwordsDiffer}<p class="hint" style:color="var(--err)" aria-live="polite">{t('auth.error.passwordMismatch')}</p>{/if}
 			</div>
 
 			<!-- Honeypot: off-screen rather than display:none, which some bots skip; hidden
@@ -66,7 +75,7 @@
 				<input id="leave_empty" name="leave_empty" type="text" tabindex="-1" autocomplete="off" />
 			</div>
 
-			<button class="btn btn-primary w-full" type="submit" disabled={submitting}>
+			<button class="btn btn-primary w-full" type="submit" disabled={submitting || passwordsDiffer}>
 				{submitting ? t('auth.creatingAccount') : t('nav.register')}
 			</button>
 		</form>
