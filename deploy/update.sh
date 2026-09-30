@@ -6,6 +6,11 @@
 #   sudo deploy/update.sh --release   install the newest release (tag vX.Y.Z), as
 #                                     the image GitHub Actions built for it
 #   sudo deploy/update.sh --check     only fetch and record what either would bring
+#   deploy/update.sh --release-info   print the newest release and whether its image
+#                                     can be pulled here (for install.sh), nothing else
+#
+# On a first start (nothing running), --release installs the newest release even
+# when the checkout is already at or past it: the checkout goes back to the tag.
 #
 # Run by systemd: pcbgit-update when the admin panel asks for an update,
 # pcbgit-check hourly and when the panel asks for a check. With automatic updates
@@ -24,9 +29,14 @@ RELEASE=""
 case "${1:-}" in
 	--check) MODE=check ;;
 	--release) RELEASE=latest ;;
+	--release-info) MODE=info ;;
 esac
 
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# Run by hand in a terminal (systemd runs have none): wait for a running check
+# instead of giving up, and show each step, since the details only go to the log.
+INTERACTIVE=0
+[[ -t 2 ]] && INTERACTIVE=1
 CONTROL_DIR="${PCBGIT_CONTROL_DIR:-/var/lib/pcbgit-control}"
 COMPOSE_FILES="${PCBGIT_COMPOSE_FILES:-docker-compose.yml:deploy/docker-compose.prod.yml}"
 STATUS="$CONTROL_DIR/update-status.json"
@@ -89,10 +99,11 @@ remote_web_url() {
 # Where a release's image comes from: GitHub Actions builds one for every published
 # release (.github/workflows/ci.yml), so this small server does not have to.
 # PCBGIT_UPDATE_IMAGE in .env: unset follows a GitHub remote (ghcr.io/<owner>/<repo>),
-# "build" always builds here. Nothing means build here.
+# "build" always builds here. Nothing means build here. The same variable in the
+# environment wins, so install.sh can build one release here without editing .env.
 image_repo() {
 	local setting repo
-	setting=$(env_setting PCBGIT_UPDATE_IMAGE)
+	setting=${PCBGIT_UPDATE_IMAGE:-$(env_setting PCBGIT_UPDATE_IMAGE)}
 	if [[ -n "$setting" ]]; then
 		[[ "$setting" == build ]] || echo "$setting"
 		return 0
@@ -184,13 +195,18 @@ ci_state() {
 
 # Whether the image of a commit can be pulled: ready, building (CI still running),
 # failed (CI failed, so no image will come), missing, unreadable (a private package
-# or no network), local (edits on this server, which the image does not have), or
-# off (built here).
+# or no network), local (edits on this server, which the image does not have), arch
+# (no image for this server's processor: CI builds amd64 only), or off (built here).
 image_state() { # repo, full commit
-	local answer
+	local answer manifest
 	[[ -n "$1" ]] || { echo off; return; }
 	if [[ -n "$(git_ status --porcelain --untracked-files=no)" ]]; then echo local; return; fi
-	if answer=$(docker manifest inspect "$1:sha-$2" 2>&1 >/dev/null); then echo ready; return; fi
+	if manifest=$(docker manifest inspect "$1:sha-$2" 2>/dev/null); then
+		# An amd64 image pulled onto an ARM server would only fail its health check.
+		if grep -q "\"architecture\": *\"$(docker version --format '{{.Server.Arch}}')\"" <<<"$manifest"; then echo ready; else echo arch; fi
+		return
+	fi
+	answer=$(docker manifest inspect "$1:sha-$2" 2>&1 >/dev/null || true)
 	if ! grep -qi 'manifest unknown\|not found' <<<"$answer"; then echo unreadable; return; fi
 	case "$(ci_state "$2")" in
 		queued | in_progress | waiting | requested | pending) echo building ;;
@@ -271,7 +287,7 @@ auto_update() {
 	local available release commit
 	available=$(cat "$CONTROL_DIR/update-available.json")
 	grep -q '"release_new":true,' <<<"$available" || return 0
-	grep -Eq '"image":"(ready|off)"' <<<"$available" || return 0
+	grep -Eq '"image":"(ready|off|arch)"' <<<"$available" || return 0
 	release=$(sed -n 's/.*"release":"\([^"]*\)".*/\1/p' <<<"$available")
 	commit=$(sed -n 's/.*"release_commit":"\([0-9a-f]*\)".*/\1/p' <<<"$available")
 	if [[ -f "$STATUS" ]] && grep -q '"state":"failed"' "$STATUS" && grep -q "\"target\":\"$commit\"" "$STATUS"; then
@@ -280,6 +296,15 @@ auto_update() {
 	printf '{"by":"automatic","auto":true,"release":"%s","force":false,"requested_at":"%s"}\n' "$release" "$(date -Is)" >"$REQUEST.tmp"
 	publish "$REQUEST"
 }
+
+# For install.sh: the newest release and its image state, e.g. "v0.8.1 ready".
+if [[ "$MODE" == info ]]; then
+	git_ fetch --quiet --tags origin 2>/dev/null || true
+	release=$(latest_release)
+	[[ -n "$release" ]] || { echo "none off"; exit 0; }
+	echo "$release $(image_state "$(image_repo)" "$(git_ rev-parse "refs/tags/$release^{commit}")")"
+	exit 0
+fi
 
 mkdir -p "$CONTROL_DIR"
 
@@ -293,8 +318,13 @@ fi
 exec 9>"$CONTROL_DIR/.lock"
 if ! flock -n 9; then
 	# An update in progress refreshes the availability itself when it finishes.
-	echo "An update or check is already running." >&2
-	exit 0
+	if [[ $INTERACTIVE == 0 ]]; then
+		echo "An update or check is already running." >&2
+		exit 0
+	fi
+	# By hand, e.g. right after install.sh, whose first check is still fetching.
+	echo "Waiting for a running update or check to finish..." >&2
+	flock 9
 fi
 
 if [[ "$MODE" == check ]]; then
@@ -346,6 +376,7 @@ write_status() { # state, step, message
 	printf '{"state":"%s","step":"%s","how":"%s","trigger":"%s","message":"%s","started":%s,"finished":%s,"from":"%s","to":"%s","target":"%s","release":"%s"}\n' \
 		"$1" "$2" "$how" "$trigger" "$3" "$started" "$finished" "$from" "$to" "${target:0:7}" "$RELEASE" >"$STATUS.tmp"
 	publish "$STATUS"
+	[[ $INTERACTIVE == 0 ]] || printf '%s  %s\n' "$(date +%H:%M:%S)" "$3" >&2
 }
 # A download or build that fails leaves the old version running: move the checkout
 # back to it, or the next check would call the server up to date. --keep keeps
@@ -368,6 +399,7 @@ trap on_error ERR
 write_status running fetch "Fetching from GitHub"
 : >"$LOG"
 chmod 644 "$LOG"
+[[ $INTERACTIVE == 0 ]] || echo "          Details: tail -f $LOG (a first build takes several minutes)" >&2
 {
 	echo "== $(date -Is) update started (at $from)"
 	branch=$(git_ rev-parse --abbrev-ref HEAD)
@@ -390,11 +422,19 @@ if [[ -n "$RELEASE" ]]; then
 			write_status success done "Already at or past $RELEASE"
 			exit 0
 		fi
-		# Nothing running (first deploy) on a checkout at or past the release: start
-		# what is checked out, built here, rather than nothing.
-		echo "== nothing running and $RELEASE is not newer: building the checkout" >>"$LOG"
-		RELEASE=""
-		target=$(git_ rev-parse HEAD)
+		if [[ -n "$(git_ status --porcelain --untracked-files=no)" ]]; then
+			# Nothing running, and local edits the release does not have: start what
+			# is checked out, built here, rather than nothing.
+			echo "== nothing running, local changes: building the checkout" >>"$LOG"
+			RELEASE=""
+			target=$(git_ rev-parse HEAD)
+		else
+			# First start on a fresh clone, usually ahead of the newest release: go back
+			# to the release, so what runs and the checkout agree (it can move on to
+			# master later with "Update from GitHub").
+			echo "== nothing running: installing $RELEASE, the checkout goes back to it" >>"$LOG"
+			first_release=1
+		fi
 	fi
 else
 	target=$(git_ rev-parse "origin/$branch")
@@ -435,12 +475,17 @@ done
 case "$state" in
 	ready) pull_ref="$repo:sha-$target" ;;
 	off) ;;
+	arch) echo "== $repo has no image for $(docker version --format '{{.Server.Arch}}'): building here" >>"$LOG" ;;
 	local) echo "== local changes in $REPO_DIR: building here instead of pulling $repo" >>"$LOG" ;;
 	*) echo "== no image $repo:sha-$target ($state): building here" >>"$LOG" ;;
 esac
 
 phase="pulling from GitHub"
-git_ merge --ff-only "$target" >>"$LOG" 2>&1
+if [[ -n "${first_release:-}" ]]; then
+	git_ reset --keep "$target" >>"$LOG" 2>&1
+else
+	git_ merge --ff-only "$target" >>"$LOG" 2>&1
+fi
 to=$(git_ rev-parse --short HEAD)
 
 # Keep the systemd units in step with the repository (new timers, fixed paths).

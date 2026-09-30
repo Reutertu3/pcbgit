@@ -33,7 +33,10 @@ the newest release is installed by automatic updates or the panel's "Install vâ€
 button (`update.sh --release`, or a request naming it: pull that image, tag it
 `pcbgit:latest`, which compose runs), and "Update from GitHub" builds the newest
 `master` commit on the server (`update.sh`). Neither goes backwards: a
-release is installed only if its commit follows the running one.
+release is installed only if its commit follows the running one, except on a first
+start, where the checkout goes back to the release tag. `deploy/install.sh` in a
+terminal writes `.env` and offers the first start (release image, release built
+here, master built here); image states include `arch` (GitHub builds amd64 only).
 The release tag is a runtime variable (`PCBGIT_TAG`), not built in, since a tag
 can come after the image. The app and `update.sh` talk only through files in
 `PCBGIT_CONTROL_DIR`: requests, the `auto-update` switch and `check-interval`

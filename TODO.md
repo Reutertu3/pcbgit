@@ -12,7 +12,7 @@
 |---|---|---|---|
 | 🔴 | [Before opening registration](#before-opening-registration) | 0 | Abuse limits a public instance needs |
 | 🟠 | [Next up](#next-up) | 5 | Fixes and chores worth doing soon |
-| 🗺️ | [Feature roadmap](#feature-roadmap) | 24 | New features, by priority |
+| 🗺️ | [Feature roadmap](#feature-roadmap) | 25 | New features, by priority |
 | 🔍 | [To review](#to-review) | 3 | Code nobody has audited yet |
 | 🟡 | [Low priority](#low-priority) | 20 | Hardening, edge cases, chores that can wait |
 | ⚪ | [Optional](#optional) | 4 | Only if wanted |
@@ -57,6 +57,25 @@ fills common gaps; **Low** matters once several people or tools share an
 instance; **Optional** needs outside services or is a niche.
 
 ### 🔴 High
+
+- **Deployment as a dedicated `pcbgit` user instead of root, with everything still working** · _Operations_ \
+  Today `install.sh` and `update.sh` run as root: the checkout in `/opt/pcbgit`,
+  system units in `/etc/systemd/system`, the control folder
+  `/var/lib/pcbgit-control` chowned to uid 10001, and the snapshot copy folder
+  too. Root should only prepare the server once: install Docker, create the user
+  `pcbgit` (in the `docker` group), set up the firewall. Everything after that
+  runs as `pcbgit`: the checkout in its home, user units
+  (`~/.config/systemd/user`, `loginctl enable-linger pcbgit` so they run while
+  nobody is logged in), the control folder in its home, named in `.env` and
+  mounted by compose instead of the fixed path. Giving the host user uid 10001,
+  the container's, makes the control and copy folders writable by both without
+  chown or ACLs. Everything must keep working: updates and checks from the
+  panel, automatic updates, rollback, pre-update and scheduled snapshots with
+  the copy folder, renderer limits, Caddy on 80/443 (the Docker daemon binds
+  them). Existing root installs keep working or get a documented move.
+  Membership in `docker` is still root-equivalent; rootless Docker was
+  considered and dropped (ports below 1024 and cgroup delegation for the
+  renderer limits need root-side setup, and make it fragile).
 
 - **Visual diff of schematic and board between two versions** · _Review_ \
   The question every hardware review asks ("what changed?"), and git cannot

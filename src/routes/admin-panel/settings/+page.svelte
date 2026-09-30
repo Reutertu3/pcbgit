@@ -79,6 +79,7 @@
 		missing: 'var(--warn)',
 		unreadable: 'var(--warn)',
 		local: 'var(--warn)',
+		arch: 'var(--text-muted)',
 		off: 'var(--text-muted)'
 	};
 

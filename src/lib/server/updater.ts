@@ -11,7 +11,7 @@ export type { Availability, ChangelogEntry, UpdateStatus };
  */
 const CONTROL_DIR = process.env.PCBGIT_CONTROL_DIR ?? '';
 
-const IMAGE_STATES: ImageState[] = ['ready', 'building', 'failed', 'missing', 'unreadable', 'local', 'off'];
+const IMAGE_STATES: ImageState[] = ['ready', 'building', 'failed', 'missing', 'unreadable', 'local', 'arch', 'off'];
 
 export function updaterEnabled() {
 	return CONTROL_DIR !== '' && fs.existsSync(CONTROL_DIR);

@@ -174,7 +174,7 @@ export interface UpdateStatus {
 	release?: string;
 }
 
-export type ImageState = 'ready' | 'building' | 'failed' | 'missing' | 'unreadable' | 'local' | 'off';
+export type ImageState = 'ready' | 'building' | 'failed' | 'missing' | 'unreadable' | 'local' | 'arch' | 'off';
 
 /** How often update.sh --check looks for new versions (set in the panel). */
 export type CheckInterval = 'hourly' | 'daily' | 'weekly' | 'monthly';

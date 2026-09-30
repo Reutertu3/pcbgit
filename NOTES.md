@@ -903,3 +903,54 @@ Tried on the local image: the timer took a snapshot a minute after start and
 copied it into the mounted folder (148 MB without output, like the pre-update
 one). The container runs on UTC, so the hour is UTC; the page says so.
 
+### A reinstall showed two rough edges in the first start
+The live server was reinstalled from a snapshot, following the README, and its
+two install commands tripped over each other. `install.sh` ends by starting one
+update check in the background, so the panel has something to show; that check
+held the lock for its `git fetch` while `update.sh`, run right after as the
+README says, found it taken and gave up with "An update or check is already
+running". Run again, `update.sh` built for several minutes without printing a
+line, since everything goes to its log, and looked hung.
+
+Run by hand in a terminal, `update.sh` now waits for a running check or update
+instead of giving up, and prints each step (the same ones the admin panel shows)
+with the time, plus where the log is. Runs from systemd, which have no terminal,
+behave as before.
+
+### An installer that asks, and a first start that downloads
+The same reinstall showed a third thing: the first start always built the image
+on the server, even with `--release`, because the fresh clone was already at the
+release commit and nothing ran yet. Building KiCad and its 3D models on a small
+server takes a long time and far more disk than the 8 GB the README asked for,
+while GitHub had already built and checked that release's image.
+
+`install.sh`, run in a terminal, now does the whole first setup. It asks for the
+settings and writes `.env` (keeping one that exists and asking only for what is
+missing): the domain, checked to be bare and warned about when its DNS does not
+point at the server; the administrator, with a generated password on request;
+renderer limits suggested from the server's memory and cores; and an optional
+snapshot copy folder, handed to uid 10001. The file is made readable by root
+only. Then it offers what to start, with the free disk space: the newest release
+as GitHub's image (the default), the same release built here, or master built
+here. Without a terminal it behaves as before, for scripted installs.
+
+On a first start, `update.sh --release` now installs the release even when the
+checkout is at or past it: the checkout goes back to the tag, so the running
+version and the checkout agree, and "Update from GitHub" can move on to master
+later. A checkout with local edits still builds what it has.
+
+GitHub builds images for amd64 only, and an ARM server (a Raspberry Pi) pulling
+one would only fail its health check and roll back, which release updates could
+already run into. The image check now compares the image's platforms with the
+server's (`docker version`) and reports `arch` when none fits; the server then
+builds the release itself, automatic updates included, and the panel says why.
+`update.sh --release-info` prints the newest release and that state for the
+installer, and `PCBGIT_UPDATE_IMAGE` in the environment overrides `.env` for one
+run ("build this release here").
+
+Tested without a server: the installer's `.env` part driven with scripted answers
+(invalid domains and names refused, a domain that does not resolve reported, a
+password with spaces quoted so compose reads it literally, a rerun keeping what
+is set), the release probe from a clean clone (ready, built here, unreadable)
+and with a stand-in `docker` claiming arm64 (arch).
+

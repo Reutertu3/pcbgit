@@ -797,6 +797,7 @@
 	"instance.image.missing": "GitHub hat kein Image dafür; automatische Updates warten auf eines.",
 	"instance.image.unreadable": "Sein Image ist nicht lesbar (privates Paket, oder GitHub nicht erreichbar); automatische Updates warten.",
 	"instance.image.local": "Dieser Server hat lokale Änderungen, daher bauen automatische Updates es hier.",
+	"instance.image.arch": "GitHub baut Images nur für x86-64-Server, daher bauen automatische Updates es auf diesem Server.",
 	"instance.image.off": "Dieser Server baut Releases selbst; automatische Updates bauen es hier.",
 	"instance.step.fetch": "Von GitHub holen",
 	"instance.step.wait": "Auf Image warten",

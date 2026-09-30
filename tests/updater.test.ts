@@ -93,6 +93,12 @@ test('the image state and source from update.sh --check are read back; unknown s
 	);
 	assert.equal(updater.updateAvailability()?.source, null);
 	assert.equal(updater.updateAvailability()?.image, null);
+	// An ARM server: the image exists, but not for its processor.
+	fs.writeFileSync(
+		path.join(control, 'update-available.json'),
+		'{"checked":1700000000,"ok":true,"branch":"master","current":"a","latest":"b","behind":1,"ahead":0,"remote":"x","source":"ghcr.io/me/pcbgit","image":"arch"}\n'
+	);
+	assert.equal(updater.updateAvailability()?.image, 'arch');
 });
 
 test('steps, how and trigger of an update are read back', () => {
