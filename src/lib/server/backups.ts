@@ -39,12 +39,14 @@ export interface PreRestoreInfo {
  */
 export async function createSnapshot(opts: {
 	includeArtifacts: boolean;
-	/** null: taken from the command line (deploy/update.sh), not by a signed-in admin. */
+	/** null: taken from the command line (deploy/update.sh) or the schedule, not by a signed-in admin. */
 	actorId: string | null;
 	/** Replaces "-lite" in the name, so snapshots of one kind can be told apart (e.g. "pre-update"). */
 	label?: string;
+	/** Roughly how large it will be (the last one of its kind): refused up front if that would not fit. */
+	expectedBytes?: number;
 }) {
-	await checkSnapshotSpace(0);
+	await checkSnapshotSpace(opts.expectedBytes ?? 0);
 	const work = await fsp.mkdtemp(path.join(TMP_DIR, 'snapshot-'));
 	try {
 		// VACUUM INTO gives a transaction-consistent copy while the app keeps running.
@@ -151,6 +153,22 @@ export function deleteBackupEntry(name: string, actorId: string | null) {
 		throw new SnapshotError('snapshot.error.badName');
 	}
 	audit(actorId, 'admin.backup_delete', name);
+}
+
+/** Snapshots with this label, newest first; "-2" and so on are same-second duplicates. */
+export function snapshotsLabelled(label: string) {
+	return listSnapshots().snapshots.filter((snapshot) => isLabelled(snapshot.name, label));
+}
+
+export function isLabelled(name: string, label: string) {
+	return name.endsWith(`-${label}.tar.gz`) || new RegExp(`-${label}-\\d+\\.tar\\.gz$`).test(name);
+}
+
+/** Keeps the newest `keep` snapshots of one label and deletes the rest; returns the deleted names. */
+export function pruneLabel(label: string, keep: number) {
+	const old = snapshotsLabelled(label).slice(Math.max(1, keep));
+	for (const snapshot of old) deleteBackupEntry(snapshot.name, null);
+	return old.map((snapshot) => snapshot.name);
 }
 
 /** Stores an uploaded archive in the backups folder after validating it. */

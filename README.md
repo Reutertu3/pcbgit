@@ -314,6 +314,16 @@ output. Uploads of any size work (sent in pieces of up to 32 MB); only free disk
 space limits them, and 1 GB always stays free. Snapshots can also be copied in:
 `docker compose cp snapshot.tar.gz pcbgit:/data/backups/`
 
+**Scheduled snapshots** (same page, off by default) are taken daily or weekly
+at a set hour of server time (the container's is UTC), without rendered output
+unless chosen. The newest few are kept (7 by default); manual, uploaded and
+pre-update snapshots are never deleted by the schedule. A snapshot that would
+not fit above the free-disk minimum is skipped and tried again an hour later,
+and the page shows the last result. They sit on the same disk as everything
+else, so for a real backup set `PCBGIT_BACKUP_COPY_HOST` in `.env` to a folder on
+another disk or a NAS mount: each scheduled snapshot is copied there, with the
+same retention.
+
 > [!WARNING]
 > A restore replaces users, boards, repositories and settings with the
 > snapshot's, then restarts pcbgit. The previous data is moved to
@@ -362,6 +372,7 @@ Set in `.env`:
 | `PCBGIT_RENDER_MEMORY` | `4g` | Renderer memory limit; below the server's total. `0`: none |
 | `PCBGIT_RENDER_CPUS` | `2` | Renderer CPU limit. `0`: none |
 | `PCBGIT_MIN_FREE_DISK` | `1G` | Always kept free: below it uploads, pushes and snapshots are refused and renders wait |
+| `PCBGIT_BACKUP_COPY_HOST` | — | Host folder (e.g. a NAS mount, writable by uid 10001) that scheduled snapshots are also copied to |
 | `PCBGIT_UPDATE_IMAGE` | `ghcr.io/<owner>/<repo>` of a GitHub remote | Where releases are pulled from (tagged `sha-<commit>`); `build` builds them on the server |
 | `PCBGIT_UPDATE_SNAPSHOT` | `true` | `false` skips the snapshot before updates |
 

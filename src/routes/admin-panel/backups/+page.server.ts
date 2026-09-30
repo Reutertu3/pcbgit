@@ -7,6 +7,7 @@ import { freeDiskSpace } from '$lib/server/limits';
 import { DATA_DIR } from '$lib/server/paths';
 import { bodySizeLimit } from '$lib/server/upload';
 import { SnapshotError, cancelPendingRestore, pendingRestore, stageSnapshot } from '$lib/server/restore';
+import { SCHEDULES, copyDir, copyDirState, saveScheduleSettings, scheduleSettings, scheduleStatus, type Schedule } from '$lib/server/backupschedule';
 
 /** Under Docker the restart policy brings the server back; elsewhere an admin restarts it. */
 const AUTO_RESTART = process.env.PCBGIT_RESTART_ON_RESTORE === 'true';
@@ -17,8 +18,17 @@ function message(error: unknown, locale: Locale) {
 		: translate(locale, 'backups.error.unexpected', { detail: (error as Error).message });
 }
 
-export const load: PageServerLoad = async () => ({
+export const load: PageServerLoad = async ({ locals }) => ({
 	...listSnapshots(),
+	schedule: {
+		...scheduleSettings(),
+		...scheduleStatus(locals.locale),
+		copyDir: copyDir(),
+		copyState: copyDirState(),
+		// The hour is server time, which need not be the viewer's.
+		serverTime: new Date().toTimeString().slice(0, 5),
+		serverZone: Intl.DateTimeFormat().resolvedOptions().timeZone
+	},
 	pending: pendingRestore(DATA_DIR),
 	autoRestart: AUTO_RESTART,
 	pieceSize: pieceSize(),
@@ -40,6 +50,21 @@ export const actions: Actions = {
 		} catch (error) {
 			return fail(500, { error: message(error, locals.locale) });
 		}
+	},
+
+	saveSchedule: async ({ request, locals }) => {
+		const form = await request.formData();
+		const schedule = String(form.get('schedule'));
+		saveScheduleSettings(
+			{
+				schedule: (SCHEDULES as readonly string[]).includes(schedule) ? (schedule as Schedule) : 'off',
+				hour: Number(form.get('hour')),
+				keep: Number(form.get('keep')),
+				includeArtifacts: form.get('artifacts') === 'on'
+			},
+			locals.user!.id
+		);
+		return { success: true, saved: true, scope: 'schedule', message: translate(locals.locale, 'backups.schedule.saved') };
 	},
 
 	upload: async ({ request, locals }) => {

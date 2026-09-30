@@ -4,6 +4,8 @@
 	import Icon from '$lib/components/Icon.svelte';
 	import Switch from '$lib/components/Switch.svelte';
 	import FormError from '$lib/components/FormError.svelte';
+	import SavedNote from '$lib/components/SavedNote.svelte';
+	import { keepValues } from '$lib/forms';
 	import { formatBytes, formatDateTime, relativeTime } from '$lib/format';
 	import { t, tParts } from '$lib/i18n/t';
 
@@ -94,7 +96,7 @@
 	</p>
 </div>
 
-{#if form?.message}<FormError message={form.message} kind="success" />{/if}
+{#if form?.message && !('saved' in form)}<FormError message={form.message} kind="success" />{/if}
 {#if form?.error}<FormError message={form.error} />{/if}
 
 {#if data.pending && !form?.restarting}
@@ -178,6 +180,62 @@
 		{/if}
 	</section>
 </div>
+
+<section class="surface mt-4 p-4">
+	<h3 class="mb-1 text-sm font-semibold">{t('backups.schedule.title')}</h3>
+	<p class="mb-3 text-xs leading-relaxed text-[var(--text-secondary)]">{t('backups.schedule.hint', { keep: data.schedule.keep })}</p>
+	<form method="POST" action="?/saveSchedule" use:enhance={keepValues}>
+		<div class="mb-3 grid gap-3 sm:grid-cols-3">
+			<div>
+				<label class="label" for="schedule">{t('backups.schedule.when')}</label>
+				<select class="select" id="schedule" name="schedule" value={data.schedule.schedule}>
+					<option value="off">{t('backups.schedule.off')}</option>
+					<option value="daily">{t('backups.schedule.daily')}</option>
+					<option value="weekly">{t('backups.schedule.weekly')}</option>
+				</select>
+			</div>
+			<div>
+				<label class="label" for="hour">{t('backups.schedule.hour')}</label>
+				<select class="select" id="hour" name="hour" value={String(data.schedule.hour)}>
+					{#each Array.from({ length: 24 }, (_, hour) => hour) as hour}
+						<option value={String(hour)}>{String(hour).padStart(2, '0')}:00</option>
+					{/each}
+				</select>
+				<p class="hint">{t('backups.schedule.serverTime', { time: data.schedule.serverTime, zone: data.schedule.serverZone })}</p>
+			</div>
+			<div>
+				<label class="label" for="keep">{t('backups.schedule.keep')}</label>
+				<input class="input" id="keep" name="keep" type="number" min="1" max="100" value={data.schedule.keep} />
+			</div>
+		</div>
+		<Switch name="artifacts" checked={data.schedule.includeArtifacts} class="mb-3">
+			<span class="block text-sm">{t('backups.includeOutput')}</span>
+			<span class="block text-xs leading-relaxed text-[var(--text-muted)]">{t('backups.schedule.outputHint')}</span>
+		</Switch>
+		<p class="mb-3 text-xs leading-relaxed text-[var(--text-secondary)]">
+			{#if data.schedule.copyState === 'unset'}
+				{#each tParts('backups.schedule.copyUnset') as part}{#if typeof part === 'string'}{part}{:else}<span class="mono">PCBGIT_BACKUP_COPY_DIR</span>{/if}{/each}
+			{:else if data.schedule.copyState === 'ok'}
+				{t('backups.schedule.copyOk')} <span class="mono">{data.schedule.copyDir}</span>
+			{:else}
+				<span style:color="var(--err)">{t('backups.schedule.copyUnwritable')} <span class="mono">{data.schedule.copyDir}</span></span>
+			{/if}
+		</p>
+		<div class="flex flex-wrap items-center gap-3">
+			<button class="btn btn-primary btn-sm" type="submit">{t('backups.schedule.save')}</button>
+			<SavedNote message={form && 'saved' in form && form.scope === 'schedule' ? form.message : null} token={form} />
+		</div>
+	</form>
+	{#if data.schedule.schedule !== 'off' || data.schedule.lastRun}
+		<div class="mt-3 space-y-0.5 border-t pt-3 text-xs text-[var(--text-secondary)]">
+			{#if data.schedule.lastRun}
+				<p>{t('backups.schedule.last', { time: formatDateTime(data.schedule.lastRun) })} <span class="mono">{data.schedule.lastName}</span></p>
+			{/if}
+			{#if data.schedule.next}<p>{t('backups.schedule.next', { time: formatDateTime(data.schedule.next) })}</p>{/if}
+			{#if data.schedule.error}<p style:color="var(--err)">{data.schedule.error}</p>{/if}
+		</div>
+	{/if}
+</section>
 
 <section class="surface mt-4 overflow-hidden">
 	<h3 class="border-b px-4 py-2.5 text-sm font-semibold">

@@ -1,7 +1,7 @@
 # TODO
 
 > [!NOTE]
-> Only what is still open, as of 2026-09-30; each item appears once. What was done,
+> Only what is still open, as of 2026-10-01; each item appears once. What was done,
 > and why, is in [NOTES.md](NOTES.md): an item moves there when it is finished.
 > Registration is closed on pcbgit.com, so the first group only becomes urgent
 > once strangers can sign up.
@@ -12,7 +12,7 @@
 |---|---|---|---|
 | 🔴 | [Before opening registration](#before-opening-registration) | 0 | Abuse limits a public instance needs |
 | 🟠 | [Next up](#next-up) | 5 | Fixes and chores worth doing soon |
-| 🗺️ | [Feature roadmap](#feature-roadmap) | 25 | New features, by priority |
+| 🗺️ | [Feature roadmap](#feature-roadmap) | 24 | New features, by priority |
 | 🔍 | [To review](#to-review) | 3 | Code nobody has audited yet |
 | 🟡 | [Low priority](#low-priority) | 20 | Hardening, edge cases, chores that can wait |
 | ⚪ | [Optional](#optional) | 4 | Only if wanted |
@@ -85,10 +85,6 @@ instance; **Optional** needs outside services or is a niche.
   turn it off. Admins from before may still have none, the `.env` owner among
   them: ask them to set it up at sign-in. Passkeys (WebAuthn) as a second kind
   of factor.
-- **Scheduled snapshots with retention (e.g. daily, keep 7)** · _Operations_ \
-  Snapshots are taken by hand and before updates only; a homelab server usually
-  has no other backup. A timer in the app, a retention count and a free-disk
-  check; optionally copy to a second path (NAS mount).
 
 ### 🟠 Medium
 

@@ -1161,5 +1161,23 @@
 		"one": " {count} administrator has none yet and keeps the role until it is set up.",
 		"other": " {count} administrators have none yet and keep the role until it is set up."
 	},
-	"instance.error.ownerOnly": "Only the owner can change this."
+	"instance.error.ownerOnly": "Only the owner can change this.",
+	"backups.schedule.title": "Scheduled snapshots",
+	"backups.schedule.hint": "Taken automatically; the newest {keep} are kept and older scheduled ones deleted. Manual, uploaded and pre-update snapshots are never deleted by the schedule. A snapshot is skipped when it would not fit above the minimum free disk space.",
+	"backups.schedule.when": "Schedule",
+	"backups.schedule.off": "Off",
+	"backups.schedule.daily": "Daily",
+	"backups.schedule.weekly": "Weekly",
+	"backups.schedule.hour": "At",
+	"backups.schedule.serverTime": "Server time, now {time} ({zone}).",
+	"backups.schedule.keep": "Keep the newest",
+	"backups.schedule.outputHint": "Rendered output makes snapshots many times larger. Without it, a restore renders every board again.",
+	"backups.schedule.copyUnset": "Copies to a second folder, such as a NAS mount, are off: set [[var]] to a folder mounted into the container.",
+	"backups.schedule.copyOk": "Each scheduled snapshot is also copied, with the same retention, to",
+	"backups.schedule.copyUnwritable": "The copy folder is missing or not writable:",
+	"backups.schedule.copyFailed": "The snapshot was taken, but copying it to {dir} failed: {detail}",
+	"backups.schedule.save": "Save schedule",
+	"backups.schedule.saved": "Schedule saved.",
+	"backups.schedule.last": "Last scheduled snapshot: {time},",
+	"backups.schedule.next": "Next: {time}."
 }

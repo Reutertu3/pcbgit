@@ -41,9 +41,14 @@ services:
       # Render tools run in the renderer service below, reached through this socket.
       PCBGIT_RENDER_DIR: /work
       PCBGIT_RENDER_SOCKET: /work/runner.sock
+      # Scheduled snapshots are also copied here, when PCBGIT_BACKUP_COPY_HOST is set.
+      PCBGIT_BACKUP_COPY_DIR: ${PCBGIT_BACKUP_COPY_HOST:+/backup-copy}
     volumes:
       - pcbgit-data:/data
       - pcbgit-render:/work
+      # A second folder for snapshot copies, e.g. a NAS mount, writable by uid 10001.
+      # Unset, an empty placeholder is mounted and nothing is copied.
+      - ${PCBGIT_BACKUP_COPY_HOST:-./deploy/no-backup-copy}:/backup-copy
     depends_on:
       - renderer
     # The app runs as an unprivileged user on port 3000 and needs no capabilities.

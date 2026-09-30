@@ -5,7 +5,7 @@
 > heading per milestone. Open work lives in [TODO.md](TODO.md); working rules for
 > the code live in [CLAUDE.md](CLAUDE.md).
 
-**Jump to:** [Releases](#releases) · [2026-09-22](#2026-09-22) · [2026-09-23](#2026-09-23) · [2026-09-24](#2026-09-24) · [2026-09-25](#2026-09-25) · [2026-09-26](#2026-09-26) · [2026-09-27](#2026-09-27) · [2026-09-28](#2026-09-28) · [2026-09-29](#2026-09-29) · [2026-09-30](#2026-09-30)
+**Jump to:** [Releases](#releases) · [2026-09-22](#2026-09-22) · [2026-09-23](#2026-09-23) · [2026-09-24](#2026-09-24) · [2026-09-25](#2026-09-25) · [2026-09-26](#2026-09-26) · [2026-09-27](#2026-09-27) · [2026-09-28](#2026-09-28) · [2026-09-29](#2026-09-29) · [2026-09-30](#2026-09-30) · [2026-10-01](#2026-10-01)
 
 ## Releases
 
@@ -870,3 +870,35 @@ for every account, whatever the switch says.
 Left on the TODO: admins from before keep their role without 2FA (the switch
 says how many), and the first admin made at startup has none. The owner's
 command-line reset still turns the owner's off, as the way back in.
+
+## 2026-10-01
+
+### Scheduled snapshots
+Snapshots were taken by hand and before updates only, and a homelab server
+usually has no other backup. Admin → Backups now has a schedule: off (the
+default), daily or weekly, at a set hour of server time, keeping the newest few
+(7 by default), with or without rendered output (without by default: output is
+most of the size and a restore renders everything again). A timer in the app
+looks every 10 minutes whether the next slot has come; the first run is the
+first slot after switching it on.
+
+Retention only deletes snapshots the schedule made (label `scheduled`); manual,
+uploaded and pre-update ones stay. The pre-update script's own "keep 3" now uses
+the same helper. A snapshot that would not fit above the free-disk minimum,
+judged by the size of the last scheduled one, is skipped and tried again an
+hour later; the page shows the last result and the next run, with errors in the
+viewer's language.
+
+A snapshot on the same disk does not survive that disk. `PCBGIT_BACKUP_COPY_HOST`
+in `.env` names a host folder (another disk, a NAS mount) that compose mounts at
+`/backup-copy`; each scheduled snapshot is copied there under a temporary name,
+then renamed, with the same retention. Compose's `${VAR:+…}` sets the app's
+`PCBGIT_BACKUP_COPY_DIR` only when that is set; unset, an empty placeholder
+folder is mounted instead, so one `.env` line is all it takes, with no change to
+`update.sh` or the compose files. A copy that fails is reported, and the
+snapshot still counts.
+
+Tried on the local image: the timer took a snapshot a minute after start and
+copied it into the mounted folder (148 MB without output, like the pre-update
+one). The container runs on UTC, so the hour is UTC; the page says so.
+

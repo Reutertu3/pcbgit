@@ -5,6 +5,7 @@ import { recoverStuckJobs, rerenderAfterRestore } from '$lib/server/render/worke
 import { bootstrap } from '$lib/server/bootstrap';
 import { detectLocale, LOCALE_COOKIE } from '$lib/i18n';
 import { isCrossSiteFormPost } from '$lib/server/csrf';
+import { startBackupSchedule } from '$lib/server/backupschedule';
 
 export const SESSION_COOKIE = 'pcbgit_session';
 
@@ -22,6 +23,7 @@ bootstrap();
 purgeExpiredSessions();
 recoverStuckJobs();
 rerenderAfterRestore();
+startBackupSchedule();
 
 export const handle: Handle = async ({ event, resolve }) => {
 	// Replaces SvelteKit's ORIGIN-based check; see $lib/server/csrf.

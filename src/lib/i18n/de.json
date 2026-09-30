@@ -1161,5 +1161,23 @@
 		"one": " {count} Administrator hat noch keine und behält die Rolle, bis sie eingerichtet ist.",
 		"other": " {count} Administratoren haben noch keine und behalten die Rolle, bis sie eingerichtet ist."
 	},
-	"instance.error.ownerOnly": "Nur der Besitzer kann das ändern."
+	"instance.error.ownerOnly": "Nur der Besitzer kann das ändern.",
+	"backups.schedule.title": "Geplante Snapshots",
+	"backups.schedule.hint": "Werden automatisch erstellt; die neuesten {keep} bleiben, ältere geplante werden gelöscht. Manuelle, hochgeladene und Snapshots vor Updates löscht der Zeitplan nie. Ein Snapshot wird übersprungen, wenn er nicht über den Mindestplatz auf dem Datenträger passt.",
+	"backups.schedule.when": "Zeitplan",
+	"backups.schedule.off": "Aus",
+	"backups.schedule.daily": "Täglich",
+	"backups.schedule.weekly": "Wöchentlich",
+	"backups.schedule.hour": "Um",
+	"backups.schedule.serverTime": "Serverzeit, jetzt {time} ({zone}).",
+	"backups.schedule.keep": "Die neuesten behalten",
+	"backups.schedule.outputHint": "Gerenderte Ausgaben machen Snapshots um ein Vielfaches größer. Ohne sie rendert eine Wiederherstellung alle Boards neu.",
+	"backups.schedule.copyUnset": "Kopien in einen zweiten Ordner, etwa ein NAS, sind aus: Setze [[var]] auf einen in den Container eingebundenen Ordner.",
+	"backups.schedule.copyOk": "Jeder geplante Snapshot wird außerdem, mit derselben Aufbewahrung, kopiert nach",
+	"backups.schedule.copyUnwritable": "Der Ordner für Kopien fehlt oder ist nicht beschreibbar:",
+	"backups.schedule.copyFailed": "Der Snapshot wurde erstellt, aber das Kopieren nach {dir} ist fehlgeschlagen: {detail}",
+	"backups.schedule.save": "Zeitplan speichern",
+	"backups.schedule.saved": "Zeitplan gespeichert.",
+	"backups.schedule.last": "Letzter geplanter Snapshot: {time},",
+	"backups.schedule.next": "Nächster: {time}."
 }

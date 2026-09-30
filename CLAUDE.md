@@ -209,6 +209,13 @@ converter takes untrusted XML: keep its reader entity-free and capped
   lists, nowhere else. iBOM shows a column for every field it is given, so it only
   gets the ones the board file has (`partFieldsIn()`). Lines are grouped by value,
   footprint and LCSC number, and the BOM diff matches on those plus the MPN.
+- **Scheduled snapshots** (`backupschedule.ts`) run from a timer started in
+  hooks.server.ts, checking every 10 minutes whether the next slot is due
+  (`nextRun()`, settings `backup_*`). They carry the label `scheduled`, and
+  retention only ever deletes that label (`pruneLabel()`, which the pre-update
+  script uses too). The copy folder is `/backup-copy`, set by
+  `PCBGIT_BACKUP_COPY_HOST`; unset, compose mounts an empty placeholder and
+  `PCBGIT_BACKUP_COPY_DIR` stays empty.
 - **The render queue** is one in-process worker; jobs are picked by
   `ORDER BY queued_at` (ms), with ties falling back to insertion order.
 - **`syncCommits()`** only looks at the newest 200 commits of the branch.
