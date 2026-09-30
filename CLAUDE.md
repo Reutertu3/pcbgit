@@ -105,7 +105,9 @@ converter takes untrusted XML: keep its reader entity-free and capped
   `checkStorage(owner)` and `takeWrite(actor)` first; creating a board checks
   `checkNewBoard()`. Storage is the board owner's (repositories plus artifacts,
   `projects.repo_bytes` kept current by `syncCommits()`); the hourly count is
-  whoever uploads or pushes. Admins have no limits. A refused push answers the
+  whoever uploads or pushes. Admins have no limits. One push may be `maxPushBytes(actor)`
+  large (`limit_push_mb`, and for admins too never more than the disk has above
+  its minimum); git enforces it, so the client is told why. A refused push answers the
   ref request with `refusePush()` so git prints the reason. The render queue is
   limited per owner too (`renderQueueRoom()`): `syncCommits()` queues the newest
   versions it has room for and marks the rest `render_status = 'skipped'` ("not
@@ -223,7 +225,8 @@ converter takes untrusted XML: keep its reader entity-free and capped
   an hour), besides a honeypot field and a cap of 50 accounts waiting for approval. Behind a proxy the address comes from `ADDRESS_HEADER` /
   `XFF_DEPTH` (set in `deploy/docker-compose.prod.yml`); without them every visitor
   looks like the proxy and one attacker locks everyone out.
-- **Push checks** (`PUSH_CHECKS`, `receive.fsckObjects` via `GIT_CONFIG_*`) only
+- **Push checks** (`pushConfig()`: `receive.fsckObjects`, and `receive.maxInputSize`
+  for the push size limit, via `GIT_CONFIG_*`) only
   apply over HTTP: git strips those variables for local pushes, so test them
   through `runGitBackend()` (see `tests/git-checks.test.ts`).
 - **Testing a form action with curl:** send `Accept: text/html`, or SvelteKit

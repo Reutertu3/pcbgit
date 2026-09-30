@@ -61,8 +61,8 @@
 - **Two-factor sign-in** (optional: authenticator app, recovery codes)
 - **Curated tags** in categories; users request missing ones, admins approve them
 - **Admin panel**: users, boards, tags, render queue, backups, updates, per-user
-  limits (boards, storage, queued renders, uploads and pushes per hour, comments
-  per hour),
+  limits (boards, storage, queued renders, uploads and pushes per hour, push
+  size, comments per hour),
   approval of new accounts
 - **Snapshots** for backups and moving servers
 - **One-click and automatic updates** with a changelog
@@ -362,7 +362,7 @@ Set in `.env`:
 | `PCBGIT_CONTROL_DIR` | `/control` (production) | Folder shared with the host for updates; unset disables in-app updates |
 | `PCBGIT_KICAD_CLI` | `kicad-cli` | Path to the KiCad CLI |
 | `PCBGIT_IBOM` | set in the image | iBOM's `generate_interactive_bom.py`; unset skips the interactive BOM |
-| `BODY_SIZE_LIMIT` | `210M` | Largest request: uploads and pushes (snapshots are sent in smaller pieces) |
+| `BODY_SIZE_LIMIT` | `210M` | Largest request: uploads and pushes (snapshots are sent in smaller pieces). The push size limit under **Admin → Instance** (200 MB) only works below it: raise both for larger pushes |
 | `PCBGIT_RESTART_ON_RESTORE` | `true` | Restart after staging a restore |
 | `PCBGIT_RENDER_DIR` | `/work` | Render checkouts and output, shared with the `renderer` container |
 | `PCBGIT_RENDER_SOCKET` | `/work/runner.sock` | Where the app reaches the renderer; unset runs the tools in the app |

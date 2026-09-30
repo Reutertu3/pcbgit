@@ -1,7 +1,7 @@
 # TODO
 
 > [!NOTE]
-> Only what is still open, as of 2026-09-28; each item appears once. What was done,
+> Only what is still open, as of 2026-09-30; each item appears once. What was done,
 > and why, is in [NOTES.md](NOTES.md): an item moves there when it is finished.
 > Registration is closed on pcbgit.com, so the first group only becomes urgent
 > once strangers can sign up.
@@ -10,7 +10,7 @@
 
 | | Group | Open | What it is |
 |---|---|---|---|
-| 🔴 | [Before opening registration](#before-opening-registration) | 1 | Abuse limits a public instance needs |
+| 🔴 | [Before opening registration](#before-opening-registration) | 0 | Abuse limits a public instance needs |
 | 🟠 | [Next up](#next-up) | 5 | Fixes and chores worth doing soon |
 | 🗺️ | [Feature roadmap](#feature-roadmap) | 26 | New features, by priority |
 | 🔍 | [To review](#to-review) | 3 | Code nobody has audited yet |
@@ -23,12 +23,11 @@
 ## Before opening registration
 
 > [!IMPORTANT]
-> These matter as soon as strangers can sign up. Admin approval of new accounts
-> is on by default, registration is limited per address, with a honeypot and a
-> cap on waiting accounts, and renders are limited per owner (2026-09-29); email
+> These matter as soon as strangers can sign up. Nothing is open: admin approval
+> of new accounts is on by default, registration is limited per address, with a
+> honeypot and a cap on waiting accounts, renders are limited per owner
+> (2026-09-29) and the size of a push is limited (2026-09-30); email
 > verification is postponed (Optional).
-
-- [ ] **Limit the size of a `git push`.** `git-http-backend` accepts any pack size.
 
 ## Next up
 

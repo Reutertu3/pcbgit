@@ -2,7 +2,7 @@ import type { RequestHandler } from './$types';
 import { authenticateToken, getUserByUsername } from '$lib/server/auth';
 import { get } from '$lib/server/db';
 import { authRequired, parseBasicAuth, refusePush, runGitBackend } from '$lib/server/githttp';
-import { LimitError, checkStorage, checkWriteRate, takeWrite } from '$lib/server/limits';
+import { LimitError, checkStorage, checkWriteRate, maxPushBytes, takeWrite } from '$lib/server/limits';
 import { repoPath } from '$lib/server/paths';
 import { canEdit, canView, syncCommits } from '$lib/server/projects';
 import { repoExists } from '$lib/server/git';
@@ -89,7 +89,8 @@ async function handle(event: Parameters<RequestHandler>[0]) {
 		queryString,
 		headers: request.headers,
 		body: request.body,
-		remoteUser: actor?.username ?? ''
+		remoteUser: actor?.username ?? '',
+		maxPackBytes: write ? await maxPushBytes(actor!) : null
 	});
 
 	if (write && request.method === 'POST') {

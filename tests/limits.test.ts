@@ -35,16 +35,16 @@ const fresh = () => auth.getUserById(user.id)!;
 const MB = 1024 ** 2;
 
 test('limits come from the instance defaults, a user can override them, and admins have none', () => {
-	assert.deepEqual(limits.limitsFor(fresh()), { boards: null, storageBytes: null, writesPerHour: 30, commentsPerHour: 60, queuedRenders: 10 }, 'defaults: no board or storage limit');
+	assert.deepEqual(limits.limitsFor(fresh()), { boards: null, storageBytes: null, writesPerHour: 30, commentsPerHour: 60, queuedRenders: 10, pushBytes: 200 * MB }, 'defaults: no board or storage limit');
 
 	setSetting('limit_boards', '5');
 	setSetting('limit_storage_mb', '100');
-	assert.deepEqual(limits.limitsFor(fresh()), { boards: 5, storageBytes: 100 * MB, writesPerHour: 30, commentsPerHour: 60, queuedRenders: 10 });
+	assert.deepEqual(limits.limitsFor(fresh()), { boards: 5, storageBytes: 100 * MB, writesPerHour: 30, commentsPerHour: 60, queuedRenders: 10, pushBytes: 200 * MB });
 
 	run('UPDATE users SET limit_boards = 2, limit_storage_mb = 0 WHERE id = ?', user.id);
-	assert.deepEqual(limits.limitsFor(fresh()), { boards: 2, storageBytes: null, writesPerHour: 30, commentsPerHour: 60, queuedRenders: 10 }, '0 overrides to no limit');
+	assert.deepEqual(limits.limitsFor(fresh()), { boards: 2, storageBytes: null, writesPerHour: 30, commentsPerHour: 60, queuedRenders: 10, pushBytes: 200 * MB }, '0 overrides to no limit');
 
-	assert.deepEqual(limits.limitsFor(admin), { boards: null, storageBytes: null, writesPerHour: null, commentsPerHour: null, queuedRenders: null });
+	assert.deepEqual(limits.limitsFor(admin), { boards: null, storageBytes: null, writesPerHour: null, commentsPerHour: null, queuedRenders: null, pushBytes: null });
 });
 
 test('the board limit counts the boards a user owns', async () => {
@@ -189,6 +189,29 @@ test('sizes read like BODY_SIZE_LIMIT, and the free-disk minimum defaults to 1 G
 	assert.equal(limits.minFreeDisk(''), 1024 ** 3, 'an empty setting keeps the default');
 	assert.equal(limits.minFreeDisk('lots'), 1024 ** 3, 'an unreadable one too');
 	assert.equal(limits.minFreeDisk('0'), 0, '0 turns it off');
+});
+
+test('a push may be as large as the limit allows, and never more than the disk has room for', async () => {
+	const previous = process.env.PCBGIT_MIN_FREE_DISK;
+	process.env.PCBGIT_MIN_FREE_DISK = '0';
+	try {
+		const free = await limits.freeDiskSpace();
+		setSetting('limit_push_mb', '1');
+		assert.equal(await limits.maxPushBytes(fresh()), Math.min(MB, free));
+		// Admins have no limit of their own, but the disk's applies to them as well.
+		assert.ok((await limits.maxPushBytes(admin)) > MB || free <= MB);
+		assert.ok((await limits.maxPushBytes(admin)) <= (await limits.freeDiskSpace()) + 64 * MB);
+
+		setSetting('limit_push_mb', '0');
+		assert.ok((await limits.maxPushBytes(fresh())) > MB || free <= MB, '0 leaves only the disk');
+
+		process.env.PCBGIT_MIN_FREE_DISK = '1000000G';
+		assert.equal(await limits.maxPushBytes(admin), 1, 'no room at all: nothing but an empty pack fits');
+	} finally {
+		if (previous === undefined) delete process.env.PCBGIT_MIN_FREE_DISK;
+		else process.env.PCBGIT_MIN_FREE_DISK = previous;
+		setSetting('limit_push_mb', '200');
+	}
 });
 
 test('below the free-disk minimum, writes are refused for everyone, admins included', async () => {

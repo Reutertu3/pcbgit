@@ -19,17 +19,28 @@ async function findBackend() {
 }
 
 /**
- * Git checks every pushed object before storing it, for every repository without
- * touching its config: malformed objects are rejected, among them tree entries
- * named "..", ".git" or containing "/", which would otherwise reach the render
- * checkout (git archive | tar). Warnings, like old zero-padded file modes, still
- * pass. Config through the environment needs git 2.31+.
+ * What git is told about pushes, for every repository without touching its config
+ * (config through the environment needs git 2.31+).
+ *
+ * Every pushed object is checked before it is stored: malformed objects are
+ * rejected, among them tree entries named "..", ".git" or containing "/", which
+ * would otherwise reach the render checkout (git archive | tar). Warnings, like
+ * old zero-padded file modes, still pass.
+ *
+ * With `maxPackBytes`, a push whose pack is larger is refused by git itself, which
+ * stops reading and tells the client why. The request size limit alone
+ * (BODY_SIZE_LIMIT) only breaks the upload off.
  */
-export const PUSH_CHECKS = {
-	GIT_CONFIG_COUNT: '1',
-	GIT_CONFIG_KEY_0: 'receive.fsckObjects',
-	GIT_CONFIG_VALUE_0: 'true'
-};
+export function pushConfig(maxPackBytes?: number | null) {
+	const config = [['receive.fsckObjects', 'true']];
+	if (maxPackBytes) config.push(['receive.maxInputSize', String(Math.floor(maxPackBytes))]);
+	const env: Record<string, string> = { GIT_CONFIG_COUNT: String(config.length) };
+	config.forEach(([key, value], index) => {
+		env[`GIT_CONFIG_KEY_${index}`] = key;
+		env[`GIT_CONFIG_VALUE_${index}`] = value;
+	});
+	return env;
+}
 
 export interface BackendRequest {
 	repoDir: string;
@@ -40,6 +51,8 @@ export interface BackendRequest {
 	headers: Headers;
 	body: ReadableStream<Uint8Array> | null;
 	remoteUser: string;
+	/** The largest pack a push may send, in bytes; unset or 0 for no limit. */
+	maxPackBytes?: number | null;
 }
 
 /**
@@ -66,7 +79,7 @@ export async function runGitBackend(request: BackendRequest): Promise<Response> 
 		HTTP_USER_AGENT: request.headers.get('user-agent') ?? 'git',
 		GIT_COMMITTER_NAME: request.remoteUser || 'pcbgit',
 		GIT_COMMITTER_EMAIL: `${request.remoteUser || 'pcbgit'}@pcbgit.local`,
-		...PUSH_CHECKS
+		...pushConfig(request.maxPackBytes)
 	};
 
 	const contentLength = request.headers.get('content-length');

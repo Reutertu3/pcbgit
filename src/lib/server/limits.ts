@@ -4,7 +4,8 @@
  * may make per hour, how many comments they may post per hour (each one notifies
  * the board's people, so a flood of them floods inboxes too), and how many renders
  * may wait or run at once for their boards: there is one render worker, and a push
- * of 200 commits would otherwise keep everyone else waiting for hours. Instance defaults are settings (`limit_*`), a user row
+ * of 200 commits would otherwise keep everyone else waiting for hours. One push may
+ * also only be so large. Instance defaults are settings (`limit_*`), a user row
  * can override the first two, and admins have none.
  *
  * Storage and the render queue belong to the board's owner, so a collaborator's
@@ -27,6 +28,8 @@ export class LimitError extends UserError {}
 export const DEFAULT_WRITES_PER_HOUR = 30;
 export const DEFAULT_COMMENTS_PER_HOUR = 60;
 export const DEFAULT_QUEUED_RENDERS = 10;
+/** The same as the largest ZIP upload, and under the image's request size limit. */
+export const DEFAULT_PUSH_MB = 200;
 const MB = 1024 ** 2;
 const HOUR = 60 * 60 * 1000;
 
@@ -45,6 +48,8 @@ export interface UserLimits {
 	writesPerHour: number | null;
 	commentsPerHour: number | null;
 	queuedRenders: number | null;
+	/** The largest pack of one `git push`. */
+	pushBytes: number | null;
 }
 
 /** The instance defaults; 0 means no limit. */
@@ -55,12 +60,13 @@ export function instanceLimits() {
 		storageMb: read('limit_storage_mb', 0),
 		writesPerHour: read('limit_writes_per_hour', DEFAULT_WRITES_PER_HOUR),
 		commentsPerHour: read('limit_comments_per_hour', DEFAULT_COMMENTS_PER_HOUR),
-		queuedRenders: read('limit_queued_renders', DEFAULT_QUEUED_RENDERS)
+		queuedRenders: read('limit_queued_renders', DEFAULT_QUEUED_RENDERS),
+		pushMb: read('limit_push_mb', DEFAULT_PUSH_MB)
 	};
 }
 
 export function limitsFor(user: LimitedUser): UserLimits {
-	if (user.role === 'admin') return { boards: null, storageBytes: null, writesPerHour: null, commentsPerHour: null, queuedRenders: null };
+	if (user.role === 'admin') return { boards: null, storageBytes: null, writesPerHour: null, commentsPerHour: null, queuedRenders: null, pushBytes: null };
 	const defaults = instanceLimits();
 	const boards = user.limit_boards ?? defaults.boards;
 	const storageMb = user.limit_storage_mb ?? defaults.storageMb;
@@ -70,7 +76,8 @@ export function limitsFor(user: LimitedUser): UserLimits {
 		storageBytes: storageMb > 0 ? storageMb * MB : null,
 		writesPerHour: defaults.writesPerHour > 0 ? defaults.writesPerHour : null,
 		commentsPerHour: defaults.commentsPerHour > 0 ? defaults.commentsPerHour : null,
-		queuedRenders: queuedRenders > 0 ? queuedRenders : null
+		queuedRenders: queuedRenders > 0 ? queuedRenders : null,
+		pushBytes: defaults.pushMb > 0 ? defaults.pushMb * MB : null
 	};
 }
 
@@ -140,6 +147,16 @@ export async function checkStorage(ownerId: string) {
 	if (!limit) return;
 	const used = await storageUsed(ownerId);
 	if (used >= limit) throw new LimitError('limits.error.storage', { used: formatSize(used), limit: formatSize(limit) });
+}
+
+/**
+ * The largest pack a push by this user may send, for git to enforce
+ * (`pushConfig()`). Never more than the disk has above its minimum, which goes for
+ * admins too: checkStorage() only looks at what is free before the push.
+ */
+export async function maxPushBytes(actor: LimitedUser) {
+	const room = Math.max(1, (await freeDiskSpace()) - minFreeDisk());
+	return Math.min(limitsFor(actor).pushBytes ?? Infinity, room);
 }
 
 /** Before a user creates a board. */

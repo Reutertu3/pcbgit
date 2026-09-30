@@ -3,7 +3,8 @@ import { translate } from '$lib/i18n';
 import { audit, getSetting, setSetting } from '$lib/server/db';
 import { fail } from '@sveltejs/kit';
 import { resetKicadVersionCache } from '$lib/server/render/kicad';
-import { instanceLimits } from '$lib/server/limits';
+import { formatSize, instanceLimits } from '$lib/server/limits';
+import { bodySizeLimit } from '$lib/server/upload';
 import { siteTexts } from '$lib/server/site';
 import {
 	CHECK_INTERVALS,
@@ -28,6 +29,8 @@ export const load: PageServerLoad = async () => ({
 		registrationApproval: getSetting('registration_approval', 'true') === 'true'
 	},
 	limits: instanceLimits(),
+	// Requests above this are cut off before git can refuse them with a reason.
+	requestLimit: bodySizeLimit() === null ? null : formatSize(bodySizeLimit()!),
 	version: runningVersion(),
 	tag: runningTag(),
 	update: updateState(),
@@ -57,6 +60,7 @@ export const actions: Actions = {
 		setSetting('limit_writes_per_hour', read('limit_writes_per_hour'));
 		setSetting('limit_comments_per_hour', read('limit_comments_per_hour'));
 		setSetting('limit_queued_renders', read('limit_queued_renders'));
+		setSetting('limit_push_mb', read('limit_push_mb'));
 		audit(locals.user!.id, 'admin.limits_save', '', JSON.stringify(instanceLimits()));
 		return { success: true, saved: true, scope: 'limits', message: translate(locals.locale, 'instance.saved') };
 	},

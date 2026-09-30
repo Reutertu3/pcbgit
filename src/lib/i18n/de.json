@@ -1140,5 +1140,7 @@
 	"users.limitRenders": "Renderaufträge",
 	"limits.error.renderQueue": "Die Renderwarteschlange des Board-Besitzers ist voll ({limit} wartend oder laufend). Versuche es erneut, wenn einige fertig sind.",
 	"overview.skipped": "Diese Version wurde nicht gerendert: Die Renderwarteschlange des Besitzers war beim Eintreffen voll. Sie lässt sich im Verlauf rendern.",
-	"overview.renderInHistory": "Verlauf öffnen"
+	"overview.renderInHistory": "Verlauf öffnen",
+	"instance.limitPush": "Größter Git-Push (MB)",
+	"instance.limitPushHint": "Ein größerer Push wird von git abgelehnt. Unabhängig von diesem Wert bricht der Server Anfragen bei {size} ab (BODY_SIZE_LIMIT)."
 }

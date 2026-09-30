@@ -1,5 +1,6 @@
 /** What reaches the render checkout from a pushed repository. */
 import assert from 'node:assert/strict';
+import crypto from 'node:crypto';
 import { execFile, execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import http from 'node:http';
@@ -9,8 +10,8 @@ import path from 'node:path';
 import { Readable } from 'node:stream';
 import test from 'node:test';
 
-import { exportTree } from '../src/lib/server/git.ts';
-import { PUSH_CHECKS, runGitBackend } from '../src/lib/server/githttp.ts';
+import { exportTree, repoSize } from '../src/lib/server/git.ts';
+import { pushConfig, runGitBackend } from '../src/lib/server/githttp.ts';
 
 const base = fs.mkdtempSync(path.join(os.tmpdir(), 'pcbgit-gitchecks-'));
 test.after(() => fs.rmSync(base, { recursive: true, force: true }));
@@ -50,7 +51,7 @@ function pushTo(source: string, remote: string) {
 }
 
 /** Serves one bare repository over smart HTTP through the app's own runGitBackend. */
-async function serve(repoDir: string) {
+async function serve(repoDir: string, maxPackBytes?: number) {
 	const server = http.createServer(async (req, res) => {
 		const url = new URL(req.url ?? '/', 'http://localhost');
 		const headers = new Headers();
@@ -62,7 +63,8 @@ async function serve(repoDir: string) {
 			queryString: url.search.replace(/^\?/, ''),
 			headers,
 			body: req.method === 'POST' ? (Readable.toWeb(req) as ReadableStream<Uint8Array>) : null,
-			remoteUser: 'tester'
+			remoteUser: 'tester',
+			maxPackBytes
 		});
 		res.writeHead(response.status, Object.fromEntries(response.headers));
 		if (response.body) Readable.fromWeb(response.body as never).pipe(res);
@@ -86,7 +88,7 @@ test('pushes are checked: a tree entry named ".." is rejected', async () => {
 	} finally {
 		server.close();
 	}
-	assert.equal(PUSH_CHECKS.GIT_CONFIG_KEY_0, 'receive.fsckObjects');
+	assert.equal(pushConfig().GIT_CONFIG_KEY_0, 'receive.fsckObjects');
 });
 
 test('pushes of ordinary history still go through', async () => {
@@ -102,6 +104,35 @@ test('pushes of ordinary history still go through', async () => {
 		assert.equal(git(target, ['rev-parse', 'refs/heads/main']), git(good, ['rev-parse', 'HEAD']));
 	} finally {
 		server.close();
+	}
+});
+
+test('a push larger than the limit is refused by git, with the reason, and nothing is stored', async () => {
+	const big = fs.mkdtempSync(path.join(base, 'big-'));
+	git(big, ['init', '-q', '-b', 'main']);
+	// Random bytes: they do not compress, so the pack is as large as the file.
+	fs.writeFileSync(path.join(big, 'model.step'), crypto.randomBytes(3 * 1024 * 1024));
+	git(big, ['add', '-A']);
+	git(big, ['commit', '-q', '-m', 'model']);
+
+	const target = bareRepo();
+	const limited = await serve(target, 1024 * 1024);
+	try {
+		assert.match(await pushTo(big, limited.url), /pack exceeds maximum allowed size/);
+		assert.throws(() => git(target, ['rev-parse', '--verify', 'refs/heads/main']));
+		assert.deepEqual(fs.readdirSync(path.join(target, 'objects')).sort(), ['info', 'pack'], 'no object or leftover pack');
+		assert.deepEqual(fs.readdirSync(path.join(target, 'objects', 'pack')), []);
+		// Measuring right after can meet git still removing the refused pack's directory.
+		assert.equal(await repoSize(path.join(target, 'objects', 'tmp_objdir-incoming-gone')), 0);
+	} finally {
+		limited.close();
+	}
+
+	const roomy = await serve(target, 8 * 1024 * 1024);
+	try {
+		assert.equal(await pushTo(big, roomy.url), 'accepted');
+	} finally {
+		roomy.close();
 	}
 });
 

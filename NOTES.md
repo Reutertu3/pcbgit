@@ -764,3 +764,20 @@ and footprint, since that is what gets ordered; differing MPNs on one line stay
 joined with a comma, as kicad-cli writes them. "Without an MPN" counts lines
 with neither number. Versions rendered earlier need a re-render, and compared
 with an earlier render every line with an LCSC number reads as replaced.
+
+### Push size limit
+A push could be any size up to the request limit (`BODY_SIZE_LIMIT`, 210 MB in
+the image), where the upload simply broke off without a reason, and nothing
+tied it to the disk. Git has its own limit, `receive.maxInputSize`, set per
+request through the environment like the object checks: a larger pack is
+refused with "pack exceeds maximum allowed size" and nothing of it is stored.
+The limit is an instance setting next to the others (Admin → Instance, 200 MB
+by default, 0 for none, admins exempt) and, for admins too, never more than
+the disk has free above its minimum: the storage check before a push only saw
+what was free then. Raising it past 210 MB needs `BODY_SIZE_LIMIT` raised too;
+the form says where requests are cut off.
+
+Trying it against the running image showed a logged error after the refused
+push: `repoSize()` walked the repository while git was still removing the
+refused pack's quarantine directory. It now counts what has vanished as 0.
+

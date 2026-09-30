@@ -48,11 +48,17 @@ export async function deleteRepo(ownerSlug: string, projectSlug: string) {
 /** Bytes a repository takes on disk, for storage limits. Links are counted, not followed. */
 export async function repoSize(repo: string) {
 	let total = 0;
+	// Git removes files while this runs (a refused push's quarantine directory,
+	// loose objects being packed): what is gone by the time it is looked at counts 0.
+	const gone = (error: unknown) => {
+		if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
+		return null;
+	};
 	const walk = async (dir: string) => {
-		for (const entry of await fsp.readdir(dir, { withFileTypes: true })) {
+		for (const entry of (await fsp.readdir(dir, { withFileTypes: true }).catch(gone)) ?? []) {
 			const full = path.join(dir, entry.name);
 			if (entry.isDirectory()) await walk(full);
-			else total += (await fsp.lstat(full)).size;
+			else total += (await fsp.lstat(full).catch(gone))?.size ?? 0;
 		}
 	};
 	await walk(repo);
