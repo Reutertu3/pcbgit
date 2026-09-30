@@ -12,7 +12,7 @@ export const load: PageServerLoad = async ({ parent, url }) => {
 	if (!commit) return { rows: [], compare: null, compareOptions: [] };
 
 	const rows = all<BomRow>(
-		`SELECT id, refs, value, footprint, quantity, datasheet, description, mpn, dnp
+		`SELECT id, refs, value, footprint, quantity, datasheet, description, mpn, lcsc, dnp
 		 FROM bom_items WHERE commit_id = ? ORDER BY ordinal`,
 		commit.id
 	);
@@ -36,16 +36,16 @@ export const load: PageServerLoad = async ({ parent, url }) => {
 	if (!other) return { rows, compare: null, compareOptions };
 
 	const previous = all<BomRow>(
-		'SELECT id, refs, value, footprint, quantity, datasheet, description, mpn, dnp FROM bom_items WHERE commit_id = ? ORDER BY ordinal',
+		'SELECT id, refs, value, footprint, quantity, datasheet, description, mpn, lcsc, dnp FROM bom_items WHERE commit_id = ? ORDER BY ordinal',
 		other.id
 	);
 
 	return { rows, compare: { sha: other.sha, diff: diffBom(previous, rows) }, compareOptions };
 };
 
-/** Lines are matched on value + footprint, which is how they were grouped. */
+/** Lines are matched on value, footprint and part numbers: a changed part number reads as one line out, one in. */
 function diffBom(previous: BomRow[], current: BomRow[]): BomDiffRow[] {
-	const key = (row: BomRow) => `${row.value}\u001f${row.footprint}\u001f${row.mpn}`;
+	const key = (row: BomRow) => `${row.value}\u001f${row.footprint}\u001f${row.mpn}\u001f${row.lcsc}`;
 	const before = new Map(previous.map((row) => [key(row), row]));
 	const out: BomDiffRow[] = [];
 

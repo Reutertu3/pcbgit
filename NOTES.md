@@ -5,7 +5,7 @@
 > heading per milestone. Open work lives in [TODO.md](TODO.md); working rules for
 > the code live in [CLAUDE.md](CLAUDE.md).
 
-**Jump to:** [Releases](#releases) · [2026-09-22](#2026-09-22) · [2026-09-23](#2026-09-23) · [2026-09-24](#2026-09-24) · [2026-09-25](#2026-09-25) · [2026-09-26](#2026-09-26) · [2026-09-27](#2026-09-27)
+**Jump to:** [Releases](#releases) · [2026-09-22](#2026-09-22) · [2026-09-23](#2026-09-23) · [2026-09-24](#2026-09-24) · [2026-09-25](#2026-09-25) · [2026-09-26](#2026-09-26) · [2026-09-27](#2026-09-27) · [2026-09-28](#2026-09-28) · [2026-09-29](#2026-09-29) · [2026-09-30](#2026-09-30)
 
 ## Releases
 
@@ -744,3 +744,23 @@ than there is room for queues the newest and keeps the rest as "not rendered"
 overview says so, and History's render button renders them, within the same
 limit. Admin actions (re-render all, retry failed, the queue page) are not
 limited.
+
+## 2026-09-30
+
+### LCSC part numbers in the BOM
+Boards that carry a "LCSC Part" field on their symbols showed no part numbers
+at all: the BOM export asked kicad-cli for a field named `MPN` and nothing
+else, and kicad-cli only writes the fields it is asked for. In the local
+projects `LCSC Part` is by far the most common part number field, and the
+manufacturer's number is mostly called `Part Number`, rarely `MPN`.
+
+The export now asks for every name in two lists (`MPN_FIELDS`, `LCSC_FIELDS`);
+kicad-cli leaves the columns of fields a project lacks empty, and the first one
+filled in is used. The LCSC number is its own column (`bom_items.lcsc`), in the
+table, where it links to the part on lcsc.com and only appears on boards that
+have any, and in the CSV download. The interactive BOM shows the fields the
+board file itself carries. Lines are now split by LCSC number as well as value
+and footprint, since that is what gets ordered; differing MPNs on one line stay
+joined with a comma, as kicad-cli writes them. "Without an MPN" counts lines
+with neither number. Versions rendered earlier need a re-render, and compared
+with an earlier render every line with an LCSC number reads as replaced.

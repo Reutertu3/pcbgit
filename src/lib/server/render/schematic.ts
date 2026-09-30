@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { LCSC_FIELDS, MPN_FIELDS } from './kicad';
 import { child, children, isList, parseSexpr, prop, type SNode } from './sexpr';
 
 export interface SchSymbol {
@@ -9,6 +10,7 @@ export interface SchSymbol {
 	datasheet: string;
 	description: string;
 	mpn: string;
+	lcsc: string;
 	dnp: boolean;
 	excludeFromBom: boolean;
 	sheet: string;
@@ -19,8 +21,6 @@ export interface SchematicStats {
 	sheets: { name: string; file: string }[];
 	symbols: SchSymbol[];
 }
-
-const MPN_KEYS = ['mpn', 'manufacturer part number', 'part number', 'pn', 'lcsc', 'digikey', 'mouser'];
 
 /**
  * Reads the root sheet plus every hierarchical sub-sheet it references. Sheets name
@@ -88,7 +88,8 @@ function readSymbol(symbol: SNode[], sheet: string): SchSymbol | null {
 	// Power symbols and graphics carry a '#' reference and never belong in a BOM.
 	if (!reference || reference.startsWith('#')) return null;
 
-	const mpnKey = Object.keys(props).find((k) => MPN_KEYS.includes(k));
+	// Property names are lower-cased by readProperties().
+	const firstOf = (fields: string[]) => fields.map((field) => props[field.toLowerCase()]).find(Boolean) ?? '';
 
 	return {
 		reference,
@@ -96,7 +97,8 @@ function readSymbol(symbol: SNode[], sheet: string): SchSymbol | null {
 		footprint: props['footprint'] ?? '',
 		datasheet: props['datasheet'] === '~' ? '' : (props['datasheet'] ?? ''),
 		description: props['description'] ?? '',
-		mpn: mpnKey ? props[mpnKey] : '',
+		mpn: firstOf(MPN_FIELDS),
+		lcsc: firstOf(LCSC_FIELDS),
 		dnp: prop(symbol, 'dnp') === 'yes',
 		excludeFromBom: prop(symbol, 'exclude_from_sim') === 'never' ? false : prop(symbol, 'in_bom') === 'no',
 		sheet

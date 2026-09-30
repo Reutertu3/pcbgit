@@ -85,7 +85,7 @@ instance; **Optional** needs outside services or is a niche.
 ### 🟠 Medium
 
 - **Part search across boards ("which boards use TPS62130?")** · _Parts_ \
-  BOM lines with value, footprint and MPN are in the database; a search over
+  BOM lines with value, footprint, MPN and LCSC number are in the database; a search over
   them, limited to what the viewer can see, answers where a part is used before
   it is discontinued or reordered.
 - **Comments pinned to a spot on a schematic sheet or board layer** · _Review_ \
@@ -249,7 +249,7 @@ import` for the board). Edge cases left:
 - [ ] **JLCPCB assembly files.** CPL from `pcb export pos --format csv --units mm
       --side both --exclude-dnp` (columns renamed to Designator, Mid X, Mid Y,
       Layer, Rotation), and a BOM in JLCPCB's format (Comment, Designator,
-      Footprint, LCSC Part #), which needs an `LCSC` field on the symbols. Say next
+      Footprint, LCSC Part #); the LCSC number is in `bom_items.lcsc` already. Say next
       to the download that JLCPCB corrects footprint rotations in its preview.
 - [ ] **AISLER drill "2:4 precision".** Ours are decimal inches with 4 decimals,
       the same resolution; only if AISLER's import misreads them, add

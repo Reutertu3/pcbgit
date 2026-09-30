@@ -48,7 +48,7 @@
 | **Schematic** | Every sheet, pan and zoom, light or dark, PNG/JPEG export up to 600 dpi, all sheets as one PDF |
 | **PCB 2D** | Stacked layers with per-layer toggles, front/back flip, DRC markers with zoom-to-error |
 | **PCB 3D** | Assembled board with components, view cube, soldermask/silkscreen colours, HASL/ENIG finish, SMD/THT toggles, ruler, scale objects, image export |
-| **BOM** | Interactive view with placement highlighting ([iBOM]), grouped line items, CSV export, diff between any two versions |
+| **BOM** | Interactive view with placement highlighting ([iBOM]), grouped line items with MPN and LCSC part numbers (linked to LCSC), CSV export, diff between any two versions |
 | **Checks** | KiCad DRC and ERC, grouped by severity, linked to their spot on the board |
 | **Fabrication** *(experimental)* | Gerbers and drill files for **JLCPCB**, **AISLER** or generic KiCad names |
 | **Eagle import** | Eagle 6+ projects are converted on upload or push and marked *Converted*; the converted KiCad project is a download |
@@ -289,6 +289,13 @@ push renders in the background; **History** keeps each version's log, **Admin �
 Render queue** shows what is running.
 
 ### Downloads
+
+Part numbers in the BOM come from the symbols' fields: `MPN`, `Manufacturer Part
+Number`, `Part Number` or `PN` for the manufacturer's, and `LCSC Part`, `LCSC`,
+`LCSC Part #`, `JLCPCB` or `JLC` for LCSC's order number (the full lists are in
+`render/kicad.ts`; case does not matter). Versions rendered before LCSC numbers
+were read (up to v0.7.4) show them after a re-render (History, or **Admin →
+Boards → Re-render all**).
 
 A board's overview offers the BOM (CSV), the schematic as one PDF, the 3D model
 (GLB), the source as ZIP and, under **Production Gerbers**, a fabrication ZIP for

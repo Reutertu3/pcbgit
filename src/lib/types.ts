@@ -81,6 +81,7 @@ export interface BomRow {
 	datasheet: string;
 	description: string;
 	mpn: string;
+	lcsc: string;
 	dnp: number;
 }
 

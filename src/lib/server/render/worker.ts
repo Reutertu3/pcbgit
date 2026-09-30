@@ -18,6 +18,7 @@ import {
 	IBOM_SCRIPT,
 	kicadVersion,
 	orderSchematicSheets,
+	partFieldsIn,
 	pcbCompositeSvgArgs,
 	pcbDrcArgs,
 	pcbDrillArgs,
@@ -230,14 +231,15 @@ async function renderCommit(job: JobRow, log: string[]) {
 		log.push(`Found: ${files.pcb ? path.relative(files.root, files.pcb) : 'no board'} / ${files.rootSch ? path.relative(files.root, files.rootSch) : 'no schematic'}`);
 
 		// The checkout and converted files sit in the shared render directory: read them as renderer output.
-		const board = files.pcb ? analyzeBoardText((await readOutput(files.pcb, files.root)).toString('utf8')) : null;
+		const boardText = files.pcb ? (await readOutput(files.pcb, files.root)).toString('utf8') : null;
+		const board = boardText ? analyzeBoardText(boardText) : null;
 		const bom = await buildBom(files, outDir, commit.id, log, Boolean(version));
 		const violations: Violation[] = [];
 
 		if (version) {
 			if (!eagle) await fixSchematics(files, log);
 			if (files.rootSch) await renderSchematic(files.rootSch, outDir, commit.id, log, violations, Boolean(eagle));
-			if (files.pcb) await renderBoard(files.pcb, board, outDir, commit.id, log, violations);
+			if (files.pcb) await renderBoard(files.pcb, board, partFieldsIn(boardText ?? ''), outDir, commit.id, log, violations);
 		}
 
 		persistResults(commit.id, board, bom, violations, files.rootSch ? path.basename(files.rootSch, '.kicad_sch') : project.slug);
@@ -371,6 +373,8 @@ async function renderSchematic(
 async function renderBoard(
 	pcbPath: string,
 	board: BoardStats | null,
+	/** Part number fields the footprints carry, for the interactive BOM's columns. */
+	partFields: string[],
 	outDir: string,
 	commitId: string,
 	log: string[],
@@ -434,7 +438,7 @@ async function renderBoard(
 
 	// Interactive BOM: grouped parts with placement highlighting, one self-contained page.
 	if (IBOM_SCRIPT) {
-		const result = await runIbom(pcbPath, outDir);
+		const result = await runIbom(pcbPath, outDir, partFields);
 		const file = path.join(outDir, 'ibom.html');
 		const stored = result.ok && fs.existsSync(file);
 		// iBOM's stderr is mostly wx debug chatter; its last line holds the error.
@@ -533,8 +537,8 @@ function persistResults(
 
 		bom.forEach((line, index) => {
 			run(
-				`INSERT INTO bom_items (id, commit_id, refs, value, footprint, quantity, datasheet, description, mpn, dnp, ordinal)
-				 VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
+				`INSERT INTO bom_items (id, commit_id, refs, value, footprint, quantity, datasheet, description, mpn, lcsc, dnp, ordinal)
+				 VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`,
 				newId(),
 				commitId,
 				line.refs,
@@ -544,6 +548,7 @@ function persistResults(
 				line.datasheet,
 				line.description,
 				line.mpn,
+				line.lcsc,
 				line.dnp ? 1 : 0,
 				index
 			);

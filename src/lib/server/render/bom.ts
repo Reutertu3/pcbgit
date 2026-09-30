@@ -1,3 +1,4 @@
+import { LCSC_FIELDS, MPN_FIELDS } from './kicad';
 import type { SchSymbol } from './schematic';
 
 export interface BomLine {
@@ -8,16 +9,18 @@ export interface BomLine {
 	datasheet: string;
 	description: string;
 	mpn: string;
+	/** LCSC's order number ("C25804"). */
+	lcsc: string;
 	dnp: boolean;
 }
 
-/** Collapses individual symbols into BOM lines grouped by value + footprint + MPN. */
+/** Collapses individual symbols into BOM lines grouped by value + footprint + part numbers. */
 export function groupBom(symbols: SchSymbol[]): BomLine[] {
 	const groups = new Map<string, { line: BomLine; refs: string[] }>();
 
 	for (const symbol of symbols) {
 		if (symbol.excludeFromBom) continue;
-		const key = [symbol.value, symbol.footprint, symbol.mpn, symbol.dnp].join('\u001f');
+		const key = [symbol.value, symbol.footprint, symbol.mpn, symbol.lcsc, symbol.dnp].join('\u001f');
 		let group = groups.get(key);
 		if (!group) {
 			group = {
@@ -29,6 +32,7 @@ export function groupBom(symbols: SchSymbol[]): BomLine[] {
 					datasheet: symbol.datasheet,
 					description: symbol.description,
 					mpn: symbol.mpn,
+					lcsc: symbol.lcsc,
 					dnp: symbol.dnp
 				},
 				refs: []
@@ -109,11 +113,18 @@ export function parseBomCsv(csv: string): BomLine[] {
 		qty: col('qty', 'quantity', 'count'),
 		datasheet: col('datasheet'),
 		description: col('description', 'desc'),
-		mpn: col('mpn', 'manufacturer part number', 'part number'),
 		dnp: col('dnp', 'do not populate')
 	};
 
 	const at = (row: string[], i: number) => (i === -1 ? '' : (row[i] ?? '').trim());
+	/** The first of these columns the row fills in: projects name part numbers differently. */
+	const firstOf = (row: string[], fields: string[]) => {
+		for (const field of fields) {
+			const value = at(row, header.indexOf(field.toLowerCase()));
+			if (value) return value;
+		}
+		return '';
+	};
 
 	return rows
 		.slice(1)
@@ -128,7 +139,8 @@ export function parseBomCsv(csv: string): BomLine[] {
 				quantity: Number.isFinite(qty) && qty > 0 ? qty : countRefs(refs),
 				datasheet: at(row, idx.datasheet).replace(/^~$/, ''),
 				description: at(row, idx.description),
-				mpn: at(row, idx.mpn),
+				mpn: firstOf(row, MPN_FIELDS),
+				lcsc: firstOf(row, LCSC_FIELDS),
 				dnp: /^(1|yes|true|dnp)$/i.test(at(row, idx.dnp))
 			};
 		});
@@ -177,9 +189,9 @@ export function bomToCsv(lines: BomLine[]) {
 		const str = String(value ?? '');
 		return /[",\n]/.test(str) ? `"${str.replace(/"/g, '""')}"` : str;
 	};
-	const header = ['Reference', 'Qty', 'Value', 'Footprint', 'MPN', 'Description', 'Datasheet', 'DNP'];
+	const header = ['Reference', 'Qty', 'Value', 'Footprint', 'MPN', 'LCSC', 'Description', 'Datasheet', 'DNP'];
 	const body = lines.map((line) =>
-		[line.refs, line.quantity, line.value, line.footprint, line.mpn, line.description, line.datasheet, line.dnp ? 'DNP' : '']
+		[line.refs, line.quantity, line.value, line.footprint, line.mpn, line.lcsc, line.description, line.datasheet, line.dnp ? 'DNP' : '']
 			.map(escape)
 			.join(',')
 	);

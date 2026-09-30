@@ -218,6 +218,8 @@ CREATE TABLE IF NOT EXISTS bom_items (
   datasheet   TEXT NOT NULL DEFAULT '',
   description TEXT NOT NULL DEFAULT '',
   mpn         TEXT NOT NULL DEFAULT '',
+  -- LCSC order number ("C25804"), from a field like "LCSC Part".
+  lcsc        TEXT NOT NULL DEFAULT '',
   dnp         INTEGER NOT NULL DEFAULT 0,
   ordinal     INTEGER NOT NULL DEFAULT 0
 );

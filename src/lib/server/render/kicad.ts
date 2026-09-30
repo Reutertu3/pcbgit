@@ -56,14 +56,33 @@ export function pcbImportEagleArgs(brdPath: string, outFile: string) {
 	return ['pcb', 'import', '--format', 'eagle', '--output', outFile, brdPath];
 }
 
-/** Writes `<outDir>/ibom.html` with iBOM, which loads the board through KiCad's Python module. */
-export async function runIbom(pcbPath: string, outDir: string): Promise<RunResult> {
+/**
+ * Writes `<outDir>/ibom.html` with iBOM, which loads the board through KiCad's
+ * Python module. `partFields` are the part number fields this board's footprints
+ * carry (`partFieldsIn()`): iBOM shows a column for each field it is told about,
+ * empty or not, so it only gets those.
+ */
+export async function runIbom(pcbPath: string, outDir: string, partFields: string[] = []): Promise<RunResult> {
+	const lcsc = partFields.filter((field) => LCSC_FIELDS.includes(field));
 	return runTool(
 		'python3',
-		[IBOM_SCRIPT, '--no-browser', '--dest-dir', outDir, '--name-format', 'ibom', pcbPath],
+		[
+			IBOM_SCRIPT, '--no-browser', '--dest-dir', outDir, '--name-format', 'ibom',
+			'--show-fields', ['Value', 'Footprint', ...partFields].join(','),
+			'--group-fields', ['Value', 'Footprint', ...lcsc].join(','),
+			'--normalize-field-case',
+			pcbPath
+		],
 		120_000,
 		{ INTERACTIVE_HTML_BOM_NO_DISPLAY: '1' }
 	);
+}
+
+/** Which of the known part number fields a board or schematic file fills in, by their names here. */
+export function partFieldsIn(kicadText: string) {
+	const used = new Set<string>();
+	for (const [, name] of kicadText.matchAll(/\(property\s+"([^"]+)"\s+"[^"]+"/g)) used.add(name.toLowerCase());
+	return [...MPN_FIELDS, ...LCSC_FIELDS].filter((field) => used.has(field.toLowerCase()));
 }
 
 /** What crosses the socket to a sandboxed renderer: one JSON line each way. */
@@ -196,13 +215,29 @@ export function schPdfArgs(schPath: string, outFile: string, ownFrame = false) {
 	return ['sch', 'export', 'pdf', '--output', outFile, ...(ownFrame ? ['--exclude-drawing-sheet'] : []), schPath];
 }
 
+/**
+ * Symbol fields that hold a part number, under the names projects give them
+ * (KiCad and iBOM compare them without case). Where a part fills in several of
+ * one kind, the first in the list wins.
+ */
+export const MPN_FIELDS = ['MPN', 'Manufacturer Part Number', 'Manufacturer_Part_Number', 'Mfr Part Number', 'Part Number', 'Part Number:', 'PN'];
+/** LCSC's order number ("C25804"), which JLCPCB's assembly service uses too. */
+export const LCSC_FIELDS = ['LCSC Part', 'LCSC', 'LCSC Part #', 'LCSC Part Number', 'JLCPCB', 'JLCPCB Part #', 'JLC'];
+
+/**
+ * kicad-cli only exports the fields it is asked for, and leaves a column empty
+ * when no symbol has that field: every known part number name is requested, and
+ * `parseBomCsv()` picks the ones filled in. Lines are split by LCSC number, since
+ * that is what gets ordered.
+ */
 export function schBomArgs(schPath: string, outFile: string) {
+	const partFields = [...MPN_FIELDS, ...LCSC_FIELDS];
 	return [
 		'sch', 'export', 'bom',
 		'--output', outFile,
-		'--fields', 'Reference,Value,Footprint,${QUANTITY},${DNP},Datasheet,Description,MPN',
-		'--labels', 'Reference,Value,Footprint,Qty,DNP,Datasheet,Description,MPN',
-		'--group-by', 'Value,Footprint',
+		'--fields', ['Reference', 'Value', 'Footprint', '${QUANTITY}', '${DNP}', 'Datasheet', 'Description', ...partFields].join(','),
+		'--labels', ['Reference', 'Value', 'Footprint', 'Qty', 'DNP', 'Datasheet', 'Description', ...partFields].join(','),
+		'--group-by', ['Value', 'Footprint', ...LCSC_FIELDS].join(','),
 		'--sort-field', 'Reference',
 		'--sort-asc',
 		'--ref-range-delimiter', '-',

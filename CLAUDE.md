@@ -192,6 +192,13 @@ converter takes untrusted XML: keep its reader entity-free and capped
   `render/schematictheme.ts`) of KiCad's *default* schematic palette to Gruvbox
   Dark. If kicad-cli is ever given `--theme`, that map stops matching. Light mode
   keeps KiCad's colours on the `#f5f4ef` sheet colour.
+- **Part numbers in the BOM** are read from whichever field a project uses
+  (`MPN_FIELDS`, `LCSC_FIELDS` in `render/kicad.ts`). kicad-cli exports only the
+  fields it is asked for, so `schBomArgs()` asks for all of them and
+  `parseBomCsv()` takes the first one filled in; a new field name goes in those
+  lists, nowhere else. iBOM shows a column for every field it is given, so it only
+  gets the ones the board file has (`partFieldsIn()`). Lines are grouped by value,
+  footprint and LCSC number, and the BOM diff matches on those plus the MPN.
 - **The render queue** is one in-process worker; jobs are picked by
   `ORDER BY queued_at` (ms), with ties falling back to insertion order.
 - **`syncCommits()`** only looks at the newest 200 commits of the branch.

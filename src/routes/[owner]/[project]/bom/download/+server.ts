@@ -15,7 +15,7 @@ export const GET: RequestHandler = async ({ params, locals, url }) => {
 	if (!commit) error(404, 'No version to export');
 
 	const rows = all<BomRow>(
-		'SELECT refs, value, footprint, quantity, datasheet, description, mpn, dnp FROM bom_items WHERE commit_id = ? ORDER BY ordinal',
+		'SELECT refs, value, footprint, quantity, datasheet, description, mpn, lcsc, dnp FROM bom_items WHERE commit_id = ? ORDER BY ordinal',
 		commit.id
 	);
 	if (!rows.length) error(404, 'This version has no bill of materials');

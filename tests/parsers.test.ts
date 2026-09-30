@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { collapseRefs, groupBom, parseBomCsv, parseCsv, bomToCsv } from '../src/lib/server/render/bom.ts';
+import { partFieldsIn, schBomArgs } from '../src/lib/server/render/kicad.ts';
 import { parseSexpr, children, prop, descendants } from '../src/lib/server/render/sexpr.ts';
 import { parseDrcReport, parseErcReport, countBySeverity } from '../src/lib/server/render/reports.ts';
 import { renderMarkdown } from '../src/lib/server/markdown.ts';
@@ -51,6 +52,7 @@ test('groupBom merges identical parts and excludes flagged symbols', () => {
 		datasheet: '',
 		description: '',
 		mpn: '',
+		lcsc: '',
 		dnp: false,
 		excludeFromBom: false,
 		sheet: 'root',
@@ -87,6 +89,37 @@ test('parseBomCsv maps kicad-cli column names', () => {
 	assert.equal(lines[0].dnp, false);
 });
 
+test('part numbers are found under the names projects give their fields', () => {
+	// kicad-cli writes a column for every field asked for, empty where no symbol has it.
+	const lines = parseBomCsv(
+		'Reference,Value,Footprint,Qty,MPN,Part Number,LCSC Part,LCSC\n' +
+			'"C1,C2",1µF,C_1206,2,,TCC1206X7R105M500HT,C377070,\n' +
+			'R1,10k,R_0603,1,RC0603FR-0710KL,ignored,,C25804\n' +
+			'J1,Conn,PinHeader,1,,,,\n'
+	);
+	assert.deepEqual(lines.map((line) => [line.mpn, line.lcsc]), [['TCC1206X7R105M500HT', 'C377070'], ['RC0603FR-0710KL', 'C25804'], ['', '']]);
+
+	const args = schBomArgs('/work/x.kicad_sch', '/work/bom.csv');
+	const fields = args[args.indexOf('--fields') + 1].split(',');
+	assert.ok(fields.includes('LCSC Part') && fields.includes('Part Number'));
+	assert.equal(args[args.indexOf('--labels') + 1].split(',').length, fields.length);
+	assert.match(args[args.indexOf('--group-by') + 1], /^Value,Footprint,LCSC Part,/);
+});
+
+test('the interactive BOM only gets the part fields a board has', () => {
+	const board = '(footprint "R" (property "Reference" "R1") (property "lcsc part" "C25804") (property "MPN" "") (property "Part Number" "X"))';
+	assert.deepEqual(partFieldsIn(board), ['Part Number', 'LCSC Part']);
+	assert.deepEqual(partFieldsIn('(footprint "R" (property "Reference" "R1"))'), []);
+});
+
+test('groupBom keeps parts with different LCSC numbers apart', () => {
+	const symbol = (reference: string, lcsc: string) => ({
+		reference, value: '100n', footprint: 'C_0402', datasheet: '', description: '', mpn: '', lcsc, dnp: false, excludeFromBom: false, sheet: 'root'
+	});
+	const lines = groupBom([symbol('C1', 'C1525'), symbol('C2', 'C1525'), symbol('C3', 'C307331')]);
+	assert.deepEqual(lines.map((line) => [line.refs, line.lcsc]), [['C1, C2', 'C1525'], ['C3', 'C307331']]);
+});
+
 test('parseBomCsv infers quantity from the reference list when Qty is absent', () => {
 	const lines = parseBomCsv('Reference,Value\n"C1,C2,C3",100n\n');
 	assert.equal(lines[0].quantity, 3);
@@ -94,12 +127,13 @@ test('parseBomCsv infers quantity from the reference list when Qty is absent', (
 
 test('bomToCsv round-trips through parseBomCsv', () => {
 	const original = [
-		{ refs: 'R1, R2', value: '10k', footprint: 'R_0603', quantity: 2, datasheet: '', description: 'Resistor, 1%', mpn: 'X1', dnp: false }
+		{ refs: 'R1, R2', value: '10k', footprint: 'R_0603', quantity: 2, datasheet: '', description: 'Resistor, 1%', mpn: 'X1', lcsc: 'C25804', dnp: false }
 	];
 	const parsed = parseBomCsv(bomToCsv(original));
 	assert.equal(parsed[0].refs, 'R1, R2');
 	assert.equal(parsed[0].quantity, 2);
 	assert.equal(parsed[0].description, 'Resistor, 1%');
+	assert.equal(parsed[0].lcsc, 'C25804');
 });
 
 test('DRC report reader extracts positions and severities', () => {

@@ -305,9 +305,9 @@
 		"one": "zu bestückendes Bauteil",
 		"other": "zu bestückende Bauteile"
 	},
-	"bom.unsourcedTitle": "Positionen ohne MPN-Feld im Schaltplan",
-	"bom.unsourced": "ohne MPN",
-	"bom.filter": "Nach Referenz, Wert, Footprint oder MPN filtern…",
+	"bom.unsourcedTitle": "Positionen ohne MPN und ohne LCSC-Teilenummer im Schaltplan",
+	"bom.unsourced": "ohne Teilenummer",
+	"bom.filter": "Nach Referenz, Wert, Footprint oder Teilenummer filtern…",
 	"bom.compareLabel": "Mit einer anderen Version vergleichen",
 	"bom.compareWith": "Mit {sha} vergleichen",
 	"bom.changesOnly": "Nur Änderungen",

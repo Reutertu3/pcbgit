@@ -129,7 +129,8 @@ const ADDED_COLUMNS: [table: string, column: string, definition: string][] = [
 	['users', 'last_seen_at', 'INTEGER'],
 	['users', 'totp_secret', 'TEXT'],
 	['users', 'totp_pending', 'TEXT'],
-	['users', 'totp_last_step', 'INTEGER']
+	['users', 'totp_last_step', 'INTEGER'],
+	['bom_items', 'lcsc', "TEXT NOT NULL DEFAULT ''"]
 ];
 
 /**

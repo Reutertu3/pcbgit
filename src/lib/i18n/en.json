@@ -305,9 +305,9 @@
 		"one": "part to place",
 		"other": "parts to place"
 	},
-	"bom.unsourcedTitle": "Line items with no MPN field in the schematic",
-	"bom.unsourced": "without an MPN",
-	"bom.filter": "Filter by reference, value, footprint or MPN…",
+	"bom.unsourcedTitle": "Line items with neither an MPN nor an LCSC part number in the schematic",
+	"bom.unsourced": "without a part number",
+	"bom.filter": "Filter by reference, value, footprint or part number…",
 	"bom.compareLabel": "Compare with another version",
 	"bom.compareWith": "Compare with {sha}",
 	"bom.changesOnly": "Changes only",

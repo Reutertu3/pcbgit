@@ -10,7 +10,7 @@
 
 	let { data } = $props();
 
-	type Column = 'refs' | 'quantity' | 'value' | 'footprint' | 'mpn';
+	type Column = 'refs' | 'quantity' | 'value' | 'footprint' | 'mpn' | 'lcsc';
 
 	let search = $state('');
 	let sortBy = $state<Column>('refs');
@@ -48,7 +48,7 @@
 		let list = rows;
 		if (term) {
 			list = list.filter((row) =>
-				[row.refs, row.value, row.footprint, row.mpn, row.description]
+				[row.refs, row.value, row.footprint, row.mpn, row.lcsc, row.description]
 					.join(' ')
 					.toLowerCase()
 					.includes(term)
@@ -71,8 +71,22 @@
 		lines: data.rows.length,
 		parts: data.rows.filter((row) => !row.dnp).reduce((sum, row) => sum + row.quantity, 0),
 		dnp: data.rows.filter((row) => row.dnp).length,
-		unsourced: data.rows.filter((row) => !row.mpn && !row.dnp).length
+		unsourced: data.rows.filter((row) => !row.mpn && !row.lcsc && !row.dnp).length
 	});
+
+	// Most boards have no LCSC numbers; theirs would be a column of dashes.
+	const hasLcsc = $derived(rows.some((row) => row.lcsc));
+	const columns = $derived<[Column, string][]>([
+		['refs', t('bom.col.refs')],
+		['quantity', t('bom.col.qty')],
+		['value', t('bom.col.value')],
+		['footprint', t('bom.col.footprint')],
+		['mpn', 'MPN'],
+		...(hasLcsc ? ([['lcsc', 'LCSC']] as [Column, string][]) : [])
+	]);
+
+	/** LCSC's page for an order number; other text in the field gets no link. */
+	const lcscUrl = (part: string) => (/^C\d+$/i.test(part) ? `https://www.lcsc.com/product-detail/${part.toUpperCase()}.html` : null);
 
 	const changeCounts = $derived.by(() => {
 		if (!data.compare) return null;
@@ -225,11 +239,11 @@
 				<thead class="sticky top-0 bg-s2 text-xs">
 					<tr>
 						{#if data.compare}<th class="w-6 px-2 py-2"></th>{/if}
-						{#each [['refs', t('bom.col.refs')], ['quantity', t('bom.col.qty')], ['value', t('bom.col.value')], ['footprint', t('bom.col.footprint')], ['mpn', 'MPN']] as [column, label]}
+						{#each columns as [column, label]}
 							<th class="px-3 py-2 font-semibold">
 								<button
 									class="flex items-center gap-1 hover:text-[var(--accent)]"
-									onclick={() => sort(column as Column)}
+									onclick={() => sort(column)}
 								>
 									{label}
 									{#if sortBy === column}
@@ -272,6 +286,21 @@
 									<span class="text-[var(--text-muted)]">—</span>
 								{/if}
 							</td>
+							{#if hasLcsc}
+								{@const url = lcscUrl(row.lcsc)}
+								<td class="mono px-3 py-1.5 whitespace-nowrap">
+									{#if url}
+										<a href={url} rel="nofollow noopener" target="_blank" class="hover:text-[var(--accent)]">
+											{row.lcsc}
+											<Icon name="external" size={10} class="inline" />
+										</a>
+									{:else if row.lcsc}
+										{row.lcsc}
+									{:else}
+										<span class="text-[var(--text-muted)]">—</span>
+									{/if}
+								</td>
+							{/if}
 							<td class="max-w-md truncate px-3 py-1.5 text-[var(--text-secondary)]" title={row.description}>
 								{#if row.datasheet}
 									<a href={row.datasheet} rel="nofollow noopener" target="_blank" class="hover:text-[var(--accent)]">
