@@ -162,6 +162,25 @@
 	</form>
 </section>
 
+{#if data.adminPolicy}
+	<section class="surface mt-4 p-5">
+		<h3 class="mb-3 text-sm font-semibold">{t('instance.admins')}</h3>
+		<form method="POST" action="?/saveAdminPolicy" use:enhance={keepValues}>
+			<Switch name="admins_require_2fa" checked={data.adminPolicy.requireTwoFactor} class="mb-4">
+				<span class="block text-sm font-medium">{t('instance.adminsRequire2fa')}</span>
+				<span class="block text-xs leading-relaxed text-[var(--text-secondary)]">
+					{t('instance.adminsRequire2faHint')}
+					{#if data.adminPolicy.without}{t('instance.adminsWithout2fa', { count: data.adminPolicy.without })}{/if}
+				</span>
+			</Switch>
+			<div class="flex flex-wrap items-center gap-3">
+				<button class="btn btn-primary" type="submit">{t('instance.save')}</button>
+				<SavedNote message={form && 'saved' in form && form.scope === 'admins' ? form.message : null} token={form} />
+			</div>
+		</form>
+	</section>
+{/if}
+
 <section class="surface mt-4 p-5">
 	<h3 class="mb-1 text-sm font-semibold">{t('instance.limits')}</h3>
 	<p class="mb-3 text-xs leading-relaxed text-[var(--text-secondary)]">{t('instance.limitsHint')}</p>

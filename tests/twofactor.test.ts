@@ -141,14 +141,15 @@ test('five wrong codes end the pending sign-in', async () => {
 	assert.equal(cookies.get(twofactor.CHALLENGE_COOKIE), undefined);
 });
 
-test('admins can turn it off for others, but not for the owner', async () => {
+test('admins can turn it off for a user who lost the authenticator, but not for an admin', async () => {
 	const admin = auth.createUser({ username: 'root', email: 'root@example.com', password: 'x'.repeat(8), role: 'admin' });
 	const act = (id: string) => post(users.actions.disableTwoFactor, { id }, jar(), { user: admin });
 
 	const { run } = await import('../src/lib/server/db/index.ts');
-	run('UPDATE users SET is_owner = 1 WHERE id = ?', ada.id);
+	run("UPDATE users SET role = 'admin' WHERE id = ?", ada.id);
 	assert.equal((await act(ada.id)).status, 403);
-	run('UPDATE users SET is_owner = 0 WHERE id = ?', ada.id);
+	assert.ok(auth.getUserById(ada.id)!.totp_secret);
+	run("UPDATE users SET role = 'user' WHERE id = ?", ada.id);
 
 	await act(ada.id);
 	assert.equal(auth.getUserById(ada.id)!.totp_secret, null);
@@ -199,4 +200,92 @@ test('the command-line reset lets a locked-out owner back in', async () => {
 	assert.equal(after.totp_secret, null);
 	assert.equal(count('SELECT COUNT(*) FROM sessions WHERE user_id = ?', owner.id), 0);
 	assert.equal(count("SELECT COUNT(*) FROM audit_log WHERE action = 'admin.owner_reset'"), 1);
+});
+
+test('whether admins need two-factor sign-in is the owner\'s switch, off by default', async () => {
+	const instance = await import('../src/routes/admin-panel/settings/+page.server.ts');
+	const { getSetting } = await import('../src/lib/server/db/index.ts');
+	const owner = auth.getUserByUsername('boss')!;
+	const admin = auth.getUserByUsername('root')!;
+	const panel = (action: string, fields: Record<string, string>) =>
+		post((users.actions as any)[action], fields, jar(), { user: auth.getUserById(owner.id) });
+	const flip = (actor: typeof owner, fields: Record<string, string>) =>
+		post(instance.actions.saveAdminPolicy, fields, jar(), { user: auth.getUserById(actor.id) });
+
+	// Off: an admin is made with a password alone, as before.
+	assert.equal(twofactor.adminsNeedTwoFactor(), false);
+	await panel('create', { username: 'trusted', email: 'trusted@example.com', password: 'x'.repeat(8), role: 'admin' });
+	const trusted = auth.getUserByUsername('trusted')!;
+	assert.equal(trusted.role, 'admin');
+	assert.equal(trusted.totp_secret, null);
+
+	assert.equal((await flip(admin, { admins_require_2fa: 'on' })).status, 403, 'not another admin\'s to set');
+	assert.equal(getSetting('admins_require_2fa', 'false'), 'false');
+	assert.equal((await flip(owner, { admins_require_2fa: 'on' })).saved, true);
+	assert.equal(twofactor.adminsNeedTwoFactor(), true);
+	// Admins from before keep their role.
+	assert.equal(auth.getUserById(trusted.id)!.role, 'admin');
+});
+
+test('with the switch on, an account becomes admin only with two-factor sign-in on', async () => {
+	const owner = auth.getUserByUsername('boss')!;
+	const as = (action: string, fields: Record<string, string>) =>
+		post((users.actions as any)[action], fields, jar(), { user: auth.getUserById(owner.id) });
+
+	// A new account cannot have it yet, so the panel only creates users, whatever is posted.
+	await as('create', { username: 'newhire', email: 'new@example.com', password: 'x'.repeat(8), role: 'admin' });
+	const hire = auth.getUserByUsername('newhire')!;
+	assert.equal(hire.role, 'user');
+
+	const refused = await as('setRole', { id: hire.id, role: 'admin' });
+	assert.equal(refused.status, 400);
+	assert.match(refused.data.error, /newhire has to turn on two-factor sign-in/);
+	assert.equal(auth.getUserById(hire.id)!.role, 'user');
+
+	const secret = twofactor.pendingSecret(hire.id);
+	assert.ok(twofactor.enableTwoFactor(auth.getUserById(hire.id)!, codeAt(secret)));
+	assert.equal((await as('setRole', { id: hire.id, role: 'admin' })).success, true);
+	assert.equal(auth.getUserById(hire.id)!.role, 'admin');
+});
+
+test('with the switch on, an admin cannot turn two-factor sign-in off, only replace the authenticator', async () => {
+	const settings = await import('../src/routes/settings/2fa/+page.server.ts');
+	const owner = auth.getUserByUsername('boss')!;
+	const hire = () => auth.getUserByUsername('newhire')!;
+	const own = (action: string, fields: Record<string, string>) =>
+		post((settings.actions as any)[action], fields, jar(), { user: hire(), sessionId: 'current' });
+	const panel = (action: string, fields: Record<string, string>) =>
+		post((users.actions as any)[action], fields, jar(), { user: auth.getUserById(owner.id) });
+	const password = 'x'.repeat(8);
+
+	// Neither the admin nor the owner, from the panel.
+	assert.equal((await own('disable', { password })).status, 403);
+	assert.equal((await panel('disableTwoFactor', { id: hire().id })).status, 403);
+	assert.ok(hire().totp_secret);
+
+	// A new phone: the old secret works until a code from the new one confirms it.
+	const old = hire().totp_secret!;
+	assert.equal((await own('replace', { password: 'wrong' })).status, 401);
+	await own('replace', { password });
+	assert.equal(hire().totp_secret, old, 'still the old one while setting up');
+	const next = hire().totp_pending!;
+	assert.notEqual(next, old);
+	assert.equal((await own('enable', { code: codeAt(next) })).codes.length, 10);
+	assert.equal(hire().totp_secret, next);
+	assert.equal(hire().totp_pending, null);
+
+	// A user again: now it can be turned off.
+	await panel('setRole', { id: hire().id, role: 'user' });
+	assert.equal((await own('disable', { password })).status, undefined);
+	assert.equal(hire().totp_secret, null);
+
+	// And with the switch off again, an admin may turn it off as anyone may.
+	const instance = await import('../src/routes/admin-panel/settings/+page.server.ts');
+	await post(instance.actions.saveAdminPolicy, {}, jar(), { user: auth.getUserById(owner.id) });
+	await panel('setRole', { id: hire().id, role: 'admin' });
+	assert.equal(hire().role, 'admin', 'promoted without 2FA');
+	const secret = twofactor.pendingSecret(hire().id);
+	assert.ok(twofactor.enableTwoFactor(hire(), codeAt(secret)));
+	assert.equal((await own('disable', { password })).status, undefined);
+	assert.equal(hire().totp_secret, null);
 });

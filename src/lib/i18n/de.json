@@ -1142,5 +1142,24 @@
 	"overview.skipped": "Diese Version wurde nicht gerendert: Die Renderwarteschlange des Besitzers war beim Eintreffen voll. Sie lässt sich im Verlauf rendern.",
 	"overview.renderInHistory": "Verlauf öffnen",
 	"instance.limitPush": "Größter Git-Push (MB)",
-	"instance.limitPushHint": "Ein größerer Push wird von git abgelehnt. Unabhängig von diesem Wert bricht der Server Anfragen bei {size} ab (BODY_SIZE_LIMIT)."
+	"instance.limitPushHint": "Ein größerer Push wird von git abgelehnt. Unabhängig von diesem Wert bricht der Server Anfragen bei {size} ab (BODY_SIZE_LIMIT).",
+	"users.createHint": "Neue Konten beginnen als Benutzer: Administratoren brauchen die Zwei-Faktor-Anmeldung, die nur das Konto selbst einschalten kann.",
+	"users.needs2fa": "braucht 2FA",
+	"users.error.adminNeeds2fa": "{name} muss zuerst die Zwei-Faktor-Anmeldung einschalten (Benutzerbereich → Zwei-Faktor-Anmeldung), um Administrator zu werden.",
+	"twofactor.replace": "Authenticator ersetzen",
+	"twofactor.replaceHint": "Für ein neues Telefon oder eine neue App. Der bisherige funktioniert weiter, bis der neue bestätigt ist.",
+	"twofactor.replaceTitle": "Neuen Authenticator verbinden",
+	"twofactor.replaceScan": "Scanne den QR-Code mit der neuen App und gib dann den 6-stelligen Code ein, den sie anzeigt. Bis dahin bleibt dein bisheriger Authenticator in Gebrauch.",
+	"twofactor.replaceConfirm": "Auf diesen wechseln",
+	"twofactor.replaced": "Dein neuer Authenticator ist in Gebrauch, mit neuen Wiederherstellungscodes. Andere Geräte wurden abgemeldet.",
+	"twofactor.error.admin": "Auf dieser Instanz brauchen Administratoren die Zwei-Faktor-Anmeldung und können sie nicht ausschalten. Das geht erst, wenn das Konto wieder ein Benutzer ist.",
+	"users.error.adminKeeps2fa": "{name} ist Administrator, und Administratoren brauchen hier die Zwei-Faktor-Anmeldung. Stufe das Konto zuerst zum Benutzer herab.",
+	"instance.admins": "Administratoren",
+	"instance.adminsRequire2fa": "Administratoren brauchen die Zwei-Faktor-Anmeldung",
+	"instance.adminsRequire2faHint": "Ein Konto kann nur mit eingeschalteter Zwei-Faktor-Anmeldung zum Administrator gemacht werden, und Administratoren können sie nicht ausschalten. Nur der Besitzer sieht und ändert das.",
+	"instance.adminsWithout2fa": {
+		"one": " {count} Administrator hat noch keine und behält die Rolle, bis sie eingerichtet ist.",
+		"other": " {count} Administratoren haben noch keine und behalten die Rolle, bis sie eingerichtet ist."
+	},
+	"instance.error.ownerOnly": "Nur der Besitzer kann das ändern."
 }

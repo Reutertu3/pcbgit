@@ -323,10 +323,19 @@ space limits them, and 1 GB always stays free. Snapshots can also be copied in:
 
 Turn it on under **Settings → Two-factor sign-in**: scan the QR code with an
 authenticator app, confirm with a code, keep the ten recovery codes. Sign-in then
-asks for a code after the password; git keeps using access tokens. An admin can
-turn it off for someone who lost phone and codes (**Admin → Users**); for another
-admin only the owner can. Nobody can for the owner; a locked-out owner runs, on
-the server:
+asks for a code after the password; git keeps using access tokens. For a new
+phone there is **Replace authenticator**. An admin can turn it off for someone
+who lost phone and codes (**Admin → Users**); for another admin only the owner
+can.
+
+The owner can require it of admins (**Admin → Instance → Administrators need
+two-factor sign-in**, off by default; only the owner sees the switch). Then an
+account can only be made admin with it turned on, new accounts start as users,
+and an admin cannot turn it off: one who lost phone and codes is made a user
+first, by the owner, and promoted again once it is set up anew. Admins who had
+none before keep their role.
+
+Nobody turns it off for the owner; a locked-out owner runs, on the server:
 
 ```sh
 docker compose exec pcbgit node --import ./tests/resolve-hook.mjs scripts/reset-owner.ts </dev/null

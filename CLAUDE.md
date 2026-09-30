@@ -123,7 +123,15 @@ converter takes untrusted XML: keep its reader entity-free and capped
   `/login` hands 2FA accounts a challenge (in memory, like `loginguard.ts`) and
   `/login/2fa` makes the session. Anything else that signs someone in with a
   password must do the same. The account's failure count is cleared only after
-  the code. Access tokens (git) skip it by design.
+  the code. Access tokens (git) skip it by design. A new phone is "Replace
+  authenticator" (`totp_pending` next to the secret in use, swapped by `enable`).
+  With the owner's switch on (`adminsNeedTwoFactor()`, setting `admins_require_2fa`,
+  off by default, set and seen by the owner only on Admin → Instance), an account
+  is only promoted to admin with 2FA on (`setRole`), the panel creates users only,
+  and nobody turns it off for an admin, the admin included: demote first.
+  Exceptions: the first admin (`ensureAdmin()` in bootstrap.ts), admins from
+  before the switch, and `scripts/reset-owner.ts`. Anything new that makes an
+  admin or turns 2FA off checks the switch.
 - **Pending accounts** (admin approval) have `approved = 0` and `is_active = 0`,
   so every `is_active = 1` filter already leaves them out.
 - **Permissions** go through `canView` / `canEdit` / `isOwner` (projects.ts). Collaborators

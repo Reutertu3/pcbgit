@@ -12,7 +12,7 @@ import {
 	validateUsername
 } from '$lib/server/auth';
 import { instanceLimits, limitsFor, storageUsed } from '$lib/server/limits';
-import { disableTwoFactor } from '$lib/server/twofactor';
+import { adminsNeedTwoFactor, disableTwoFactor } from '$lib/server/twofactor';
 
 interface AdminUserRow {
 	id: string;
@@ -65,6 +65,7 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 		defaults: instanceLimits(),
 		me: locals.user!.id,
 		meOwner: Boolean(locals.user!.is_owner),
+		adminsNeedTwoFactor: adminsNeedTwoFactor(),
 		search
 	};
 };
@@ -104,7 +105,8 @@ export const actions: Actions = {
 		const username = String(form.get('username') ?? '').trim();
 		const email = String(form.get('email') ?? '').trim();
 		const password = String(form.get('password') ?? '');
-		const role = form.get('role') === 'admin' ? 'admin' : 'user';
+		// A new account has no two-factor sign-in yet: where admins need it, it starts as a user.
+		const role = form.get('role') === 'admin' && !adminsNeedTwoFactor() ? 'admin' : 'user';
 
 		const usernameError = validateUsername(username);
 		if (usernameError) return fail(400, { error: translate(locals.locale, usernameError) });
@@ -130,8 +132,13 @@ export const actions: Actions = {
 		if (role === 'user' && isLastAdmin(id)) {
 			return fail(400, { error: translate(locals.locale, 'users.error.lastAdmin') });
 		}
+		const target = getUserById(id);
+		if (!target) return fail(404, { error: translate(locals.locale, 'error.userNotFound') });
+		if (role === 'admin' && target.role !== 'admin' && adminsNeedTwoFactor() && !target.totp_secret) {
+			return fail(400, { error: translate(locals.locale, 'users.error.adminNeeds2fa', { name: target.username }) });
+		}
 		run('UPDATE users SET role = ?, updated_at = ? WHERE id = ?', role, now(), id);
-		audit(locals.user!.id, 'admin.user_role', getUserById(id)?.username ?? id, role);
+		audit(locals.user!.id, 'admin.user_role', target.username, role);
 		return { success: true, message: translate(locals.locale, 'users.roleUpdated') };
 	},
 
@@ -214,6 +221,11 @@ export const actions: Actions = {
 		const id = String((await request.formData()).get('id') ?? '');
 		const user = getUserById(id);
 		if (!user) return fail(404, { error: translate(locals.locale, 'error.userNotFound') });
+		// Where admins need 2FA it stays on, the owner's included: the account is made a
+		// user first, which only the owner may do, and promoted again once it is set up anew.
+		if (user.role === 'admin' && adminsNeedTwoFactor()) {
+			return fail(403, { error: translate(locals.locale, 'users.error.adminKeeps2fa', { name: user.username }) });
+		}
 		const refused = ownerRefusal(id, locals.user!.id, { ownerMay: true }) || adminRefusal(id, locals.user!);
 		if (refused) return fail(403, { error: translate(locals.locale, refused) });
 		disableTwoFactor(user, locals.user!.id);

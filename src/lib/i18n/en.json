@@ -1142,5 +1142,24 @@
 	"overview.skipped": "This version was not rendered: the owner's render queue was full when it arrived. It can be rendered from the history.",
 	"overview.renderInHistory": "Open history",
 	"instance.limitPush": "Largest git push (MB)",
-	"instance.limitPushHint": "A larger push is refused by git. Whatever is set here, the server cuts requests off at {size} (BODY_SIZE_LIMIT)."
+	"instance.limitPushHint": "A larger push is refused by git. Whatever is set here, the server cuts requests off at {size} (BODY_SIZE_LIMIT).",
+	"users.createHint": "New accounts start as users: administrators need two-factor sign-in, which only the account itself can turn on.",
+	"users.needs2fa": "needs 2FA",
+	"users.error.adminNeeds2fa": "{name} has to turn on two-factor sign-in (User center → Two-factor sign-in) before becoming an admin.",
+	"twofactor.replace": "Replace authenticator",
+	"twofactor.replaceHint": "For a new phone or app. The current one keeps working until the new one is confirmed.",
+	"twofactor.replaceTitle": "Connect your new authenticator",
+	"twofactor.replaceScan": "Scan the QR code with the new app, then enter the 6-digit code it shows. Until then your current authenticator stays in use.",
+	"twofactor.replaceConfirm": "Switch to this one",
+	"twofactor.replaced": "Your new authenticator is in use, with new recovery codes. Other devices were signed out.",
+	"twofactor.error.admin": "On this instance administrators need two-factor sign-in and cannot turn it off. It can be turned off once the account is a user again.",
+	"users.error.adminKeeps2fa": "{name} is an administrator, and administrators need two-factor sign-in here. Make the account a user first.",
+	"instance.admins": "Administrators",
+	"instance.adminsRequire2fa": "Administrators need two-factor sign-in",
+	"instance.adminsRequire2faHint": "An account can only be made an administrator with two-factor sign-in turned on, and administrators cannot turn it off. Only the owner sees and changes this.",
+	"instance.adminsWithout2fa": {
+		"one": " {count} administrator has none yet and keeps the role until it is set up.",
+		"other": " {count} administrators have none yet and keep the role until it is set up."
+	},
+	"instance.error.ownerOnly": "Only the owner can change this."
 }

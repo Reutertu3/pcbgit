@@ -80,9 +80,11 @@ instance; **Optional** needs outside services or is a niche.
   Today a missing 3D model just leaves a gap in the 3D view. kicad-cli reports
   these in its output; collect them per render and show a short warning list.
 - **Require two-factor sign-in for admins; passkeys** · _Accounts_ \
-  Optional TOTP with recovery codes exists, but an admin account controls the
-  whole instance and may still sign in with a password alone. An admin setting
-  to make it mandatory for admins; passkeys (WebAuthn) as a second kind of factor.
+  The owner can require it (Admin → Instance, off by default, 2026-09-30): an
+  account then only becomes admin with two-factor sign-in on, and admins cannot
+  turn it off. Admins from before may still have none, the `.env` owner among
+  them: ask them to set it up at sign-in. Passkeys (WebAuthn) as a second kind
+  of factor.
 - **Scheduled snapshots with retention (e.g. daily, keep 7)** · _Operations_ \
   Snapshots are taken by hand and before updates only; a homelab server usually
   has no other backup. A timer in the app, a retention count and a free-disk

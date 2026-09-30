@@ -844,3 +844,28 @@ The first try answered 500 on the real server while its test passed: the route
 set `Content-Type` twice, which SvelteKit's `setHeaders()` refuses and the
 test's stand-in allowed. The stand-in is as strict now.
 
+### The owner can require two-factor sign-in of admins
+An admin account controls the whole instance, and a user could be made admin
+with nothing but a password. Whether that is acceptable is the owner's call: a
+switch under Admin → Instance, "Administrators need two-factor sign-in", off by
+default, which only the owner sees and can set (it binds the other admins).
+
+With it on, promotion is refused unless the account has two-factor sign-in on,
+with a message naming what is missing, and the role dropdown shows "Admin
+(needs 2FA)" greyed out. Only the account itself can set 2FA up, so the panel's
+"create user" then makes users only. A check at promotion alone would be undone
+by turning 2FA off afterwards, so admins cannot: not in their settings, and not
+by another admin or the owner from the panel. It comes off only once the
+account is a user again; an admin who lost phone and recovery codes is made a
+user by the owner, has 2FA turned off, sets it up anew and is promoted again.
+With the switch off, everything is as before.
+
+That would have left an admin with a new phone stuck, since switching
+authenticators meant turning 2FA off and on. "Replace authenticator" (with the
+password) sets up a new secret next to the one in use; a code from the new one
+swaps them, makes new recovery codes and signs out other devices. It is there
+for every account, whatever the switch says.
+
+Left on the TODO: admins from before keep their role without 2FA (the switch
+says how many), and the first admin made at startup has none. The owner's
+command-line reset still turns the owner's off, as the way back in.

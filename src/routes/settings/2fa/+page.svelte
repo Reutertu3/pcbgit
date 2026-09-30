@@ -60,34 +60,10 @@
 		</div>
 	{/if}
 
-	{#if data.enabled}
+	{#if data.setup}
 		<section class="surface p-5">
-			<h2 class="mb-1 flex items-center gap-2 text-sm font-semibold">
-				<Icon name="shield" size={14} style="color: var(--ok)" /> {t('twofactor.on')}
-			</h2>
-			<p class="mb-4 text-xs text-[var(--text-secondary)]">
-				{t('twofactor.codesLeft', { count: data.recoveryLeft })}
-			</p>
-			<form method="POST" action="?/recovery" use:enhance class="mb-5">
-				<label class="label" for="recovery-password">{t('account.currentPassword')}</label>
-				<div class="flex flex-wrap gap-2">
-					<input class="input max-w-xs flex-1" id="recovery-password" name="password" type="password" autocomplete="current-password" required />
-					<button class="btn" type="submit">{t('twofactor.regenerate')}</button>
-				</div>
-				<p class="hint">{t('twofactor.regenerateHint')}</p>
-			</form>
-			<form method="POST" action="?/disable" use:enhance>
-				<label class="label" for="disable-password">{t('account.currentPassword')}</label>
-				<div class="flex flex-wrap gap-2">
-					<input class="input max-w-xs flex-1" id="disable-password" name="password" type="password" autocomplete="current-password" required />
-					<button class="btn btn-danger" type="submit">{t('twofactor.disable')}</button>
-				</div>
-			</form>
-		</section>
-	{:else if data.setup}
-		<section class="surface p-5">
-			<h2 class="mb-1 text-sm font-semibold">{t('twofactor.setupTitle')}</h2>
-			<p class="mb-4 text-xs text-[var(--text-secondary)]">{t('twofactor.scan')}</p>
+			<h2 class="mb-1 text-sm font-semibold">{data.enabled ? t('twofactor.replaceTitle') : t('twofactor.setupTitle')}</h2>
+			<p class="mb-4 text-xs text-[var(--text-secondary)]">{data.enabled ? t('twofactor.replaceScan') : t('twofactor.scan')}</p>
 			<div class="flex flex-wrap items-start gap-5">
 				<!-- Our own SVG from uqr; a QR code needs a light background in either theme. -->
 				<div class="w-44 shrink-0 overflow-hidden rounded-md border bg-white" aria-label={t('twofactor.qr')} role="img">
@@ -108,7 +84,7 @@
 								maxlength="7"
 								required
 							/>
-							<button class="btn btn-primary" type="submit">{t('twofactor.enable')}</button>
+							<button class="btn btn-primary" type="submit">{data.enabled ? t('twofactor.replaceConfirm') : t('twofactor.enable')}</button>
 						</div>
 					</form>
 				</div>
@@ -116,6 +92,42 @@
 			<form method="POST" action="?/cancel" use:enhance class="mt-4">
 				<button class="btn btn-ghost btn-sm" type="submit">{t('common.cancel')}</button>
 			</form>
+		</section>
+	{:else if data.enabled}
+		<section class="surface p-5">
+			<h2 class="mb-1 flex items-center gap-2 text-sm font-semibold">
+				<Icon name="shield" size={14} style="color: var(--ok)" /> {t('twofactor.on')}
+			</h2>
+			<p class="mb-4 text-xs text-[var(--text-secondary)]">
+				{t('twofactor.codesLeft', { count: data.recoveryLeft })}
+			</p>
+			<form method="POST" action="?/recovery" use:enhance class="mb-5">
+				<label class="label" for="recovery-password">{t('account.currentPassword')}</label>
+				<div class="flex flex-wrap gap-2">
+					<input class="input max-w-xs flex-1" id="recovery-password" name="password" type="password" autocomplete="current-password" required />
+					<button class="btn" type="submit">{t('twofactor.regenerate')}</button>
+				</div>
+				<p class="hint">{t('twofactor.regenerateHint')}</p>
+			</form>
+			<form method="POST" action="?/replace" use:enhance class="mb-5">
+				<label class="label" for="replace-password">{t('account.currentPassword')}</label>
+				<div class="flex flex-wrap gap-2">
+					<input class="input max-w-xs flex-1" id="replace-password" name="password" type="password" autocomplete="current-password" required />
+					<button class="btn" type="submit">{t('twofactor.replace')}</button>
+				</div>
+				<p class="hint">{t('twofactor.replaceHint')}</p>
+			</form>
+			{#if data.locked}
+				<p class="text-xs text-[var(--text-secondary)]">{t('twofactor.error.admin')}</p>
+			{:else}
+				<form method="POST" action="?/disable" use:enhance>
+					<label class="label" for="disable-password">{t('account.currentPassword')}</label>
+					<div class="flex flex-wrap gap-2">
+						<input class="input max-w-xs flex-1" id="disable-password" name="password" type="password" autocomplete="current-password" required />
+						<button class="btn btn-danger" type="submit">{t('twofactor.disable')}</button>
+					</div>
+				</form>
+			{/if}
 		</section>
 	{:else}
 		<section class="surface p-5">

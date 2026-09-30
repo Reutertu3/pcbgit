@@ -12,6 +12,10 @@
 	let showCreate = $state(false);
 	let resetting = $state<string | null>(null);
 	let confirmDelete = $state<string | null>(null);
+
+	/** Where admins need two-factor sign-in, an account without it cannot be promoted. */
+	const needsTwoFactor = (user: { role: string; two_factor: number }) =>
+		data.adminsNeedTwoFactor && user.role !== 'admin' && !user.two_factor;
 	let editingLimits = $state<string | null>(null);
 
 	/** "12 MB / 500 MB", or just the usage when there is no limit. */
@@ -55,14 +59,17 @@
 					<label class="label" for="new-password">{t('auth.password')}</label>
 					<input class="input" id="new-password" name="password" type="password" minlength="8" required />
 				</div>
-				<div>
-					<label class="label" for="new-role">{t('users.role')}</label>
-					<select class="select" id="new-role" name="role">
-						<option value="user">{t('users.roleUser')}</option>
-						<option value="admin">{t('users.roleAdmin')}</option>
-					</select>
-				</div>
+				{#if !data.adminsNeedTwoFactor}
+					<div>
+						<label class="label" for="new-role">{t('users.role')}</label>
+						<select class="select" id="new-role" name="role">
+							<option value="user">{t('users.roleUser')}</option>
+							<option value="admin">{t('users.roleAdmin')}</option>
+						</select>
+					</div>
+				{/if}
 			</div>
+			{#if data.adminsNeedTwoFactor}<p class="hint">{t('users.createHint')}</p>{/if}
 			<div class="mt-3 flex gap-2">
 				<button class="btn btn-primary btn-sm" type="submit">{t('users.create')}</button>
 				<button class="btn btn-ghost btn-sm" type="button" onclick={() => (showCreate = false)}>{t('common.cancel')}</button>
@@ -118,7 +125,9 @@
 									onchange={(event) => event.currentTarget.form?.requestSubmit()}
 								>
 									<option value="user">{t('users.roleUser')}</option>
-									<option value="admin">{t('profile.admin')}</option>
+									<option value="admin" disabled={needsTwoFactor(user)}>
+										{t('profile.admin')}{needsTwoFactor(user) ? ` (${t('users.needs2fa')})` : ''}
+									</option>
 								</select>
 							</form>
 						{/if}
@@ -227,7 +236,7 @@
 								<button class="btn btn-ghost btn-sm" type="button" onclick={() => (resetting = null)}>{t('common.cancel')}</button>
 							</form>
 							<p class="hint">{t('users.signsOut')}</p>
-							{#if user.two_factor}
+							{#if user.two_factor && !(data.adminsNeedTwoFactor && user.role === 'admin')}
 								<form method="POST" action="?/disableTwoFactor" use:enhance={() => async ({ update }) => {
 									await update();
 									resetting = null;

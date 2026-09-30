@@ -1,6 +1,7 @@
 import type { Actions, PageServerLoad } from './$types';
 import { translate } from '$lib/i18n';
-import { audit, getSetting, setSetting } from '$lib/server/db';
+import { audit, count, getSetting, setSetting } from '$lib/server/db';
+import { adminsNeedTwoFactor } from '$lib/server/twofactor';
 import { fail } from '@sveltejs/kit';
 import { resetKicadVersionCache } from '$lib/server/render/kicad';
 import { formatSize, instanceLimits } from '$lib/server/limits';
@@ -21,13 +22,20 @@ import {
 } from '$lib/server/updater';
 import type { CheckInterval } from '$lib/types';
 
-export const load: PageServerLoad = async () => ({
+export const load: PageServerLoad = async ({ locals }) => ({
 	settings: {
 		siteName: getSetting('site_name', 'pcbgit'),
 		...siteTexts(),
 		registrationOpen: getSetting('registration_open', 'true') === 'true',
 		registrationApproval: getSetting('registration_approval', 'true') === 'true'
 	},
+	// The owner's alone to see and set.
+	adminPolicy: locals.user!.is_owner
+		? {
+				requireTwoFactor: adminsNeedTwoFactor(),
+				without: count("SELECT COUNT(*) FROM users WHERE role = 'admin' AND is_active = 1 AND totp_secret IS NULL")
+			}
+		: null,
 	limits: instanceLimits(),
 	// Requests above this are cut off before git can refuse them with a reason.
 	requestLimit: bodySizeLimit() === null ? null : formatSize(bodySizeLimit()!),
@@ -49,6 +57,15 @@ export const actions: Actions = {
 		setSetting('registration_approval', form.get('registration_approval') ? 'true' : 'false');
 		audit(locals.user!.id, 'admin.settings_save');
 		return { success: true, saved: true, scope: 'site', message: translate(locals.locale, 'instance.saved') };
+	},
+
+	/** Whether admins need two-factor sign-in. The owner decides: it binds the other admins. */
+	saveAdminPolicy: async ({ request, locals }) => {
+		if (!locals.user!.is_owner) return fail(403, { scope: 'admins', error: translate(locals.locale, 'instance.error.ownerOnly') });
+		const require = (await request.formData()).get('admins_require_2fa') ? 'true' : 'false';
+		setSetting('admins_require_2fa', require);
+		audit(locals.user!.id, 'admin.admin_policy_save', '', `admins_require_2fa ${require}`);
+		return { success: true, saved: true, scope: 'admins', message: translate(locals.locale, 'instance.saved') };
 	},
 
 	/** Defaults for every user (admins have none); 0 means no limit. The Users page can override the first two. */

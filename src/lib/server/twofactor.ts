@@ -4,7 +4,7 @@
  * as long as any other, and git keeps using access tokens.
  */
 import crypto from 'node:crypto';
-import { audit, count, get, run } from './db';
+import { audit, count, get, getSetting, run } from './db';
 import type { User } from './auth';
 import { matchStep, newRecoveryCodes, newSecret, normalizeCode, recoveryHash } from './totp';
 
@@ -13,6 +13,14 @@ export const CHALLENGE_COOKIE = 'pcbgit_2fa';
 export const CHALLENGE_TTL = 5 * 60 * 1000;
 /** Wrong codes per password: then the password has to be entered again. */
 const CHALLENGE_TRIES = 5;
+
+/**
+ * The owner's switch (Admin → Instance, off by default): with it on, an account
+ * is only made admin with two-factor sign-in on, and an admin cannot turn it off.
+ */
+export function adminsNeedTwoFactor() {
+	return getSetting('admins_require_2fa', 'false') === 'true';
+}
 
 /** The secret to show while setting up; made on first request, kept until confirmed or cancelled. */
 export function pendingSecret(userId: string) {
