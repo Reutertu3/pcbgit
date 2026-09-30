@@ -39,6 +39,7 @@ Each tag links to its release notes on GitHub.
 | [**v0.7.2**](https://github.com/Reutertu3/pcbgit/releases/tag/v0.7.2) | 2026-09-28 | Update check interval in the panel (hourly to monthly), footer source link follows the server's git remote (forks), README condensed with releases, CI and forking |
 | [**v0.7.3**](https://github.com/Reutertu3/pcbgit/releases/tag/v0.7.3) | 2026-09-29 | Security fix: one anonymous oversized or malformed git request could crash the server |
 | [**v0.7.4**](https://github.com/Reutertu3/pcbgit/releases/tag/v0.7.4) | 2026-09-29 | Registration protected against bots (per-address limit, honeypot, cap on waiting accounts), renders limited per owner, smooth panning in the 3D view |
+| [**v0.8.0**](https://github.com/Reutertu3/pcbgit/releases/tag/v0.8.0) | 2026-09-30 | LCSC part numbers in the BOM, STEP download instead of GLB, push size limit, the owner can require two-factor sign-in of admins, replace authenticator |
 
 ---
 
