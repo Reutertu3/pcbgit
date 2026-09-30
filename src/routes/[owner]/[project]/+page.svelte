@@ -361,9 +361,9 @@
 								<Icon name="download" size={13} /> {t('overview.dlSchematicPdf')}
 							</a>
 						{/if}
-						{#if data.glb}
-							<a href={data.glb} class="btn btn-sm justify-start">
-								<Icon name="download" size={13} /> {t('overview.dlGlb')}
+						{#if data.step}
+							<a href={data.step} download="{data.project.slug}-{shortSha(data.commit.sha)}.step" class="btn btn-sm justify-start">
+								<Icon name="download" size={13} /> {t('overview.dlStep')}
 							</a>
 						{/if}
 						{#if data.convertedProject}

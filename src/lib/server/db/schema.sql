@@ -198,7 +198,7 @@ CREATE INDEX IF NOT EXISTS idx_jobs_commit ON render_jobs(commit_id);
 CREATE TABLE IF NOT EXISTS artifacts (
   id         TEXT PRIMARY KEY,
   commit_id  TEXT NOT NULL REFERENCES commits(id) ON DELETE CASCADE,
-  kind       TEXT NOT NULL,     -- schematic_svg | pcb_layer_svg | pcb_glb | thumbnail | bom_csv | drc_json | erc_json | gerber_zip
+  kind       TEXT NOT NULL,     -- schematic_svg | pcb_layer_svg | pcb_glb | pcb_step | thumbnail | bom_csv | drc_json | erc_json | gerber_zip
   name       TEXT NOT NULL,     -- sheet name / layer id / file label
   rel_path   TEXT NOT NULL,     -- relative to DATA_DIR/artifacts
   ordinal    INTEGER NOT NULL DEFAULT 0,

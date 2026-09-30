@@ -24,6 +24,7 @@
 		{#key data.modelUrl}
 			<Viewer3D
 				url={data.modelUrl}
+				downloadUrl={data.stepUrl}
 				mounts={data.mounts}
 				caption="{data.project.name} · {shortSha(data.commit?.sha)}"
 				fileBase="{data.project.slug}-{shortSha(data.commit?.sha)}"
@@ -35,9 +36,11 @@
 				{t('3d.hint')}
 				{#if size}<span class="mono ml-1">{size}</span>{/if}
 			</span>
-			<a href={data.modelUrl} download class="flex items-center gap-1 hover:text-[var(--accent)]">
-				<Icon name="download" size={12} /> {t('3d.downloadGlb')}
-			</a>
+			{#if data.stepUrl}
+				<a href={data.stepUrl} download="{data.project.slug}-{shortSha(data.commit?.sha)}.step" class="flex items-center gap-1 hover:text-[var(--accent)]">
+					<Icon name="download" size={12} /> {t('3d.downloadStep')}
+				</a>
+			{/if}
 		</div>
 	{/if}
 </div>

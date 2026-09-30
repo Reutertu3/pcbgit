@@ -128,7 +128,7 @@ export function artifactSummary(commitId: string) {
 		ibom: rows.find((row) => row.kind === 'ibom_html'),
 		schematicPdf: rows.find((row) => row.kind === 'schematic_pdf'),
 		convertedProject: rows.find((row) => row.kind === 'converted_zip'),
-		glb: rows.find((row) => row.kind === 'pcb_glb'),
+		step: rows.find((row) => row.kind === 'pcb_step'),
 		previewFront: rows.find((row) => row.kind === 'pcb_preview_svg' && row.name === 'front'),
 		previewBack: rows.find((row) => row.kind === 'pcb_preview_svg' && row.name === 'back'),
 		totalBytes: rows.reduce((sum, row) => sum + row.size_bytes, 0),

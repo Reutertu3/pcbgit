@@ -1,6 +1,8 @@
 import { error } from '@sveltejs/kit';
 import fs from 'node:fs';
 import path from 'node:path';
+import { Readable } from 'node:stream';
+import zlib from 'node:zlib';
 import type { RequestHandler } from './$types';
 import { SVG_POLICY, artifactAccess, artifactCacheControl } from '$lib/server/artifactaccess';
 import { ARTIFACT_DIR } from '$lib/server/paths';
@@ -12,6 +14,7 @@ const TYPES: Record<string, string> = {
 	'.svg': 'image/svg+xml',
 	'.pdf': 'application/pdf',
 	'.glb': 'model/gltf-binary',
+	'.step': 'model/step',
 	'.json': 'application/json',
 	'.csv': 'text/csv',
 	'.zip': 'application/zip',
@@ -33,7 +36,7 @@ const PAGE_POLICY = [
 	"frame-ancestors 'self'"
 ].join('; ');
 
-export const GET: RequestHandler = async ({ params, locals, setHeaders, url }) => {
+export const GET: RequestHandler = async ({ params, locals, request, setHeaders, url }) => {
 	const commitId = params.commit;
 	const relative = params.file;
 
@@ -53,7 +56,9 @@ export const GET: RequestHandler = async ({ params, locals, setHeaders, url }) =
 	}
 	if (!stat.isFile()) error(404, 'Not found');
 
-	const extension = path.extname(target).toLowerCase();
+	// board.step.gz is the STEP download, kept gzipped.
+	const step = target.endsWith('.step.gz');
+	const extension = step ? '.step' : path.extname(target).toLowerCase();
 	setHeaders({
 		'Content-Type': TYPES[extension] ?? 'application/octet-stream',
 		'Cache-Control': artifactCacheControl(visibility, url.searchParams.has('v')),
@@ -80,6 +85,21 @@ export const GET: RequestHandler = async ({ params, locals, setHeaders, url }) =
 	// Schematic sheets: ?dark swaps KiCad's default colours for the dark look.
 	if (url.searchParams.has('dark') && isSchematicSheet(relative)) {
 		return new Response(darkSchematicSvg(fs.readFileSync(target, 'utf8')));
+	}
+
+	// Downloaded as the STEP itself: sent as it is to clients that unpack gzip
+	// themselves, and unpacked here for the rest.
+	if (step) {
+		setHeaders({ 'Content-Disposition': 'attachment', Vary: 'Accept-Encoding' });
+		if (/\bgzip\b/.test(request.headers.get('accept-encoding') ?? '')) {
+			setHeaders({ 'Content-Encoding': 'gzip', 'Content-Length': String(stat.size) });
+			return new Response(fileBody(target));
+		}
+		// toWeb, as in fileBody(); a read error must reach the unpacker, or the response never ends.
+		const source = fs.createReadStream(target);
+		const unpacked = source.pipe(zlib.createGunzip());
+		source.on('error', (error) => unpacked.destroy(error));
+		return new Response(Readable.toWeb(unpacked) as ReadableStream<Uint8Array>);
 	}
 
 	setHeaders({ 'Content-Length': String(stat.size) });

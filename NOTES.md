@@ -781,3 +781,66 @@ Trying it against the running image showed a logged error after the refused
 push: `repoSize()` walked the repository while git was still removing the
 refused pack's quarantine directory. It now counts what has vanished as 0.
 
+### Visual diff of schematic and board: evaluated, postponed
+Looked at what a diff between two versions could be built from, without
+building it.
+
+**What is there.** Every version has one SVG per schematic sheet, on the full
+page in millimetres, so two versions of a sheet line up as they are unless the
+paper size changed. The board has one SVG per layer, cropped to the board area,
+and `commits.board_bbox` holds where that area lies in millimetres: two versions
+can be placed in one frame even when the outline grew. The BOM diff already has
+`?compare=<sha>` and a "compare with previous" link in History; a visual diff
+should take the same parameter, so a base picked once carries across the BOM,
+Schematic and PCB tabs.
+
+**Approach.** In the browser, with CSS masks, per sheet or layer: the new
+version in muted grey, removed (old minus new, `mask-composite: subtract`) in
+red, added (new minus old) in green. Sharp at any zoom, no server work, no
+storage, and it works for every version already rendered; KiRI and kidiff do
+the same thing. With the two images aligned, an old/new toggle to blink between
+them and a swipe slider come cheaply. On the board it is per layer, and the
+layer toggles and front/back flip keep working.
+
+**Not known yet.**
+- Fringes: two versions offset by a fraction of a pixel (the outline changed)
+  could show thin red and green edges around identical copper. The fallback is
+  comparing rasterised images on a canvas with a threshold, which is more work
+  and less sharp. A prototype on two real versions would settle it.
+- Which sheets and layers changed at all: a file hash cannot tell. Two versions
+  of bq25170_eval differ in every SVG, Edge.Cuts included, because kicad-cli
+  writes a creation date into `<title>` and does not keep element order stable
+  (two drill circles swapped). Badges like "3 of 12 layers changed" need a
+  normalised comparison.
+- False differences between versions rendered by different KiCad or pcbgit
+  versions; re-rendering both fixes it, and the page should say so.
+- Renamed sheets read as one removed, one added; versions never rendered
+  cannot be compared.
+
+**What it is not.** It shows where something changed, not what ("R5: 10k →
+4k7", a renamed net). That needs a comparison of the parsed files, a much
+larger feature; the BOM diff and the planned DRC/ERC diff cover part of it.
+
+**Order, when it is taken up.** A prototype of the overlay on the PCB tab to
+judge the fringes; then compare on Schematic and PCB with overlay, toggle and
+slider, and links from History; later the badges and a list of changed regions
+to jump to.
+
+### The 3D download is a STEP
+The download offered next to the 3D view was the viewer's GLB: a mesh, which
+mechanical CAD cannot use for an enclosure. Every render now also runs
+`kicad-cli pcb export step` (board body and component models as solids; no
+copper, silkscreen or mask, which CAD has no use for and which multiply the
+size), and that is what the overview and the 3D tab offer, and what the viewer
+offers when it cannot show the model. The GLB stays, for the viewer only.
+
+On Touch-Matrix-LiPo the export takes about 8 s and writes 15 MB, 2.7 MB
+gzipped. It counts against the owner's storage, so it is stored as
+`board.step.gz` and served as the STEP: gzip passed through to clients that
+accept it, unpacked for the rest. Versions rendered before have no STEP until
+re-rendered, and no 3D download meanwhile.
+
+The first try answered 500 on the real server while its test passed: the route
+set `Content-Type` twice, which SvelteKit's `setHeaders()` refuses and the
+test's stand-in allowed. The stand-in is as strict now.
+

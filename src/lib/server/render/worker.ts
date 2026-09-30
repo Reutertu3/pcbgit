@@ -2,6 +2,8 @@ import AdmZip from 'adm-zip';
 import fs from 'node:fs';
 import fsp from 'node:fs/promises';
 import path from 'node:path';
+import { promisify } from 'node:util';
+import zlib from 'node:zlib';
 import { FAB_PROFILES, type FabProfile } from '$lib/fab';
 import { exportableLayers, fabricationLayers, layerIdFromFilename, layerStyle, previewLayers } from '$lib/layers';
 import { all, get, newId, now, run, tx } from '../db';
@@ -24,6 +26,7 @@ import {
 	pcbDrillArgs,
 	pcbGerberArgs,
 	pcbGlbArgs,
+	pcbStepArgs,
 	pcbLayerSvgArgs,
 	runIbom,
 	runKicad,
@@ -38,6 +41,8 @@ import { ensureThumbnail } from '../thumbnails';
 import { freeDiskSpace, minFreeDisk } from '../limits';
 import { optimizeBoardGlb } from './glb';
 import { countBySeverity, parseDrcReport, parseErcReport, type Violation } from './reports';
+
+const gzip = promisify(zlib.gzip);
 
 interface JobRow {
 	id: string;
@@ -465,6 +470,17 @@ async function renderBoard(
 			log.push(`glb optimize: failed, keeping KiCad's file (${(error as Error).message})`);
 		}
 		await storeArtifact({ commitId, kind: 'pcb_glb', name: 'board.glb', data, targetName: 'board.glb', meta: { mounts: board?.mounts ?? {}, optimized: data !== original } });
+	}
+
+	// The same board as STEP: the 3D download. Text that compresses to a fifth, and
+	// it counts against the owner's storage, so it is kept gzipped and unpacked
+	// when served (artifacts route).
+	const step = path.join(outDir, 'board.step');
+	const stepResult = await runKicad(pcbStepArgs(pcbPath, step), 600_000);
+	log.push(`step: ${stepResult.ok ? 'ok' : `failed (${stepResult.code}) ${stepResult.stderr.trim().split('\n').at(-1)}`}`);
+	if (stepResult.ok && fs.existsSync(step)) {
+		const data = await gzip(await readOutput(step, outDir));
+		await storeArtifact({ commitId, kind: 'pcb_step', name: 'board.step', data, targetName: 'board.step.gz' });
 	}
 
 	// DRC.

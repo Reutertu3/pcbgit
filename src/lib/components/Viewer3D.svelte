@@ -12,9 +12,11 @@
 		caption?: string;
 		/** Download file name, without extension. */
 		fileBase?: string;
+		/** The board as STEP, offered when the model cannot be shown. */
+		downloadUrl?: string | null;
 		class?: string;
 	}
-	let { url, mounts = {}, caption = '', fileBase = 'board-3d', class: className = '' }: Props = $props();
+	let { url, mounts = {}, caption = '', fileBase = 'board-3d', downloadUrl = null, class: className = '' }: Props = $props();
 
 	type Vec3 = [number, number, number];
 
@@ -1622,7 +1624,7 @@
 		<div class="absolute inset-0 flex flex-col items-center justify-center gap-2 text-center">
 			<Icon name="alert" size={24} style="color: var(--err)" />
 			<p class="text-sm" style:color="var(--err)">{error}</p>
-			<a href={url} download class="btn btn-sm">{t('viewer3d.downloadGlb')}</a>
+			{#if downloadUrl}<a href={downloadUrl} download="{fileBase}.step" class="btn btn-sm">{t('viewer3d.downloadStep')}</a>{/if}
 		</div>
 	{:else if !loaded}
 		<div class="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-3">

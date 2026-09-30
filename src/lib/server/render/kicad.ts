@@ -296,6 +296,15 @@ export function pcbGlbArgs(pcbPath: string, outFile: string) {
 	];
 }
 
+/**
+ * The board for mechanical CAD (enclosures): body and component models as solids.
+ * No copper, silkscreen or mask, which CAD has no use for and which would make
+ * the file many times larger.
+ */
+export function pcbStepArgs(pcbPath: string, outFile: string) {
+	return ['pcb', 'export', 'step', '--output', outFile, '--force', '--subst-models', pcbPath];
+}
+
 export function pcbDrcArgs(pcbPath: string, outFile: string) {
 	return [
 		'pcb', 'drc',

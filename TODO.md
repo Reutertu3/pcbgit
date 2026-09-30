@@ -12,7 +12,7 @@
 |---|---|---|---|
 | 🔴 | [Before opening registration](#before-opening-registration) | 0 | Abuse limits a public instance needs |
 | 🟠 | [Next up](#next-up) | 5 | Fixes and chores worth doing soon |
-| 🗺️ | [Feature roadmap](#feature-roadmap) | 26 | New features, by priority |
+| 🗺️ | [Feature roadmap](#feature-roadmap) | 25 | New features, by priority |
 | 🔍 | [To review](#to-review) | 3 | Code nobody has audited yet |
 | 🟡 | [Low priority](#low-priority) | 20 | Hardening, edge cases, chores that can wait |
 | ⚪ | [Optional](#optional) | 4 | Only if wanted |
@@ -60,8 +60,15 @@ instance; **Optional** needs outside services or is a niche.
 
 - **Visual diff of schematic and board between two versions** · _Review_ \
   The question every hardware review asks ("what changed?"), and git cannot
-  answer it for KiCad files. Each commit already has per-sheet and per-layer
-  SVGs: overlay two (slider, onion skin, or added/removed in two colours).
+  answer it for KiCad files. Evaluated and postponed (NOTES, 2026-09-30). Plan:
+  an overlay in the browser from the per-sheet and per-layer SVGs each version
+  already has, with CSS masks (new in grey, removed red, added green), an
+  old/new toggle and a swipe slider, picked with `?compare=<sha>` like the BOM
+  diff. Start with a prototype on the PCB tab: whether identical copper shows
+  thin fringes when the outline moved decides between masks and a canvas
+  comparison. Later: badges for changed sheets and layers (needs a normalised
+  comparison, the SVG files differ even when nothing changed), a list of changed
+  regions. It shows where, not what: "R5: 10k → 4k7" needs the parsed files.
 - **Revisions from git tags (Rev A, Rev B), and marking a version as ordered** · _Versions_ \
   Which commit went to the board house is what matters months later. Show tags
   in the history and version picker; per version a "fabricated" note (date,
@@ -90,9 +97,6 @@ instance; **Optional** needs outside services or is a niche.
 - **Comments pinned to a spot on a schematic sheet or board layer** · _Review_ \
   Comments are per board now; reviews point at a net or a footprint. Store sheet
   or layer plus coordinates, show markers in the viewers, allow resolving.
-- **STEP export next to the GLB** · _Mechanics_ \
-  Enclosure design needs STEP, not GLB; `kicad-cli pcb export step` in the
-  renderer, as one more artifact.
 - **Several KiCad projects in one repository** · _Boards_ \
   Only the shallowest `.kicad_pro` is rendered (`kicadfiles.ts`). Let the board
   settings pick the project, or show one board per project in the repository.

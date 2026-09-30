@@ -4,12 +4,12 @@ import { listTree, readBlob } from '$lib/server/git';
 import { repoPath } from '$lib/server/paths';
 import { artifactMeta, listArtifacts } from '$lib/server/render/artifacts';
 import { analyzeBoardText, type Mount } from '$lib/server/render/board';
-import { artifactUrl } from '$lib/server/projectcontext';
+import { artifactUrl, firstArtifactUrl } from '$lib/server/projectcontext';
 
 export const load: PageServerLoad = async ({ parent }) => {
 	const { commit, project } = await parent();
 	const [glb] = commit ? listArtifacts(commit.id, 'pcb_glb') : [];
-	if (!commit || !glb) return { modelUrl: null, mounts: {} };
+	if (!commit || !glb) return { modelUrl: null, stepUrl: null, mounts: {} };
 
 	let { mounts } = artifactMeta<{ mounts?: Record<string, Mount> }>(glb);
 	if (!mounts) {
@@ -18,7 +18,8 @@ export const load: PageServerLoad = async ({ parent }) => {
 		mounts = await mountsFromRepo(repoPath(project.owner_username, project.slug), commit.sha);
 		run('UPDATE artifacts SET meta = ? WHERE id = ?', JSON.stringify({ ...artifactMeta(glb), mounts }), glb.id);
 	}
-	return { modelUrl: artifactUrl(glb), mounts };
+	// The GLB is for the viewer; what people download is the STEP (renders before it have none).
+	return { modelUrl: artifactUrl(glb), stepUrl: firstArtifactUrl(commit.id, 'pcb_step'), mounts };
 };
 
 async function mountsFromRepo(repo: string, sha: string): Promise<Record<string, Mount>> {

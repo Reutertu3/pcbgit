@@ -9,6 +9,7 @@ export type ArtifactKind =
 	| 'pcb_layer_svg'
 	| 'pcb_preview_svg'
 	| 'pcb_glb'
+	| 'pcb_step'
 	| 'bom_csv'
 	| 'drc_json'
 	| 'erc_json'

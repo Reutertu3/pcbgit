@@ -47,7 +47,7 @@
 |---|---|
 | **Schematic** | Every sheet, pan and zoom, light or dark, PNG/JPEG export up to 600 dpi, all sheets as one PDF |
 | **PCB 2D** | Stacked layers with per-layer toggles, front/back flip, DRC markers with zoom-to-error |
-| **PCB 3D** | Assembled board with components, view cube, soldermask/silkscreen colours, HASL/ENIG finish, SMD/THT toggles, ruler, scale objects, image export |
+| **PCB 3D** | Assembled board with components, view cube, soldermask/silkscreen colours, HASL/ENIG finish, SMD/THT toggles, ruler, scale objects, image export, STEP download |
 | **BOM** | Interactive view with placement highlighting ([iBOM]), grouped line items with MPN and LCSC part numbers (linked to LCSC), CSV export, diff between any two versions |
 | **Checks** | KiCad DRC and ERC, grouped by severity, linked to their spot on the board |
 | **Fabrication** *(experimental)* | Gerbers and drill files for **JLCPCB**, **AISLER** or generic KiCad names |
@@ -298,7 +298,9 @@ were read (up to v0.7.4) show them after a re-render (History, or **Admin →
 Boards → Re-render all**).
 
 A board's overview offers the BOM (CSV), the schematic as one PDF, the 3D model
-(GLB), the source as ZIP and, under **Production Gerbers**, a fabrication ZIP for
+as STEP (board and component models as solids, for enclosure design in
+mechanical CAD; versions rendered up to v0.7.4 get one with a re-render), the
+source as ZIP and, under **Production Gerbers**, a fabrication ZIP for
 the board house chosen in the dropdown: that fab's file names and drill units,
 manufacturing layers only, zones refilled. The Gerber export is experimental:
 check the fab's preview before ordering.

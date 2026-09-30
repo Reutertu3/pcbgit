@@ -214,6 +214,12 @@ converter takes untrusted XML: keep its reader entity-free and capped
   (`[owner]/[project]/raw/[sha]/[...path]`): images by extension, commits of that
   board only, SVG with `SVG_POLICY`. Never widen it to other types: a repo's HTML
   served from this origin would run as pcbgit.
+- **The 3D download is a STEP**, not the viewer's GLB: `pcb export step` (board and
+  models, no copper) stored as `board.step.gz`, since STEP text is several times
+  the GLB and counts against the owner's storage. The artifacts route serves it
+  as the STEP: gzip passed through to clients that accept it, unpacked for the
+  rest. SvelteKit's `setHeaders()` throws on a header set twice; decide a header's
+  value before the one call that sets it.
 - **Profile pictures** are BLOBs in the `avatars` table (so snapshots cover them),
   only ever served as our own re-encoding: `avatarimage.ts` checks the header, then
   rsvg-convert crops and cwebp encodes in the renderer. rsvg-convert ignores EXIF
