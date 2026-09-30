@@ -271,10 +271,10 @@ converter takes untrusted XML: keep its reader entity-free and capped
 It is good for "what calls what" in TypeScript. It does not see calls made inside
 SvelteKit `actions = { … }` objects, Svelte template markup, or code that loops
 over a table or constant (`FAB_PROFILES`), so route handlers and table-driven
-code look disconnected; confirm in the code. It also has none of the
-`storeArtifact()` calls in `render/worker.ts` (the one in `eagleimport.ts` is
-there, and nested calls such as `readOutput()` in the same statements are too),
-so the render steps look unconnected to it. Type references (field and parameter
+code look disconnected; confirm in the code. It links `storeArtifact()` to the
+render steps in `render/worker.ts`, but has none of that file's `readOutput()`
+calls (the one in `eagleimport.ts` is there), so the guarded read in front of
+each stored artifact is invisible to it. Type references (field and parameter
 types, `all<Row>()`) make no edges, and calls from `.svelte` files are mostly
 missing, so types and helpers used only there (`ArtifactKind`, `shortSha()`) look
 orphaned; a low degree is not dead code. The graph is undirected: shortest paths
