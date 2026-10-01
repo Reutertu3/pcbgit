@@ -955,3 +955,17 @@ password with spaces quoted so compose reads it literally, a rerun keeping what
 is set), the release probe from a clean clone (ready, built here, unreadable)
 and with a stand-in `docker` claiming arm64 (arch).
 
+### Upload progress, and dropped ZIPs that were never sent
+Uploading a ZIP (a new board, a new version in board settings) showed only
+"Uploading…" for as long as it took. SvelteKit's form handling uses fetch, which
+cannot report upload progress, so both forms now post through XMLHttpRequest
+(`$lib/uploadform.ts`) and show a bar with the bytes sent, then what the server
+is doing. The result is applied as `use:enhance` would; a connection that breaks
+off or the request size limit (an `error` result, which would have replaced the
+page) becomes a message in the form. Without JavaScript the forms post as before.
+The Backups page's bar is the same component now.
+
+While at it: on `/new`, a ZIP dropped onto the drop zone only showed its name. It
+never reached the file input, so it was not sent. The new submit sends the file
+shown, dropped or picked.
+

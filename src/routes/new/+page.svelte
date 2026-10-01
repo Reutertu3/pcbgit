@@ -1,5 +1,6 @@
 <script lang="ts">
-	import { enhance } from '$app/forms';
+	import UploadProgress from '$lib/components/UploadProgress.svelte';
+	import { submitWithProgress } from '$lib/uploadform';
 	import Icon from '$lib/components/Icon.svelte';
 	import FormError from '$lib/components/FormError.svelte';
 	import TagPicker from '$lib/components/TagPicker.svelte';
@@ -18,6 +19,24 @@
 	let file = $state<File | null>(null);
 	let dragging = $state(false);
 	let submitting = $state(false);
+	let progress = $state<{ sent: number; total: number } | null>(null);
+
+	/**
+	 * Sends the form with the ZIP shown above: a dropped file never reaches the file
+	 * input, so it is added here. Without JavaScript the form posts as it is.
+	 */
+	async function create(event: SubmitEvent) {
+		event.preventDefault();
+		const body = new FormData(event.currentTarget as HTMLFormElement);
+		if (file) body.set('archive', file);
+		submitting = true;
+		try {
+			await submitWithProgress(event.currentTarget as HTMLFormElement, body, (sent, total) => (progress = { sent, total }));
+		} finally {
+			submitting = false;
+			progress = null;
+		}
+	}
 
 	// A failed submit re-renders with `form`; typed values win once the user edits.
 	const name = $derived(typedName ?? form?.name ?? '');
@@ -64,13 +83,7 @@
 		class="mt-6"
 		method="POST"
 		enctype="multipart/form-data"
-		use:enhance={() => {
-			submitting = true;
-			return async ({ update }) => {
-				await update({ reset: false });
-				submitting = false;
-			};
-		}}
+		onsubmit={create}
 	>
 		<FormError message={form?.error} />
 
@@ -193,5 +206,6 @@
 			</button>
 			<a href="/" class="btn btn-ghost">{t('common.cancel')}</a>
 		</div>
+		{#if progress && file}<UploadProgress {...progress} after={t('upload.creatingBoard')} />{/if}
 	</form>
 </div>

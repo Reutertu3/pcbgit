@@ -722,7 +722,6 @@
 	"backups.importHint": "Upload a snapshot file (.tar.gz). It is checked and added to the list below; nothing changes until you restore it.",
 	"backups.importAnySize": "Any size works: the file is sent in pieces and joined on the server. Free disk space there: {free}.",
 	"backups.uploading": "Uploading…",
-	"backups.uploadProgress": "{sent} of {total} ({percent} %)",
 	"backups.joining": "Joining the pieces and checking the snapshot…",
 	"backups.uploadFailed": "The upload failed. Check the connection and try again.",
 	"backups.choose": "Choose .tar.gz",
@@ -1185,5 +1184,9 @@
 	"auth.hidePassword": "Hide password",
 	"account.repeatPassword": "Repeat the new password",
 	"auth.error.passwordMismatch": "The two passwords do not match.",
-	"auth.repeatPassword": "Repeat the password"
+	"auth.repeatPassword": "Repeat the password",
+	"upload.progress": "{sent} of {total} ({percent} %)",
+	"upload.creatingBoard": "Uploaded. Creating the board…",
+	"upload.committing": "Uploaded. Storing the new version…",
+	"upload.error.failed": "The upload did not go through. Check the connection and try again."
 }

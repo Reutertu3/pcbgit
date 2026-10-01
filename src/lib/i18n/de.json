@@ -722,7 +722,6 @@
 	"backups.importHint": "Lade eine Snapshot-Datei (.tar.gz) hoch. Sie wird geprüft und unten zur Liste hinzugefügt; nichts ändert sich, bis du sie wiederherstellst.",
 	"backups.importAnySize": "Jede Größe geht: Die Datei wird in Teilen gesendet und auf dem Server zusammengesetzt. Freier Speicher dort: {free}.",
 	"backups.uploading": "Wird hochgeladen…",
-	"backups.uploadProgress": "{sent} von {total} ({percent} %)",
 	"backups.joining": "Teile werden zusammengesetzt und der Snapshot geprüft…",
 	"backups.uploadFailed": "Das Hochladen ist fehlgeschlagen. Prüfe die Verbindung und versuche es erneut.",
 	"backups.choose": ".tar.gz auswählen",
@@ -1185,5 +1184,9 @@
 	"auth.hidePassword": "Passwort verbergen",
 	"account.repeatPassword": "Neues Passwort wiederholen",
 	"auth.error.passwordMismatch": "Die beiden Passwörter stimmen nicht überein.",
-	"auth.repeatPassword": "Passwort wiederholen"
+	"auth.repeatPassword": "Passwort wiederholen",
+	"upload.progress": "{sent} von {total} ({percent} %)",
+	"upload.creatingBoard": "Hochgeladen. Das Board wird angelegt…",
+	"upload.committing": "Hochgeladen. Die neue Version wird gespeichert…",
+	"upload.error.failed": "Der Upload ist nicht durchgekommen. Prüfe die Verbindung und versuche es erneut."
 }

@@ -4,6 +4,7 @@
 	import Icon from '$lib/components/Icon.svelte';
 	import Switch from '$lib/components/Switch.svelte';
 	import FormError from '$lib/components/FormError.svelte';
+	import UploadProgress from '$lib/components/UploadProgress.svelte';
 	import SavedNote from '$lib/components/SavedNote.svelte';
 	import { keepValues } from '$lib/forms';
 	import { formatBytes, formatDateTime, relativeTime } from '$lib/format';
@@ -21,7 +22,6 @@
 	let progress = $state<{ sent: number; total: number } | null>(null);
 	let joining = $state(false);
 	let uploadResult = $state<{ kind: 'success' | 'error'; text: string } | null>(null);
-	const percent = $derived(progress ? Math.floor((progress.sent / Math.max(1, progress.total)) * 100) : 0);
 
 	// Leaving the page would abandon the upload.
 	$effect(() => {
@@ -165,16 +165,7 @@
 				{uploading ? t('backups.uploading') : t('backups.upload')}
 			</button>
 		</form>
-		{#if progress}
-			<div class="mt-3" role="status">
-				<div class="h-1.5 overflow-hidden rounded-full bg-[var(--surface-2)]">
-					<div class="h-full bg-[var(--accent)] transition-[width]" style:width="{percent}%"></div>
-				</div>
-				<p class="mt-1 text-xs text-[var(--text-muted)]">
-					{joining ? t('backups.joining') : t('backups.uploadProgress', { sent: formatBytes(progress.sent), total: formatBytes(progress.total), percent })}
-				</p>
-			</div>
-		{/if}
+		{#if progress}<UploadProgress sent={joining ? progress.total : progress.sent} total={progress.total} after={t('backups.joining')} />{/if}
 		{#if uploadResult}
 			<div class="mt-3 -mb-4"><FormError message={uploadResult.text} kind={uploadResult.kind} /></div>
 		{/if}

@@ -1,6 +1,8 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
 	import { keepValues } from '$lib/forms';
+	import UploadProgress from '$lib/components/UploadProgress.svelte';
+	import { submitWithProgress } from '$lib/uploadform';
 	import Icon from '$lib/components/Icon.svelte';
 	import FormError from '$lib/components/FormError.svelte';
 	import SavedNote from '$lib/components/SavedNote.svelte';
@@ -17,6 +19,24 @@
 	let file = $state<File | null>(null);
 	let confirmText = $state('');
 	let uploading = $state(false);
+	let progress = $state<{ sent: number; total: number } | null>(null);
+
+	/** A new version from a ZIP, with a progress bar; without JavaScript the form posts as it is. */
+	async function uploadVersion(event: SubmitEvent) {
+		event.preventDefault();
+		const formElement = event.currentTarget as HTMLFormElement;
+		uploading = true;
+		try {
+			const result = await submitWithProgress(formElement, new FormData(formElement), (sent, total) => (progress = { sent, total }));
+			if (result.type === 'success') {
+				formElement.reset();
+				file = null;
+			}
+		} finally {
+			uploading = false;
+			progress = null;
+		}
+	}
 	const inCollaborators = $derived(Boolean(form && 'collaborators' in form));
 
 	// Follows the board shown (the page is reused between boards), yet the select can change it.
@@ -113,14 +133,7 @@
 			method="POST"
 			action="?/upload"
 			enctype="multipart/form-data"
-			use:enhance={() => {
-				uploading = true;
-				return async ({ update }) => {
-					await update();
-					uploading = false;
-					file = null;
-				};
-			}}
+			onsubmit={uploadVersion}
 		>
 			<div class="mb-3">
 				<label class="label" for="message">{t('boardForm.message')}</label>
@@ -147,6 +160,7 @@
 			<button class="btn btn-primary" type="submit" disabled={!file || uploading}>
 				{uploading ? t('boardForm.uploading') : t('boardForm.upload')}
 			</button>
+			{#if progress}<UploadProgress {...progress} after={t('upload.committing')} />{/if}
 		</form>
 
 		<div class="mt-5 border-t pt-4">
