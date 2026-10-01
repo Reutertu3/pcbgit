@@ -45,14 +45,7 @@
       from GitHub" builds `master`, so CI should have passed before code lands
       there. Branch protection is a repository setting (Settings → Branches);
       Dependabot already works this way.
-- [ ] **Offer the STEP download as a ZIP** (`board.step` inside). It is stored as
-      `board.step.gz` and sent with `Content-Encoding: gzip`, but a client that
-      does not accept gzip (curl without `--compressed`, wget) gets it unpacked by
-      the server. That runs on Node's small worker pool, which file reads and
-      password hashing share; many such downloads from a public board need no
-      account. Store the ZIP itself as the artifact and send it as it is, so the
-      server never unpacks anything.
-      Same rule for a later step: the other artifacts compress well too (SVGs to
+- [ ] **Store the other artifacts compressed.** They compress well (SVGs to
       about 15–30 %, the GLB to about 32 %, the iBOM page to 59 %, the DRC/ERC
       reports to 10 %; on the local instance 153 MB would become about 65 MB).
       Stored gzipped and sent with `Content-Encoding: gzip`, browsers unpack them;

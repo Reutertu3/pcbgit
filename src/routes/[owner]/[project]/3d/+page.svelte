@@ -2,7 +2,7 @@
 	import Icon from '$lib/components/Icon.svelte';
 	import Viewer3D from '$lib/components/Viewer3D.svelte';
 	import EmptyTab from '$lib/components/EmptyTab.svelte';
-	import { formatDimensions, shortSha } from '$lib/format';
+	import { formatDimensions, shortSha, stepFileName } from '$lib/format';
 	import { t } from '$lib/i18n/t';
 
 	let { data } = $props();
@@ -37,7 +37,7 @@
 				{#if size}<span class="mono ml-1">{size}</span>{/if}
 			</span>
 			{#if data.stepUrl}
-				<a href={data.stepUrl} download="{data.project.slug}-{shortSha(data.commit?.sha)}.step" class="flex items-center gap-1 hover:text-[var(--accent)]">
+				<a href={data.stepUrl} download={stepFileName(`${data.project.slug}-${shortSha(data.commit?.sha)}`, data.stepUrl)} class="flex items-center gap-1 hover:text-[var(--accent)]">
 					<Icon name="download" size={12} /> {t('3d.downloadStep')}
 				</a>
 			{/if}

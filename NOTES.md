@@ -975,3 +975,13 @@ the load read `sort` and `page`, but the page offered neither. It now has the
 front page's sort select (last updated, name, newest, stars) and its pager. The
 `sort` parameter is checked against the known sorts on every list (front page,
 profile, starred): an unknown one had made `ORDER BY undefined`, a 500.
+
+### The STEP download is a tar.gz
+The STEP was stored as `board.step.gz` and sent with `Content-Encoding: gzip`,
+but clients that do not accept gzip (curl without `--compressed`, wget) got it
+unpacked by the server, on Node's small worker pool, which file reads and
+password hashing share, and for public boards without an account. It is now
+stored as `board.step.tar.gz` with `board.step` inside and sent as it is to
+everyone. Older renders' `board.step.gz` is sent packed too, as `.step.gz`, until
+re-rendered. No dependency: one file in a ustar archive is a 512-byte header
+(`render/tarball.ts`); the test reads it back with the system's `tar`.

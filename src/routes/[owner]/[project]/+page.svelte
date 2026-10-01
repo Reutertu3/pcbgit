@@ -5,7 +5,7 @@
 	import StatusDot from '$lib/components/StatusDot.svelte';
 	import CloneBox from '$lib/components/CloneBox.svelte';
 	import StatGrid from '$lib/components/StatGrid.svelte';
-	import { formatBytes, formatDate, formatDimensions, relativeTime, shortSha } from '$lib/format';
+	import { formatBytes, formatDate, formatDimensions, relativeTime, shortSha, stepFileName } from '$lib/format';
 	import type { CommentView } from '$lib/types';
 	import { t, tParts } from '$lib/i18n/t';
 	import { DEFAULT_FAB, fabProfile } from '$lib/fab';
@@ -362,7 +362,7 @@
 							</a>
 						{/if}
 						{#if data.step}
-							<a href={data.step} download="{data.project.slug}-{shortSha(data.commit.sha)}.step" class="btn btn-sm justify-start">
+							<a href={data.step} download={stepFileName(`${data.project.slug}-${shortSha(data.commit.sha)}`, data.step)} class="btn btn-sm justify-start">
 								<Icon name="download" size={13} /> {t('overview.dlStep')}
 							</a>
 						{/if}

@@ -11,6 +11,14 @@ export function shortSha(sha: string | null | undefined) {
 	return (sha ?? '').slice(0, 7);
 }
 
+/**
+ * The STEP download's file name. It is a tar.gz with board.step inside; versions
+ * rendered up to v0.8.2 have the gzipped STEP alone.
+ */
+export function stepFileName(base: string, url: string) {
+	return url.split('?')[0].endsWith('.tar.gz') ? `${base}.step.tar.gz` : `${base}.step.gz`;
+}
+
 export function relativeTime(timestamp: number | null | undefined) {
 	if (!timestamp) return t('time.never');
 	const seconds = Math.round((Date.now() - timestamp) / 1000);

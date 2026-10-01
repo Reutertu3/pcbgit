@@ -40,6 +40,7 @@ import { clearTransparentFills } from './schematicfix';
 import { ensureThumbnail } from '../thumbnails';
 import { freeDiskSpace, minFreeDisk } from '../limits';
 import { optimizeBoardGlb } from './glb';
+import { tarOneFile } from './tarball';
 import { countBySeverity, parseDrcReport, parseErcReport, type Violation } from './reports';
 
 const gzip = promisify(zlib.gzip);
@@ -473,14 +474,14 @@ async function renderBoard(
 	}
 
 	// The same board as STEP: the 3D download. Tens of MB of text that compresses to a fifth, and
-	// it counts against the owner's storage, so it is kept gzipped and unpacked
-	// when served (artifacts route).
+	// it counts against the owner's storage, so it is stored as a tar.gz and sent as
+	// it is: the server never unpacks it for a client.
 	const step = path.join(outDir, 'board.step');
 	const stepResult = await runKicad(pcbStepArgs(pcbPath, step), 600_000);
 	log.push(`step: ${stepResult.ok ? 'ok' : `failed (${stepResult.code}) ${stepResult.stderr.trim().split('\n').at(-1)}`}`);
 	if (stepResult.ok && fs.existsSync(step)) {
-		const data = await gzip(await readOutput(step, outDir));
-		await storeArtifact({ commitId, kind: 'pcb_step', name: 'board.step', data, targetName: 'board.step.gz' });
+		const data = await gzip(tarOneFile('board.step', await readOutput(step, outDir)));
+		await storeArtifact({ commitId, kind: 'pcb_step', name: 'board.step', data, targetName: 'board.step.tar.gz' });
 	}
 
 	// DRC.

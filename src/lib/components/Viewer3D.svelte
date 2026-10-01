@@ -3,6 +3,7 @@
 	import Icon from './Icon.svelte';
 	import Switch from './Switch.svelte';
 	import { t } from '$lib/i18n/t';
+	import { stepFileName } from '$lib/format';
 
 	interface Props {
 		url: string;
@@ -1624,7 +1625,7 @@
 		<div class="absolute inset-0 flex flex-col items-center justify-center gap-2 text-center">
 			<Icon name="alert" size={24} style="color: var(--err)" />
 			<p class="text-sm" style:color="var(--err)">{error}</p>
-			{#if downloadUrl}<a href={downloadUrl} download="{fileBase}.step" class="btn btn-sm">{t('viewer3d.downloadStep')}</a>{/if}
+			{#if downloadUrl}<a href={downloadUrl} download={stepFileName(fileBase, downloadUrl)} class="btn btn-sm">{t('viewer3d.downloadStep')}</a>{/if}
 		</div>
 	{:else if !loaded}
 		<div class="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-3">
