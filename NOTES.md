@@ -969,3 +969,9 @@ While at it: on `/new`, a ZIP dropped onto the drop zone only showed its name. I
 never reached the file input, so it was not sent. The new submit sends the file
 shown, dropped or picked.
 
+### Profile pages can be sorted
+A user's page listed their boards by last update only, and only the first 24:
+the load read `sort` and `page`, but the page offered neither. It now has the
+front page's sort select (last updated, name, newest, stars) and its pager. The
+`sort` parameter is checked against the known sorts on every list (front page,
+profile, starred): an unknown one had made `ORDER BY undefined`, a 500.

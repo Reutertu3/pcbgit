@@ -2,7 +2,7 @@ import { error } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import { count } from '$lib/server/db';
 import { getUserByUsername } from '$lib/server/auth';
-import { browseProjects } from '$lib/server/projects';
+import { browseProjects, isBrowseSort } from '$lib/server/projects';
 import { avatarVersion } from '$lib/server/avatars';
 
 export const load: PageServerLoad = async ({ params, locals, url }) => {
@@ -10,13 +10,15 @@ export const load: PageServerLoad = async ({ params, locals, url }) => {
 	if (!owner || (!owner.is_active && locals.user?.role !== 'admin')) error(404, 'error.userNotFound');
 
 	const isSelf = locals.user?.id === owner.id;
+	const requested = url.searchParams.get('sort');
+	const sort = isBrowseSort(requested) ? requested : 'recent';
 	const result = browseProjects({
 		viewer: locals.user,
 		owner: owner.username,
 		// Your own list also holds the boards you work on; other people's show what they own.
 		includeCollaborations: isSelf,
 		search: url.searchParams.get('q') ?? '',
-		sort: (url.searchParams.get('sort') as 'recent' | 'stars' | 'name') ?? 'recent',
+		sort,
 		page: Number(url.searchParams.get('page')) || 1,
 		perPage: 24
 	});
@@ -43,6 +45,7 @@ export const load: PageServerLoad = async ({ params, locals, url }) => {
 				owner.id
 			)
 		},
+		sort,
 		isSelf
 	};
 };

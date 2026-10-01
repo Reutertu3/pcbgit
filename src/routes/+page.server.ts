@@ -1,11 +1,15 @@
 import type { PageServerLoad } from './$types';
-import { browseAuthors, browseProjects, browseTagCounts, listTagCategories, listTags } from '$lib/server/projects';
+import {
+	browseAuthors,
+	browseProjects,
+	browseTagCounts,
+	isBrowseSort,
+	listTagCategories,
+	listTags,
+	type BrowseSort
+} from '$lib/server/projects';
 import { topTagGroups } from '$lib/taggroups';
 import { count } from '$lib/server/db';
-
-const SORTS = ['name', 'recent', 'created', 'stars'] as const;
-type Sort = (typeof SORTS)[number];
-const isSort = (value: string | null | undefined): value is Sort => SORTS.includes(value as Sort);
 
 /** The visitor's last sort choice, so the list comes back the way they left it. */
 const SORT_COOKIE = 'pcbgit_sort';
@@ -15,8 +19,8 @@ export const load: PageServerLoad = async ({ url, locals, cookies }) => {
 	const requested = params.get('sort');
 	// A choice in the URL (the select, or a shared link) wins and is remembered;
 	// without one, the remembered choice, and Name for a first visit.
-	let sort: Sort = 'name';
-	if (isSort(requested)) {
+	let sort: BrowseSort = 'name';
+	if (isBrowseSort(requested)) {
 		sort = requested;
 		cookies.set(SORT_COOKIE, sort, {
 			path: '/',
@@ -27,7 +31,7 @@ export const load: PageServerLoad = async ({ url, locals, cookies }) => {
 		});
 	} else {
 		const remembered = cookies.get(SORT_COOKIE);
-		if (isSort(remembered)) sort = remembered;
+		if (isBrowseSort(remembered)) sort = remembered;
 	}
 	const author = params.get('author') ?? '';
 

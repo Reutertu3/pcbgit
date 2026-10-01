@@ -4,8 +4,26 @@
 	import ProjectCardView from '$lib/components/ProjectCard.svelte';
 	import { formatCount, formatDate } from '$lib/format';
 	import { t, tParts } from '$lib/i18n/t';
+	import { goto } from '$app/navigation';
+	import { page } from '$app/state';
 
 	let { data } = $props();
+
+	const SORTS = $derived([
+		{ value: 'recent', label: t('browse.sort.recent') },
+		{ value: 'name', label: t('browse.sort.name') },
+		{ value: 'created', label: t('browse.sort.created') },
+		{ value: 'stars', label: t('browse.sort.stars') }
+	]);
+
+	/** Sort and page are URL parameters, like on the front page; a new sort starts at page 1. */
+	function withParam(mutate: (params: URLSearchParams) => void) {
+		const params = new URLSearchParams(page.url.searchParams);
+		params.delete('page');
+		mutate(params);
+		const query = params.toString();
+		return query ? `${page.url.pathname}?${query}` : page.url.pathname;
+	}
 </script>
 
 <svelte:head><title>{data.owner.displayName} · {data.site.name}</title></svelte:head>
@@ -49,10 +67,48 @@
 			{/if}
 		</div>
 	{:else}
+		{#if data.total > 1}
+			<div class="mb-4 flex justify-end">
+				<select
+					class="select !w-auto !py-1.5 text-[0.8125rem]"
+					value={data.sort}
+					onchange={(event) => goto(withParam((params) => params.set('sort', event.currentTarget.value)))}
+					aria-label={t('browse.sortLabel')}
+				>
+					{#each SORTS as sort}<option value={sort.value}>{sort.label}</option>{/each}
+				</select>
+			</div>
+		{/if}
 		<div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
 			{#each data.projects as project (project.id)}
 				<ProjectCardView {project} collaborator={project.owner_username !== data.owner.username} />
 			{/each}
 		</div>
+
+		{#if data.pageCount > 1}
+			<nav class="mt-6 flex items-center justify-center gap-2" aria-label={t('browse.pagination')}>
+				<a
+					href={withParam((params) => params.set('page', String(data.page - 1)))}
+					class="btn btn-sm"
+					class:pointer-events-none={data.page <= 1}
+					class:opacity-40={data.page <= 1}
+					aria-disabled={data.page <= 1}
+				>
+					<Icon name="chevronLeft" size={13} /> {t('browse.previous')}
+				</a>
+				<span class="mono px-2 text-xs text-[var(--text-muted)]">
+					{t('browse.page', { page: data.page, pages: data.pageCount })}
+				</span>
+				<a
+					href={withParam((params) => params.set('page', String(data.page + 1)))}
+					class="btn btn-sm"
+					class:pointer-events-none={data.page >= data.pageCount}
+					class:opacity-40={data.page >= data.pageCount}
+					aria-disabled={data.page >= data.pageCount}
+				>
+					{t('browse.next')} <Icon name="chevronRight" size={13} />
+				</a>
+			</nav>
+		{/if}
 	{/if}
 </div>

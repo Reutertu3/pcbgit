@@ -68,6 +68,12 @@ const CARD_SELECT = `
 	JOIN users u ON u.id = p.owner_id
 	LEFT JOIN commits hc ON hc.id = p.head_commit_id`;
 
+export const BROWSE_SORTS = ['name', 'recent', 'created', 'stars'] as const;
+export type BrowseSort = (typeof BROWSE_SORTS)[number];
+/** A `sort` parameter from the URL is anything; an unknown one would be no ORDER BY at all. */
+export const isBrowseSort = (value: string | null | undefined): value is BrowseSort =>
+	BROWSE_SORTS.includes(value as BrowseSort);
+
 export interface BrowseQuery {
 	viewer?: User | null;
 	search?: string;
@@ -75,7 +81,7 @@ export interface BrowseQuery {
 	owner?: string;
 	/** With `owner`: also the boards that user collaborates on (their own "Your boards"). */
 	includeCollaborations?: boolean;
-	sort?: 'recent' | 'stars' | 'name' | 'created';
+	sort?: BrowseSort;
 	starredBy?: string;
 	page?: number;
 	perPage?: number;
