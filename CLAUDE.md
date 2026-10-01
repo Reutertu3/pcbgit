@@ -37,6 +37,12 @@ release is installed only if its commit follows the running one, except on a fir
 start, where the checkout goes back to the release tag. `deploy/install.sh` in a
 terminal writes `.env` and offers the first start (release image, release built
 here, master built here); image states include `arch` (GitHub builds amd64 only).
+It also sets up the service user (`pcbgit`, uid 10001 like the container's when
+free, in the `docker` group), which owns the checkout, `.env` and the control dir
+and runs `update.sh` (the units' `User=`); `update.sh` started as root switches to
+the checkout's owner. Root keeps only install.sh and the units (`ExecStartPost=+…
+install.sh --units-only`); a checkout still owned by root is migrated by the next
+update.
 The release tag is a runtime variable (`PCBGIT_TAG`), not built in, since a tag
 can come after the image. The app and `update.sh` talk only through files in
 `PCBGIT_CONTROL_DIR`: requests, the `auto-update` switch and `check-interval`

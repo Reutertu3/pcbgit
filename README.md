@@ -169,9 +169,13 @@ git clone https://github.com/Reutertu3/pcbgit.git /opt/pcbgit
 /opt/pcbgit/deploy/install.sh
 ```
 
-`install.sh` asks for the domain, the administrator (it can generate the
-password), the renderer's memory and CPU limits and an optional folder for
-snapshot copies, and writes `.env`. It then starts pcbgit: by default the newest
+`install.sh` asks for the service user (`pcbgit` by default), the domain, the
+administrator (it can generate the password), the renderer's memory and CPU
+limits and an optional folder for snapshot copies, and writes `.env`. The service
+user owns the checkout, `.env` and `/var/lib/pcbgit-control`, and runs every update
+and check; root keeps only the setup, the systemd units and Docker itself. The
+user is in the `docker` group to run compose, which is as good as root: it keeps
+the scripts' own work away from root, it does not stop someone who has it. It then starts pcbgit: by default the newest
 release as the image GitHub built, a download of a minute or two; it can also
 build on the server instead, which takes several minutes and about 15 GB of disk
 (and is what ARM servers do). Details of the start are in
@@ -206,7 +210,7 @@ shows the newest release, whether its image is ready, and the commits on
 |---|---|---|
 | What | The newest tag `vX.Y.Z` (pre-releases like `v0.8.0-rc1` are skipped) | The newest commit on `master`, for trying unreleased changes |
 | How | Downloads the image CI built and checked: about a minute | Builds on the server: several minutes |
-| Start | **Install v…** or **Automatic updates** (at the next check) under **Admin → Instance**, or `deploy/update.sh --release` | **Update from GitHub** under **Admin → Instance**, or `/opt/pcbgit/deploy/update.sh` |
+| Start | **Install v…** or **Automatic updates** (at the next check) under **Admin → Instance**, or `sudo -u pcbgit /opt/pcbgit/deploy/update.sh --release` | **Update from GitHub** under **Admin → Instance**, or `sudo -u pcbgit /opt/pcbgit/deploy/update.sh` |
 
 Neither goes backwards: after a build of `master`, automatic updates wait for the
 next release after it. A release whose image is still building is waited for.
@@ -242,7 +246,7 @@ releases share that layer and bring around 10 MB.
 - A failed download or build leaves the old version running and moves the
   checkout back, so the next check offers the update again.
 - The previous version stays as the image `pcbgit:previous`. To go back by hand:
-  `git -C /opt/pcbgit reset --keep <its commit>`, then
+  `sudo -u pcbgit git -C /opt/pcbgit reset --keep <its commit>`, then
   `docker tag pcbgit:previous pcbgit:latest && docker compose up -d`.
 - `PCBGIT_UPDATE_SNAPSHOT=false` in `.env` skips the pre-update snapshot.
 - Release images come from `ghcr.io/<owner>/<repo>` of the server's GitHub remote
@@ -388,7 +392,7 @@ Set in `.env`:
 | No certificate / HTTPS fails | DNS does not point at the server yet, or ports 80/443 are blocked: `docker compose logs caddy` |
 | A version shows "Render failed" | The render log is under the board's **History** tab |
 | Render log says "renderer unavailable" | The `renderer` container is not running: `docker compose ps`, `docker compose logs renderer` |
-| Update fails | The log is under **Admin → Instance**. Usually a diverged server copy: `git reset --hard origin/<branch>` in `/opt/pcbgit` |
+| Update fails | The log is under **Admin → Instance**. Usually a diverged server copy: `sudo -u pcbgit git -C /opt/pcbgit reset --hard origin/<branch>` |
 
 ## Development
 

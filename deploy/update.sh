@@ -1,13 +1,17 @@
 #!/usr/bin/env bash
 # Updates pcbgit from GitHub and restarts it. Two ways:
 #
-#   sudo deploy/update.sh             build the newest master commit here (the
+#   deploy/update.sh                  build the newest master commit here (the
 #                                     panel's button; FORCE=1 rebuilds even if unchanged)
-#   sudo deploy/update.sh --release   install the newest release (tag vX.Y.Z), as
+#   deploy/update.sh --release        install the newest release (tag vX.Y.Z), as
 #                                     the image GitHub Actions built for it
-#   sudo deploy/update.sh --check     only fetch and record what either would bring
+#   deploy/update.sh --check          only fetch and record what either would bring
 #   deploy/update.sh --release-info   print the newest release and whether its image
 #                                     can be pulled here (for install.sh), nothing else
+#
+# It runs as the service user that owns the checkout (pcbgit, set up by install.sh):
+# `sudo -u pcbgit deploy/update.sh`. Started as root, it switches to that user and
+# afterwards brings the systemd units in step, the one part that needs root.
 #
 # On a first start (nothing running), --release installs the newest release even
 # when the checkout is already at or past it: the checkout goes back to the tag.
@@ -48,6 +52,16 @@ AUTO="$CONTROL_DIR/auto-update"
 IMAGE_WAIT=$((20 * 60))
 # How long a new version may take to pass its health check (migrations run at boot).
 HEALTH_WAIT=$((5 * 60))
+
+SERVICE_USER=$(stat -c %U "$REPO_DIR")
+if [[ $EUID -eq 0 && "$SERVICE_USER" != root ]]; then
+	status=0
+	runuser -u "$SERVICE_USER" -- "$REPO_DIR/deploy/update.sh" "$@" || status=$?
+	if [[ "$MODE" == update && -x "$REPO_DIR/deploy/install.sh" ]]; then
+		"$REPO_DIR/deploy/install.sh" --units-only >>"$LOG" 2>&1 || echo "== unit sync failed (see above)" >>"$LOG"
+	fi
+	exit "$status"
+fi
 
 git_() { git -c safe.directory="$REPO_DIR" -C "$REPO_DIR" "$@"; }
 compose() {
@@ -315,6 +329,8 @@ if [[ -z "$(env_setting PCBGIT_SOURCE_URL)" ]]; then
 	source_url=$(remote_web_url)
 	[[ -n "$source_url" ]] && export PCBGIT_SOURCE_URL="$source_url"
 fi
+# Root's lock file, from before the service user, can only be replaced.
+[[ ! -e "$CONTROL_DIR/.lock" || -w "$CONTROL_DIR/.lock" ]] || rm -f "$CONTROL_DIR/.lock"
 exec 9>"$CONTROL_DIR/.lock"
 if ! flock -n 9; then
 	# An update in progress refreshes the availability itself when it finishes.
@@ -397,6 +413,8 @@ phase="pulling from GitHub"
 trap on_error ERR
 
 write_status running fetch "Fetching from GitHub"
+# Replaced, not truncated: one root wrote, from before the service user, cannot be.
+rm -f "$LOG"
 : >"$LOG"
 chmod 644 "$LOG"
 [[ $INTERACTIVE == 0 ]] || echo "          Details: tail -f $LOG (a first build takes several minutes)" >&2
@@ -489,7 +507,10 @@ fi
 to=$(git_ rev-parse --short HEAD)
 
 # Keep the systemd units in step with the repository (new timers, fixed paths).
-# install.sh is idempotent; a failure here must not block the update itself.
+# Here only for a checkout root still owns, from before the service user: this
+# creates it and hands the checkout over. Otherwise the update service does it as
+# root afterwards, as does a run started as root (above). install.sh is
+# idempotent; a failure here must not block the update itself.
 if [[ $EUID -eq 0 && -x "$REPO_DIR/deploy/install.sh" ]]; then
 	"$REPO_DIR/deploy/install.sh" --units-only >>"$LOG" 2>&1 || echo "== unit sync failed (see above)" >>"$LOG"
 fi

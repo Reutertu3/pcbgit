@@ -985,3 +985,24 @@ stored as `board.step.tar.gz` with `board.step` inside and sent as it is to
 everyone. Older renders' `board.step.gz` is sent packed too, as `.step.gz`, until
 re-rendered. No dependency: one file in a ustar archive is a 512-byte header
 (`render/tarball.ts`); the test reads it back with the system's `tar`.
+
+### Updates run as a service user
+Everything on the host ran as root: the update and check services, git, the
+files in the control folder. `install.sh` now sets up a service user (`pcbgit` by
+default, asked first), with uid 10001 like the container's user when it is free,
+so the folders both write to need no translation. It owns the checkout, `.env`
+and the control folder, and the systemd units run `update.sh` as it. Root keeps
+the setup and the units: the update service writes those afterwards as root
+(`ExecStartPost=+`), and `update.sh` started as root switches to the checkout's
+owner and does the same. The user is in the `docker` group, which amounts to
+root; the gain is that the scripts' own work no longer runs as root.
+
+Existing servers move over on their next update: the update still runs as root,
+calls `install.sh --units-only`, which creates the user and hands the checkout
+and root's files in the control folder over. `update.sh` replaces a root-owned
+lock file or log rather than writing into it.
+
+The installer got a face: numbered sections, colour (off without a terminal or
+with `NO_COLOR`), ✓ and ! for what it did and what to look at, and a summary at
+the end. Tested in a Debian container with docker and systemctl stubbed: a fresh
+interactive install, a root-owned install migrated, and a check run as the user.
