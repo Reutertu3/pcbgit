@@ -42,6 +42,7 @@ Each tag links to its release notes on GitHub.
 | [**v0.8.0**](https://github.com/Reutertu3/pcbgit/releases/tag/v0.8.0) | 2026-09-30 | LCSC part numbers in the BOM, STEP download instead of GLB, push size limit, the owner can require two-factor sign-in of admins, replace authenticator |
 | [**v0.8.1**](https://github.com/Reutertu3/pcbgit/releases/tag/v0.8.1) | 2026-10-01 | Scheduled snapshots with retention, optional copy to a second folder (NAS) |
 | [**v0.8.2**](https://github.com/Reutertu3/pcbgit/releases/tag/v0.8.2) | 2026-10-01 | Interactive installer, first start from the release image, builds on ARM servers, update.sh by hand waits and shows its steps |
+| [**v0.8.3**](https://github.com/Reutertu3/pcbgit/releases/tag/v0.8.3) | 2026-10-01 | Updates run as a service user, installer redone, STEP download as tar.gz, sortable profile pages, upload progress, password show/hide and repeat |
 
 ---
 

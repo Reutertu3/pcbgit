@@ -133,7 +133,7 @@ the address each visitor uses. A reverse proxy in front must pass the client's
 Tested on Debian 13, with Caddy in front for HTTPS (Let's Encrypt); pcbgit itself
 is not exposed. **Requirements:** 2 GB RAM, 8 GB free disk (about 15 GB to build
 on the server instead of downloading the image), a domain. Run the commands as
-root.
+root; the installer hands the day-to-day work to a service user.
 
 > [!IMPORTANT]
 > The domain must be the bare domain the site is reached at. A wrong one makes
@@ -171,15 +171,17 @@ git clone https://github.com/Reutertu3/pcbgit.git /opt/pcbgit
 
 `install.sh` asks for the service user (`pcbgit` by default), the domain, the
 administrator (it can generate the password), the renderer's memory and CPU
-limits and an optional folder for snapshot copies, and writes `.env`. The service
-user owns the checkout, `.env` and `/var/lib/pcbgit-control`, and runs every update
-and check; root keeps only the setup, the systemd units and Docker itself. The
-user is in the `docker` group to run compose, which is as good as root: it keeps
-the scripts' own work away from root, it does not stop someone who has it. It then starts pcbgit: by default the newest
-release as the image GitHub built, a download of a minute or two; it can also
+limits and an optional folder for snapshot copies, and writes `.env`. It then
+starts pcbgit: by default the newest release as the image GitHub built, a download of a minute or two; it can also
 build on the server instead, which takes several minutes and about 15 GB of disk
 (and is what ARM servers do). Details of the start are in
 `/var/lib/pcbgit-control/update.log`.
+
+The service user owns the checkout, `.env` and `/var/lib/pcbgit-control`, and
+runs every update and check; root keeps only the setup, the systemd units and
+Docker itself. The user is in the `docker` group to run compose, which is as good
+as root: it keeps the scripts' own work away from root, it does not stop someone
+who has it. Servers installed before v0.8.3 move over on their next update.
 
 Open `https://<your domain>` and sign in as the administrator, who is the owner:
 other admins cannot demote, disable or delete it, or reset its password. Under
@@ -288,7 +290,7 @@ were read (up to v0.7.4) show them after a re-render (History, or **Admin →
 Boards → Re-render all**).
 
 A board's overview offers the BOM (CSV), the schematic as one PDF, the 3D model
-as STEP (board and component models as solids, with pads, tracks, vias, zones
+as STEP, packed as `.step.tar.gz` (board and component models as solids, with pads, tracks, vias, zones
 and silkscreen, for mechanical CAD; versions rendered up to v0.7.4 get one with
 a re-render), the
 source as ZIP and, under **Production Gerbers**, a fabrication ZIP for
