@@ -11,7 +11,7 @@
 | | Group | Open | What it is |
 |---|---|---|---|
 | 🔴 | [Before opening registration](#before-opening-registration) | 0 | Abuse limits a public instance needs |
-| 🟠 | [Next up](#next-up) | 5 | Fixes and chores worth doing soon |
+| 🟠 | [Next up](#next-up) | 6 | Fixes and chores worth doing soon |
 | 🗺️ | [Feature roadmap](#feature-roadmap) | 25 | New features, by priority |
 | 🔍 | [To review](#to-review) | 3 | Code nobody has audited yet |
 | 🟡 | [Low priority](#low-priority) | 20 | Hardening, edge cases, chores that can wait |
@@ -45,6 +45,21 @@
       from GitHub" builds `master`, so CI should have passed before code lands
       there. Branch protection is a repository setting (Settings → Branches);
       Dependabot already works this way.
+- [ ] **Offer the STEP download as a ZIP** (`board.step` inside). It is stored as
+      `board.step.gz` and sent with `Content-Encoding: gzip`, but a client that
+      does not accept gzip (curl without `--compressed`, wget) gets it unpacked by
+      the server. That runs on Node's small worker pool, which file reads and
+      password hashing share; many such downloads from a public board need no
+      account. Store the ZIP itself as the artifact and send it as it is, so the
+      server never unpacks anything.
+      Same rule for a later step: the other artifacts compress well too (SVGs to
+      about 15–30 %, the GLB to about 32 %, the iBOM page to 59 %, the DRC/ERC
+      reports to 10 %; on the local instance 153 MB would become about 65 MB).
+      Stored gzipped and sent with `Content-Encoding: gzip`, browsers unpack them;
+      clients without gzip get the compressed file, never unpacked on the server.
+      The dark schematic recolour, iBOM theming and card thumbnails read artifact
+      files and would unpack first; existing renders stay as they are until
+      re-rendered.
 
 ---
 

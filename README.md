@@ -138,7 +138,7 @@ root.
 > [!IMPORTANT]
 > The domain must be the bare domain the site is reached at. A wrong one makes
 > every form post fail with a cross-site error, since it sets the app's `ORIGIN`.
-> `install.sh` checks it; so does `update.sh` for a `.env` written by hand.
+> `install.sh` checks it.
 
 ### 1. Install Docker
 
@@ -162,60 +162,25 @@ start, or Caddy cannot get a certificate.
 ufw allow OpenSSH && ufw allow 80,443/tcp && ufw allow 443/udp && ufw enable
 ```
 
-### 3. Get the code, configure and start
+### 3. Install and start
 
 ```sh
 git clone https://github.com/Reutertu3/pcbgit.git /opt/pcbgit
 /opt/pcbgit/deploy/install.sh
 ```
 
-`install.sh` asks for the settings and writes `.env` (an existing one is kept;
-only what is missing is asked for):
+`install.sh` asks for the domain, the administrator (it can generate the
+password), the renderer's memory and CPU limits and an optional folder for
+snapshot copies, and writes `.env`. It then starts pcbgit: by default the newest
+release as the image GitHub built, a download of a minute or two; it can also
+build on the server instead, which takes several minutes and about 15 GB of disk
+(and is what ARM servers do). Details of the start are in
+`/var/lib/pcbgit-control/update.log`.
 
-| Asked for | Notes |
-|---|---|
-| Domain | Bare, e.g. `pcb.example.com`; it warns if the DNS record does not point at this server yet |
-| Administrator | Username, email, and a password it can generate. The password is only used when no administrator exists: on the first start, not after restoring a snapshot |
-| Renderer limits | Memory and CPU for kicad-cli and the 3D export, suggested from the server's size |
-| Snapshot copy folder | Optional: a folder on another disk or a NAS mount for scheduled snapshots; handed to uid 10001 |
-
-It sets up the systemd units for updates, then offers what to start, showing the
-free disk space:
-
-1. **The newest release as the image GitHub built** (the default): about a 1 GB
-   download, a minute or two. Only offered where it can run: GitHub builds for
-   x86-64 servers, so ARM ones (a Raspberry Pi) build instead.
-2. **The newest release, built on this server:** several minutes, and about 15 GB
-   of disk while building (KiCad and its 3D models).
-3. **The newest `master`, built on this server,** for unreleased changes.
-
-It prints each step; the details are in `/var/lib/pcbgit-control/update.log`
-(`tail -f` it in a second session).
-
-For a private repository, add a read-only
-[deploy key](https://docs.github.com/en/authentication/connecting-to-github-with-ssh/managing-deploy-keys)
-and clone the `git@github.com:` URL.
-
-<details>
-<summary>Without the questions (scripts, automation)</summary>
-
-Write `.env` yourself from `.env.example` (at least `PCBGIT_DOMAIN` and
-`PCBGIT_ADMIN_PASSWORD`), then run `deploy/install.sh` without a terminal, or
-with its input redirected, and start with `deploy/update.sh --release` (the
-release image, or a build where there is none) or `deploy/update.sh` (master,
-built here).
-
-</details>
-
-Open `https://<your domain>` and sign in as `admin`. Under **Admin → Instance**,
-choose closed or open registration (open: each new account needs an admin's
-approval, the default) and per-user limits. **Admin → Users** approves accounts
-and sets limits per user; admins are notified of each new account. The `.env`
-admin is the owner: other admins cannot demote, disable or delete it, or reset
-its password.
-
-`install.sh` adds `COMPOSE_FILE` to `.env`, so plain `docker compose` on the
-server uses the production setup.
+Open `https://<your domain>` and sign in as the administrator, who is the owner:
+other admins cannot demote, disable or delete it, or reset its password. Under
+**Admin → Instance**, choose closed or open registration (open: each new account
+needs an admin's approval, the default) and per-user limits.
 
 <details>
 <summary><b>Moving an existing pcbgit to a new server</b></summary>
